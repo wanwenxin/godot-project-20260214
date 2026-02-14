@@ -1,5 +1,9 @@
 extends CharacterBody2D
 
+# 玩家主体：
+# - 输入移动
+# - 自动索敌
+# - 受伤/无敌帧/死亡
 signal died
 signal health_changed(current: int, max_value: int)
 
@@ -18,6 +22,7 @@ var _character_data := {}
 
 func _ready() -> void:
 	add_to_group("players")
+	# 玩家仅与敌人发生实体碰撞，子弹通过 Area2D 处理。
 	collision_layer = 1
 	collision_mask = 2
 	_update_sprite(0)
@@ -26,12 +31,14 @@ func _ready() -> void:
 
 
 func set_character_data(data: Dictionary) -> void:
+	# 把角色模板参数应用到当前实体。
 	_character_data = data.duplicate(true)
 	max_health = int(_character_data.get("max_health", 100))
 	base_speed = float(_character_data.get("speed", 160.0))
 	current_health = max_health
 	_update_sprite(int(_character_data.get("color_scheme", 0)))
 	if weapon:
+		# 武器参数由角色驱动，实现不同 build 风格。
 		weapon.set("fire_rate", float(_character_data.get("fire_rate", 0.3)))
 		weapon.set("bullet_damage", int(_character_data.get("bullet_damage", 10)))
 		weapon.set("bullet_speed", float(_character_data.get("bullet_speed", 500.0)))
@@ -39,6 +46,7 @@ func set_character_data(data: Dictionary) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# 使用 Input.get_vector 自动处理对角线归一化。
 	move_input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	velocity = move_input * base_speed
 	move_and_slide()
@@ -48,10 +56,12 @@ func _physics_process(delta: float) -> void:
 
 	var nearest_enemy := _get_nearest_enemy()
 	if nearest_enemy != null and weapon:
+		# 自动朝最近敌人开火（Brotato 风格核心体验）。
 		weapon.call("try_shoot", nearest_enemy.global_position)
 
 
 func take_damage(amount: int) -> void:
+	# 无敌计时器 > 0 时忽略后续伤害，避免多次碰撞瞬间秒杀。
 	if _invulnerable_timer > 0.0:
 		return
 	current_health = max(current_health - amount, 0)
@@ -63,6 +73,7 @@ func take_damage(amount: int) -> void:
 
 
 func _get_nearest_enemy() -> Node2D:
+	# 简单线性扫描，敌人数量较少时足够稳定。
 	var enemies := get_tree().get_nodes_in_group("enemies")
 	var nearest: Node2D = null
 	var min_distance := INF
@@ -77,5 +88,6 @@ func _get_nearest_enemy() -> Node2D:
 
 
 func _update_sprite(color_scheme: int) -> void:
+	# 角色贴图运行时生成，不依赖外部素材。
 	if sprite:
 		sprite.texture = PixelGenerator.generate_player_sprite(color_scheme)

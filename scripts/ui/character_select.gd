@@ -1,5 +1,9 @@
 extends Control
 
+# 角色选择界面：
+# - 切换两个角色模板
+# - 实时展示当前角色属性
+# - 确认后进入游戏场景
 @onready var card_a: Button = $CenterContainer/VBoxContainer/Characters/CharacterA
 @onready var card_b: Button = $CenterContainer/VBoxContainer/Characters/CharacterB
 @onready var detail: Label = $CenterContainer/VBoxContainer/Detail
@@ -21,6 +25,7 @@ func _ready() -> void:
 func _select_character(character_id: int) -> void:
 	selected_character_id = character_id
 	var data := GameManager.get_character_data(character_id)
+	# 属性文本与按钮选中态同步刷新。
 	var text := "Name: %s\nHP: %d\nSpeed: %.0f\nFireRate: %.2f\nDamage: %d" % [
 		String(data.get("name", "Unknown")),
 		int(data.get("max_health", 100)),

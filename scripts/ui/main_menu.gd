@@ -1,5 +1,9 @@
 extends Control
 
+# 主菜单：
+# - 新游戏（进入角色选择）
+# - 继续游戏（直接开局，沿用上次角色）
+# - 读取并展示存档统计
 @onready var continue_btn: Button = $CenterContainer/VBoxContainer/ContinueButton
 @onready var new_game_btn: Button = $CenterContainer/VBoxContainer/NewGameButton
 @onready var quit_btn: Button = $CenterContainer/VBoxContainer/QuitButton
@@ -13,6 +17,7 @@ func _ready() -> void:
 
 	var save_data := SaveManager.load_game()
 	var has := SaveManager.has_save()
+	# 没有任何存档时禁用“继续游戏”。
 	continue_btn.disabled = not has
 	save_info.text = "BestWave: %d  BestTime: %.1fs  TotalKills: %d" % [
 		int(save_data.get("best_wave", 0)),

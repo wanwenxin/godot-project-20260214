@@ -1,5 +1,8 @@
 extends CanvasLayer
 
+# HUD 与结算层：
+# - 战斗中显示 HP/波次/击杀/时间
+# - 死亡后展示结算面板并提供重开/回主菜单入口
 @onready var health_label: Label = $Root/TopRow/HealthLabel
 @onready var wave_label: Label = $Root/TopRow/WaveLabel
 @onready var kill_label: Label = $Root/TopRow/KillLabel
@@ -12,6 +15,7 @@ extends CanvasLayer
 
 
 func _ready() -> void:
+	# 启动时默认不显示结算面板。
 	game_over_panel.visible = false
 	retry_btn.pressed.connect(_on_retry_pressed)
 	menu_btn.pressed.connect(_on_menu_pressed)
@@ -38,6 +42,7 @@ func set_pause_hint(visible: bool) -> void:
 
 
 func show_game_over(wave: int, kills: int, survival_time: float) -> void:
+	# 游戏结束后仅显示 UI，不直接切场，便于玩家选择后续操作。
 	game_over_text.text = "Game Over\nWave: %d\nKills: %d\nTime: %.1fs" % [wave, kills, survival_time]
 	game_over_panel.visible = true
 

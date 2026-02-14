@@ -1,5 +1,9 @@
 extends Node2D
 
+# 波次管理器：
+# - 控制每波敌人数与构成
+# - 控制回合间隔
+# - 维护击杀数与在场敌人计数
 signal wave_started(wave: int)
 signal wave_cleared(wave: int)
 signal kill_count_changed(kills: int)
@@ -26,6 +30,7 @@ func _ready() -> void:
 
 
 func setup(player_ref: Node2D) -> void:
+	# 游戏场景创建完玩家后调用。
 	_player_ref = player_ref
 	_viewport_size = get_viewport_rect().size
 	start_first_wave()
@@ -43,6 +48,7 @@ func _start_next_wave() -> void:
 	current_wave += 1
 	emit_signal("wave_started", current_wave)
 
+	# 简单难度曲线：总量随波次上升，远程占比逐渐提高。
 	var total_to_spawn: int = 5 + current_wave * 2
 	var ranged_count: int = maxi(1, int(current_wave / 2))
 	var melee_count: int = maxi(total_to_spawn - ranged_count, 1)
@@ -64,6 +70,7 @@ func _spawn_enemy(scene: PackedScene, hp_scale: float, speed_scale: float) -> vo
 	if enemy.has_signal("died"):
 		enemy.died.connect(_on_enemy_died)
 
+	# 每波对敌人生命与速度进行缩放。
 	enemy.max_health = int(enemy.max_health * hp_scale)
 	enemy.current_health = enemy.max_health
 	enemy.speed = enemy.speed * speed_scale
@@ -73,6 +80,7 @@ func _spawn_enemy(scene: PackedScene, hp_scale: float, speed_scale: float) -> vo
 
 
 func _random_spawn_position() -> Vector2:
+	# 以玩家为中心，在屏幕外环随机点刷怪，避免贴脸生成。
 	var center: Vector2 = _player_ref.global_position if is_instance_valid(_player_ref) else _viewport_size * 0.5
 	var angle: float = _rng.randf_range(0.0, TAU)
 	var radius: float = maxf(_viewport_size.x, _viewport_size.y) * 0.5 + spawn_radius_extra
@@ -84,5 +92,6 @@ func _on_enemy_died(_enemy: Node) -> void:
 	kill_count += 1
 	emit_signal("kill_count_changed", kill_count)
 	if living_enemy_count <= 0:
+		# 清场后进入短暂间隔，再开启下一波。
 		emit_signal("wave_cleared", current_wave)
 		intermission_timer.start(intermission_time)

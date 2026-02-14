@@ -1,5 +1,9 @@
 extends CharacterBody2D
 
+# 敌人基类：
+# - 生命与死亡事件
+# - 与玩家碰撞接触伤害
+# - 通用追踪移动方法
 signal died(enemy: Node)
 
 @export var max_health := 25
@@ -9,6 +13,7 @@ signal died(enemy: Node)
 
 var current_health := 25
 var player_ref: Node2D
+# 接触伤害节流开关，避免同帧多次触发。
 var _can_contact_damage := true
 
 @onready var sprite: Sprite2D = $Sprite2D
@@ -24,6 +29,7 @@ func _ready() -> void:
 	if hurt_area:
 		hurt_area.body_entered.connect(_on_hurt_area_body_entered)
 	if contact_timer:
+		# 接触伤害通过计时器节流。
 		contact_timer.wait_time = contact_damage_interval
 		contact_timer.timeout.connect(_on_contact_timer_timeout)
 
@@ -33,6 +39,7 @@ func set_player(node: Node2D) -> void:
 
 
 func set_enemy_texture(enemy_type: int) -> void:
+	# 子类通过 enemy_type 指定外观。
 	if sprite:
 		sprite.texture = PixelGenerator.generate_enemy_sprite(enemy_type)
 
@@ -58,6 +65,7 @@ func _on_hurt_area_body_entered(body: Node) -> void:
 	if body.is_in_group("players") and body.has_method("take_damage"):
 		body.take_damage(contact_damage)
 		_can_contact_damage = false
+		# 进入短 CD，防止玩家与敌人重叠时持续掉血过快。
 		contact_timer.start()
 
 
