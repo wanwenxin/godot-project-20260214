@@ -43,9 +43,9 @@ func _start_next_wave() -> void:
 	current_wave += 1
 	emit_signal("wave_started", current_wave)
 
-	var total_to_spawn := 5 + current_wave * 2
-	var ranged_count := int(max(1, current_wave / 2))
-	var melee_count := max(total_to_spawn - ranged_count, 1)
+	var total_to_spawn: int = 5 + current_wave * 2
+	var ranged_count: int = maxi(1, int(current_wave / 2))
+	var melee_count: int = maxi(total_to_spawn - ranged_count, 1)
 
 	for i in range(melee_count):
 		_spawn_enemy(melee_scene, 0.9 + current_wave * 0.06, 1.0 + current_wave * 0.08)
@@ -73,14 +73,14 @@ func _spawn_enemy(scene: PackedScene, hp_scale: float, speed_scale: float) -> vo
 
 
 func _random_spawn_position() -> Vector2:
-	var center := _player_ref.global_position if is_instance_valid(_player_ref) else _viewport_size * 0.5
-	var angle := _rng.randf_range(0.0, TAU)
-	var radius := max(_viewport_size.x, _viewport_size.y) * 0.5 + spawn_radius_extra
+	var center: Vector2 = _player_ref.global_position if is_instance_valid(_player_ref) else _viewport_size * 0.5
+	var angle: float = _rng.randf_range(0.0, TAU)
+	var radius: float = maxf(_viewport_size.x, _viewport_size.y) * 0.5 + spawn_radius_extra
 	return center + Vector2(cos(angle), sin(angle)) * radius
 
 
 func _on_enemy_died(_enemy: Node) -> void:
-	living_enemy_count = max(living_enemy_count - 1, 0)
+	living_enemy_count = maxi(living_enemy_count - 1, 0)
 	kill_count += 1
 	emit_signal("kill_count_changed", kill_count)
 	if living_enemy_count <= 0:

@@ -44,7 +44,7 @@ func take_damage(amount: int) -> void:
 		queue_free()
 
 
-func _move_towards_player(delta: float, move_scale: float = 1.0) -> void:
+func _move_towards_player(_delta: float, move_scale: float = 1.0) -> void:
 	if not is_instance_valid(player_ref):
 		return
 	var dir := (player_ref.global_position - global_position).normalized()

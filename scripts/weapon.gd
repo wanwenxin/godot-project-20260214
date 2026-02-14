@@ -19,11 +19,13 @@ func try_shoot(target_position: Vector2) -> void:
 	if bullet_scene == null:
 		return
 
-	var bullet = bullet_scene.instantiate()
-	var origin := get_parent()
+	var bullet := bullet_scene.instantiate() as Node2D
+	if bullet == null:
+		return
+	var origin := get_parent() as Node2D
 	if origin == null:
 		return
-	var direction := (target_position - origin.global_position).normalized()
+	var direction: Vector2 = (target_position - origin.global_position).normalized()
 
 	bullet.global_position = origin.global_position
 	bullet.set("direction", direction)
