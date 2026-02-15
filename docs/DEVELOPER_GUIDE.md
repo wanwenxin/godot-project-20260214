@@ -115,17 +115,22 @@
   1. 深水（严格占位）
   2. 浅水（与深水互斥）
   3. 障碍物（全图散布，避让所有水域，障碍物间保留间距）
-  4. 草丛（允许轻度覆盖，保持自然感）
+  4. 草丛（严格无重叠，避让水域与障碍）
   - 最后生成四周边界（实体阻挡）
+  - **所有地形不得重叠**，各地形间保持配置的 padding 间距
 
-地形冲突矩阵（当前规则）：
+- 每关各地形数量在 `*_count_min` ~ `*_count_max` 范围内随机
+
+- 地形色块统一配置入口：`resources/terrain_colors.tres`，由 `VisualAssetRegistry` 加载
+
+地形冲突规则（严格无重叠）：
 
 | 地形A \\ 地形B | 深水 | 浅水 | 障碍 | 草丛 |
 | --- | --- | --- | --- | --- |
-| 深水 | 禁止 | 禁止 | 禁止 | 允许轻度 |
-| 浅水 | 禁止 | 禁止 | 禁止 | 允许轻度 |
-| 障碍 | 禁止 | 禁止 | 禁止 | 允许轻度 |
-| 草丛 | 允许轻度 | 允许轻度 | 允许轻度 | 允许 |
+| 深水 | 禁止 | 禁止 | 禁止 | 禁止 |
+| 浅水 | 禁止 | 禁止 | 禁止 | 禁止 |
+| 障碍 | 禁止 | 禁止 | 禁止 | 禁止 |
+| 草丛 | 禁止 | 禁止 | 禁止 | 禁止 |
 
 说明：
 
@@ -249,19 +254,19 @@ flowchart TD
 ### 4.1 `game.gd`
 
 - `victory_wave`：通关波次（默认 5），达到该波次时显示通关界面并跳过升级/商店流程
-- `obstacle_count`：障碍数量
-- `grass_count`：草丛数量
-- `shallow_water_count`：浅水数量
-- `deep_water_count`：深水数量
+- `grass_count_min` / `grass_count_max`：草丛数量范围（默认 4~9），每关随机
+- `shallow_water_count_min` / `shallow_water_count_max`：浅水数量范围（默认 3~6）
+- `deep_water_count_min` / `deep_water_count_max`：深水数量范围（默认 2~5）
+- `obstacle_count_min` / `obstacle_count_max`：障碍数量范围（默认 4~8）
 - `terrain_margin`：生成边界留白
 - `placement_attempts`：单块最大尝试次数
-- `water_padding`：水域互斥间距
-- `obstacle_padding`：障碍物最小间距
-- `grass_max_overlap_ratio`：草丛允许覆盖比例上限
+- `water_padding`：水域互斥间距（默认 8）
+- `obstacle_padding`：障碍物最小间距（默认 10）
+- `grass_padding`：草丛与其它地形最小间距（默认 4）
 - `floor_tile_size`：可移动地面块尺寸
-- `floor_color_a / floor_color_b`：可移动地面块配色
+- `floor_color_a` / `floor_color_b`：可移动地面块配色（fallback，优先用 terrain_colors.tres）
 - `boundary_thickness`：地图边界厚度
-- `boundary_color`：地图边界颜色
+- `boundary_color`：地图边界颜色（fallback）
 - `*_cluster_count`：每类地形簇数量
 - `*_cluster_radius`：每类簇半径
 - `*_cluster_items`：每簇生成块数量范围
@@ -298,14 +303,28 @@ flowchart TD
 - `damage_per_tick`
 - `damage_interval`
 
-### 4.5 武器配置
+### 4.5 地形色块统一配置
+
+- `resources/terrain_colors.tres`：地形色块统一入口，含 `floor_a`、`floor_b`、`boundary`、`obstacle`、`grass`、`shallow_water`、`deep_water`
+- `resources/terrain_color_config.gd`：Resource 脚本，定义上述颜色字段
+- `VisualAssetRegistry` 启动时加载该资源，`get_color("terrain.*", fallback)` 优先从该配置读取
+
+### 4.6 纹理路径统一配置（人物/敌人/武器美术）
+
+- `resources/texture_paths.tres`：纹理路径统一入口，含人物、敌人、武器图标、子弹、掉落等
+- `resources/texture_path_config.gd`：Resource 脚本，`@export_file` 定义各纹理路径
+- 分类：Player（`player_scheme_0/1`）、Enemies（`enemy_melee/ranged/tank/boss`）、Weapon Icons（`weapon_blade_short` 等）、Other（`bullet_player/enemy`、`pickup_coin/heal`）
+- `VisualAssetRegistry` 启动时加载，`get_texture(asset_key)` 优先从该配置读取
+- 新增武器时：在 `texture_path_config.gd` 增加 `weapon_{id}` 属性，并在 `texture_paths.tres` 配置路径
+
+### 4.7 武器配置
 
 - `resources/weapon_defs.gd::WEAPON_DEFS` 字段说明：
   - `id`, `type`, `name_key`, `desc_key`, `cost`, `color`
   - `script_path`（具体武器脚本路径）
   - `stats`（示例：`damage`, `cooldown`, `range`, `touch_interval`, `swing_duration`, `swing_degrees`, `swing_reach`, `hitbox_radius`, `bullet_speed`, `pellet_count`, `spread_degrees`, `bullet_pierce`）
 
-### 4.6 多语言配置
+### 4.8 多语言配置
 
 - 语言文件：
   - `i18n/zh-CN.json`
@@ -317,7 +336,7 @@ flowchart TD
 - 运行时刷新：
   - 各 UI 监听 `LocalizationManager.language_changed` 并重绘文本
 
-### 4.7 设置结构（SaveManager）
+### 4.9 设置结构（SaveManager）
 
 `save.json.settings` 当前结构：
 
@@ -359,12 +378,14 @@ flowchart TD
 1. `game.gd::_spawn_terrain_map()` 增加生成逻辑
 2. `terrain_zone.gd` 添加新效果字段与处理
 3. 若是单位侧效果，扩展 Player/Enemy 的 terrain 接口
+4. 在 `resources/terrain_colors.tres` 中添加新地形色块（若使用 ColorRect 显示）
 
 如果是“只改分布规则不改效果”，优先调整：
 
 1. `terrain_margin`（可通行空间）
-2. `*_cluster_count` 和 `*_cluster_radius`（簇团密度与自然感）
-3. `water_padding` / `obstacle_padding`（冲突强度）
+2. `*_count_min` / `*_count_max`（每关各地形数量范围）
+3. `*_cluster_count` 和 `*_cluster_radius`（簇团密度与自然感）
+4. `water_padding` / `obstacle_padding` / `grass_padding`（各地形间最小间距）
 4. `placement_attempts`（生成成功率）
 
 ### 5.5 真音频替换
@@ -392,6 +413,7 @@ flowchart TD
 2. 若是近战，新增 `scripts/weapons/melee/weapon_*.gd` 并继承 `weapon_melee_base.gd`
 3. 若是远程，新增 `scripts/weapons/ranged/weapon_*.gd` 并继承 `weapon_ranged_base.gd`
 4. 在 `player.gd::equip_weapon_by_id()` 中验证该脚本可实例化
+5. 在 `texture_path_config.gd` 增加 `weapon_{id}` 属性，并在 `texture_paths.tres` 配置图标路径
 5. 在 i18n 文件补齐 `weapon.*` 文案 key
 
 ## 6. 常见问题与排障

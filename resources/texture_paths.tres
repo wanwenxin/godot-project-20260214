@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/texture_path_config.gd" id="1_config"]
+
+[resource]
+script = ExtResource("1_config")
+player_scheme_0 = "res://assets/characters/player_scheme_0.png"
+player_scheme_1 = "res://assets/characters/player_scheme_1.png"
+enemy_melee = "res://assets/enemies/enemy_melee.png"
+enemy_ranged = "res://assets/enemies/enemy_ranged.png"
+enemy_tank = "res://assets/enemies/enemy_tank.png"
+enemy_boss = "res://assets/enemies/enemy_boss.png"
+weapon_blade_short = "res://assets/weapons/blade_short.png"
+weapon_hammer_heavy = "res://assets/weapons/hammer_heavy.png"
+weapon_pistol_basic = "res://assets/weapons/pistol_basic.png"
+weapon_shotgun_wide = "res://assets/weapons/shotgun_wide.png"
+weapon_rifle_long = "res://assets/weapons/rifle_long.png"
+weapon_wand_focus = "res://assets/weapons/wand_focus.png"
+bullet_player = "res://assets/bullets/player_bullet.png"
+bullet_enemy = "res://assets/bullets/enemy_bullet.png"
+pickup_coin = "res://assets/pickups/coin.png"
+pickup_heal = "res://assets/pickups/heal.png"

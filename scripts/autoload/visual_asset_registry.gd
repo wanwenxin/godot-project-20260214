@@ -1,8 +1,10 @@
 extends Node
 
 # 统一视觉资源入口：
-# - 优先加载真实美术资源
-# - 资源缺失时自动回退到生成纹理/色块
+# - 地形色块：优先从 terrain_colors.tres 读取
+# - 纹理：优先从 texture_paths.tres 读取，可在 Inspector 配置人物/敌人/武器等美术资源
+const TERRAIN_COLOR_CONFIG_PATH := "res://resources/terrain_colors.tres"
+const TEXTURE_PATH_CONFIG_PATH := "res://resources/texture_paths.tres"
 const TEXTURE_PATHS := {
 	"player.scheme_0": "res://assets/characters/player_scheme_0.png",
 	"player.scheme_1": "res://assets/characters/player_scheme_1.png",
@@ -36,17 +38,71 @@ const COLOR_MAP := {
 }
 
 var _texture_cache: Dictionary = {}
+# 地形色块统一配置，从 TERRAIN_COLOR_CONFIG_PATH 加载，可在 Inspector 覆盖。
+var _terrain_config: Resource = null
+# 纹理路径统一配置，从 TEXTURE_PATH_CONFIG_PATH 加载，人物/敌人/武器等美术可配置。
+var _texture_path_config: Resource = null
+const _TERRAIN_KEY_TO_PROPERTY := {
+	"terrain.floor_a": "floor_a",
+	"terrain.floor_b": "floor_b",
+	"terrain.boundary": "boundary",
+	"terrain.obstacle": "obstacle",
+	"terrain.grass": "grass",
+	"terrain.shallow_water": "shallow_water",
+	"terrain.deep_water": "deep_water"
+}
+const _TEXTURE_KEY_TO_PROPERTY := {
+	"player.scheme_0": "player_scheme_0",
+	"player.scheme_1": "player_scheme_1",
+	"enemy.melee": "enemy_melee",
+	"enemy.ranged": "enemy_ranged",
+	"enemy.tank": "enemy_tank",
+	"enemy.boss": "enemy_boss",
+	"weapon.icon.blade_short": "weapon_blade_short",
+	"weapon.icon.hammer_heavy": "weapon_hammer_heavy",
+	"weapon.icon.pistol_basic": "weapon_pistol_basic",
+	"weapon.icon.shotgun_wide": "weapon_shotgun_wide",
+	"weapon.icon.rifle_long": "weapon_rifle_long",
+	"weapon.icon.wand_focus": "weapon_wand_focus",
+	"bullet.player": "bullet_player",
+	"bullet.enemy": "bullet_enemy",
+	"pickup.coin": "pickup_coin",
+	"pickup.heal": "pickup_heal"
+}
+
+
+func _ready() -> void:
+	if ResourceLoader.exists(TERRAIN_COLOR_CONFIG_PATH):
+		_terrain_config = load(TERRAIN_COLOR_CONFIG_PATH) as Resource
+	if ResourceLoader.exists(TEXTURE_PATH_CONFIG_PATH):
+		_texture_path_config = load(TEXTURE_PATH_CONFIG_PATH) as Resource
 
 
 func has_asset(asset_key: String) -> bool:
-	var path := str(TEXTURE_PATHS.get(asset_key, ""))
+	var path := _get_texture_path(asset_key)
 	return path != "" and ResourceLoader.exists(path)
+
+
+func _get_texture_path(asset_key: String) -> String:
+	# 优先从 texture_paths.tres 读取，否则回退到 TEXTURE_PATHS。
+	if _texture_path_config:
+		var prop: String = ""
+		if _TEXTURE_KEY_TO_PROPERTY.has(asset_key):
+			prop = _TEXTURE_KEY_TO_PROPERTY[asset_key]
+		elif asset_key.begins_with("weapon.icon."):
+			prop = "weapon_" + asset_key.trim_prefix("weapon.icon.")
+		if prop != "":
+			var val = _texture_path_config.get(prop)
+			var p := str(val) if val else ""
+			if p != "":
+				return p
+	return str(TEXTURE_PATHS.get(asset_key, ""))
 
 
 func get_texture(asset_key: String, fallback_generator: Callable = Callable()) -> Texture2D:
 	if _texture_cache.has(asset_key):
 		return _texture_cache[asset_key]
-	var path := str(TEXTURE_PATHS.get(asset_key, ""))
+	var path := _get_texture_path(asset_key)
 	if path != "" and ResourceLoader.exists(path):
 		var loaded = load(path)
 		if loaded is Texture2D:
@@ -60,6 +116,9 @@ func get_texture(asset_key: String, fallback_generator: Callable = Callable()) -
 
 
 func get_color(asset_key: String, fallback_color: Color) -> Color:
+	# 地形色块优先从统一配置入口（terrain_colors.tres）读取。
+	if _terrain_config and _TERRAIN_KEY_TO_PROPERTY.has(asset_key):
+		return _terrain_config.get(_TERRAIN_KEY_TO_PROPERTY[asset_key])
 	if COLOR_MAP.has(asset_key):
 		return COLOR_MAP[asset_key]
 	return fallback_color

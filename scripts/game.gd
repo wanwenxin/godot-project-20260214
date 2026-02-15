@@ -6,33 +6,37 @@ extends Node2D
 # - 维护计时、暂停、死亡结算
 @export var player_scene: PackedScene  # 玩家场景
 @export var victory_wave := 5  # 通关波次，达到后显示通关界面
-@export var obstacle_count := 6
-# 地形块数量配置：运行时随机铺设，便于调试地图密度。
-@export var grass_count := 7
-@export var shallow_water_count := 5
-@export var deep_water_count := 4
+# 地形块数量范围：每关在 min~max 内随机，严格无重叠。
+@export var grass_count_min := 4
+@export var grass_count_max := 9
+@export var shallow_water_count_min := 3
+@export var shallow_water_count_max := 6
+@export var deep_water_count_min := 2
+@export var deep_water_count_max := 5
+@export var obstacle_count_min := 4
+@export var obstacle_count_max := 8
 @export var terrain_margin := 36.0
-@export var placement_attempts := 24
-@export var water_padding := 8.0
-@export var obstacle_padding := 10.0
-@export var grass_max_overlap_ratio := 0.45
-@export var deep_water_cluster_count := 2
-@export var shallow_water_cluster_count := 2
-@export var obstacle_cluster_count := 3
-@export var grass_cluster_count := 4
-@export var deep_water_cluster_radius := 120.0
-@export var shallow_water_cluster_radius := 140.0
-@export var obstacle_cluster_radius := 150.0
-@export var grass_cluster_radius := 170.0
-@export var deep_water_cluster_items := Vector2i(2, 4)
-@export var shallow_water_cluster_items := Vector2i(2, 5)
-@export var obstacle_cluster_items := Vector2i(2, 4)
-@export var grass_cluster_items := Vector2i(3, 6)
-@export var floor_tile_size := 40.0
-@export var floor_color_a := Color(0.78, 0.78, 0.80, 1.0)
-@export var floor_color_b := Color(0.72, 0.72, 0.74, 1.0)
-@export var boundary_thickness := 28.0
-@export var boundary_color := Color(0.33, 0.33, 0.35, 1.0)
+@export var placement_attempts := 24 # 放置尝试次数
+@export var water_padding := 8.0 # 水体间距
+@export var obstacle_padding := 10.0 # 障碍物间距
+@export var grass_padding := 4.0 # 草丛与其它地形的最小间距
+@export var deep_water_cluster_count := 2 # 深水集群数量
+@export var shallow_water_cluster_count := 2 # 浅水集群数量
+@export var obstacle_cluster_count := 3 # 障碍物集群数量
+@export var grass_cluster_count := 4 # 草地集群数量
+@export var deep_water_cluster_radius := 120.0 # 深水集群半径
+@export var shallow_water_cluster_radius := 140.0 # 浅水集群半径
+@export var obstacle_cluster_radius := 150.0 # 障碍物集群半径
+@export var grass_cluster_radius := 170.0 # 草地集群半径
+@export var deep_water_cluster_items := Vector2i(2, 4) # 深水集群物品数量
+@export var shallow_water_cluster_items := Vector2i(2, 5) # 浅水集群物品数量
+@export var obstacle_cluster_items := Vector2i(2, 4) # 障碍物集群物品数量
+@export var grass_cluster_items := Vector2i(3, 6) # 草地集群物品数量
+@export var floor_tile_size := 40.0 # 地板砖尺寸
+@export var floor_color_a := Color(0.78, 0.78, 0.80, 1.0) # 地板颜色A
+@export var floor_color_b := Color(0.72, 0.72, 0.74, 1.0) # 地板颜色B
+@export var boundary_thickness := 28.0 # 边界厚度
+@export var boundary_color := Color(0.33, 0.33, 0.35, 1.0) # 边界颜色
 
 var player  # 玩家节点引用
 var survival_time := 0.0  # 本局生存时长（秒）
@@ -395,14 +399,15 @@ func _set_ui_modal_active(value: bool) -> void:
 
 
 func _spawn_terrain_map() -> void:
-	# 簇团式分层生成：深水 -> 浅水 -> 障碍 -> 草丛。
-	# 约束：
-	# - 深/浅水互斥（共享 water_occupied）
-	# - 障碍避让水域和已生成障碍（solid_occupied）
-	# - 草丛允许与其它区块轻度重叠（自然感优先）
+	# 簇团式分层生成：深水 -> 浅水 -> 障碍 -> 草丛。所有地形严格无重叠。
 	var viewport := get_viewport_rect().size
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
+	# 每关各地形数量在配置范围内随机。
+	var deep_water_count := rng.randi_range(deep_water_count_min, deep_water_count_max)
+	var shallow_water_count := rng.randi_range(shallow_water_count_min, shallow_water_count_max)
+	var obstacle_count := rng.randi_range(obstacle_count_min, obstacle_count_max)
+	var grass_count := rng.randi_range(grass_count_min, grass_count_max)
 	var region := Rect2(
 		Vector2(terrain_margin, terrain_margin),
 		Vector2(
@@ -504,10 +509,10 @@ func _spawn_terrain_map() -> void:
 		obstacle_padding,
 		rng
 	)
-	# 草丛：允许与水域/障碍轻度重叠，簇团式生成。
-	var grass_occupied_hint: Array[Rect2] = []
-	grass_occupied_hint.append_array(water_occupied)
-	grass_occupied_hint.append_array(solid_occupied)
+	# 草丛：严格无重叠，避让水域与障碍，簇团式生成。
+	var all_occupied: Array[Rect2] = []
+	all_occupied.append_array(water_occupied)
+	all_occupied.append_array(solid_occupied)
 	var placed_grass := _spawn_clustered_grass(
 		grass_count,
 		grass_centers,
@@ -516,8 +521,8 @@ func _spawn_terrain_map() -> void:
 		Vector2(130.0, 120.0),
 		grass_cluster_radius,
 		region,
-		grass_occupied_hint,
-		grass_max_overlap_ratio,
+		all_occupied,
+		grass_padding,
 		rng
 	)
 	if placed_deep < deep_water_count or placed_shallow < shallow_water_count or placed_obstacles < obstacle_count or placed_grass < grass_count:
@@ -677,13 +682,13 @@ func _spawn_clustered_grass(
 	size_max: Vector2,
 	cluster_radius: float,
 	region: Rect2,
-	hard_occupied_hint: Array[Rect2],
-	max_overlap_ratio: float,
+	occupied: Array[Rect2],
+	padding: float,
 	rng: RandomNumberGenerator
 ) -> int:
+	# 草丛严格无重叠，与水域、障碍、其他草丛均保持 padding 间距。
 	var placed := 0
 	var grass_color := VisualAssetRegistry.get_color("terrain.grass", Color(0.20, 0.45, 0.18, 0.45))
-	var local_grass_occupied: Array[Rect2] = []
 	for center in centers:
 		if placed >= total_count:
 			break
@@ -691,11 +696,8 @@ func _spawn_clustered_grass(
 		for i in range(items):
 			if placed >= total_count:
 				break
-			var item := _try_place_rect(size_min, size_max, center, cluster_radius, region, local_grass_occupied, -8.0, placement_attempts, rng)
+			var item := _try_place_rect(size_min, size_max, center, cluster_radius, region, occupied, padding, placement_attempts, rng)
 			if item.is_empty():
-				continue
-			var rect: Rect2 = item["rect"]
-			if not _can_place_rect_soft(rect, hard_occupied_hint, max_overlap_ratio):
 				continue
 			_spawn_terrain_zone(
 				item["position"],
@@ -706,7 +708,7 @@ func _spawn_clustered_grass(
 				0,
 				1.0
 			)
-			local_grass_occupied.append(rect)
+			occupied.append(item["rect"])
 			placed += 1
 	return placed
 
@@ -895,31 +897,12 @@ func _can_place_rect(rect: Rect2, occupied: Array[Rect2], padding: float) -> boo
 	return true
 
 
-func _can_place_rect_soft(rect: Rect2, occupied: Array[Rect2], max_overlap_ratio: float) -> bool:
-	var area := maxf(1.0, rect.size.x * rect.size.y)
-	for other in occupied:
-		var overlap := _overlap_area(rect, other)
-		if overlap / area > max_overlap_ratio:
-			return false
-	return true
-
-
 func _rect_overlaps(a: Rect2, b: Rect2, padding: float) -> bool:
 	var aa := Rect2(
 		a.position - Vector2(padding, padding),
 		a.size + Vector2(padding * 2.0, padding * 2.0)
 	)
 	return aa.intersects(b)
-
-
-func _overlap_area(a: Rect2, b: Rect2) -> float:
-	var left := maxf(a.position.x, b.position.x)
-	var top := maxf(a.position.y, b.position.y)
-	var right := minf(a.end.x, b.end.x)
-	var bottom := minf(a.end.y, b.end.y)
-	if right <= left or bottom <= top:
-		return 0.0
-	return (right - left) * (bottom - top)
 
 
 func _spawn_terrain_zone(

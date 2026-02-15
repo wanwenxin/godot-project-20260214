@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/terrain_color_config.gd" id="1_config"]
+
+[resource]
+script = ExtResource("1_config")
+floor_a = Color(0.78, 0.78, 0.8, 1) # 地板颜色A
+floor_b = Color(0.72, 0.72, 0.74, 1) #地板颜色B
+boundary = Color(0.33, 0.33, 0.35, 1) #边界颜色
+obstacle = Color(0.16, 0.16, 0.2, 1) #障碍物颜色
+grass = Color(0.2, 0.45, 0.18, 0.45) #草地颜色
+shallow_water = Color(0.24, 0.55, 0.8, 0.48) #浅水颜色
+deep_water = Color(0.08, 0.2, 0.42, 0.56) #深水颜色

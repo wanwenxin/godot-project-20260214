@@ -60,7 +60,7 @@
 | [scripts/autoload/save_manager.gd](scripts/autoload/save_manager.gd) | 存档读写、设置持久化、统计聚合 | `load_game`、`set_settings`、`has_save` |
 | [scripts/autoload/audio_manager.gd](scripts/autoload/audio_manager.gd) | 合成音效与 BGM | `play_shoot_by_type`、`play_menu_bgm`、`play_game_bgm` |
 | [scripts/autoload/localization_manager.gd](scripts/autoload/localization_manager.gd) | 多语言、文案 key | `tr_key`、`language_changed` |
-| [scripts/autoload/visual_asset_registry.gd](scripts/autoload/visual_asset_registry.gd) | 纹理/颜色注册与回退 | `get_texture`、`get_color` |
+| [scripts/autoload/visual_asset_registry.gd](scripts/autoload/visual_asset_registry.gd) | 纹理/颜色注册与回退，从 texture_paths/terrain_colors 读取 | `get_texture`、`get_color` |
 
 ### 2.2 战斗核心
 
@@ -88,7 +88,8 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/terrain_zone.gd](scripts/terrain_zone.gd) | 草丛/浅水/深水逻辑、速度倍率、深水 DOT | `terrain_type`、`speed_multiplier` |
-| [scripts/game.gd](scripts/game.gd) | `_spawn_terrain_map` 簇团式分层生成 | 深水→浅水→障碍→草丛→边界 |
+| [scripts/game.gd](scripts/game.gd) | `_spawn_terrain_map` 簇团式分层生成、严格无重叠、每关随机数量 | 深水→浅水→障碍→草丛→边界 |
+| [resources/terrain_colors.tres](resources/terrain_colors.tres) | 地形色块统一配置入口 | floor_a/b、grass、shallow_water、deep_water、obstacle、boundary |
 
 ### 2.5 武器系统
 
@@ -124,6 +125,9 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/pixel_generator.gd](scripts/pixel_generator.gd) | 运行时生成像素图 | `generate_bullet_sprite_by_type`、`generate_pickup_sprite` |
+| [resources/terrain_color_config.gd](resources/terrain_color_config.gd) | 地形色块 Resource 脚本 | 供 terrain_colors.tres 使用 |
+| [resources/texture_path_config.gd](resources/texture_path_config.gd) | 纹理路径 Resource 脚本 | 人物/敌人/武器等美术路径 |
+| [resources/texture_paths.tres](resources/texture_paths.tres) | 纹理路径统一配置入口 | 供 VisualAssetRegistry 加载 |
 | [resources/character_data.gd](resources/character_data.gd) | 角色数据（若存在） | - |
 
 ---
@@ -165,4 +169,8 @@
 | scripts/ui/result_panel_shared.gd | UI | 结算共享 UI |
 | scripts/pixel_generator.gd | 工具 | 像素图生成 |
 | resources/weapon_defs.gd | 资源 | 武器定义 |
+| resources/terrain_color_config.gd | 资源 | 地形色块配置脚本 |
+| resources/terrain_colors.tres | 资源 | 地形色块统一入口 |
+| resources/texture_path_config.gd | 资源 | 纹理路径配置脚本 |
+| resources/texture_paths.tres | 资源 | 人物/敌人/武器纹理统一入口 |
 | resources/character_data.gd | 资源 | 角色数据 |
