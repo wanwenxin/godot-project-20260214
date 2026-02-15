@@ -5,6 +5,7 @@
 ## 1. 技术栈与项目约定
 
 - 引擎：Godot 4.x
+- 显示：`canvas_items` 拉伸 + `ignore` 宽高比，运行时 `content_scale_size` 设为窗口尺寸，画面填满；窗口支持 50%/75%/100%/全屏
 - 语言：GDScript
 - 类型：2D 俯视角波次生存射击
 - 资源策略：优先运行时生成（像素图与合成音），减少外部资源依赖
@@ -27,7 +28,7 @@
   - 本局武器库存 `run_weapons`（最多 6 把）
   - 武器定义池 `weapon_defs`（近战/远程）
   - 最近战绩缓存 `last_run_result`
-  - 设置应用入口（分辨率/按键映射/敌人血条显隐）
+  - 设置应用入口（窗口模式/按键映射/敌人血条显隐）
 
 - `scripts/autoload/save_manager.gd`
   - `user://savegame/save.json` 读写
@@ -142,6 +143,21 @@
   - 升级/商店结算层使用全屏纯色不透明 backdrop
   - 触控按钮（移动 + 暂停）
 
+- `scripts/ui/result_panel_shared.gd`（Autoload）
+  - 结算/死亡/通关界面共享 UI 构建逻辑
+  - `build_score_block(wave, kills, time, best_wave, best_time)`：得分区（波次、击杀、时间、新纪录标记）
+  - `build_player_stats_block(hp_current, hp_max, speed, inertia, weapon_details)`：玩家信息区（HP、移速、惯性、武器卡片）
+  - 供 pause_menu、game_over_screen、victory_screen 复用
+
+- `scripts/ui/game_over_screen.gd` + `scenes/ui/game_over_screen.tscn`
+  - 死亡结算界面：CanvasLayer layer=100，全屏遮罩 + 居中 Panel
+  - 展示标题「游戏结束」、得分区、玩家信息区、仅「返回主菜单」按钮
+  - 接口：`show_result(wave, kills, time, player_node)`
+
+- `scripts/ui/victory_screen.gd` + `scenes/ui/victory_screen.tscn`
+  - 通关结算界面：布局与死亡界面一致，标题「通关」
+  - 接口：`show_result(wave, kills, time, player_node)`
+
 ### 2.6 武器系统
 
 - 角色默认不带攻击，必须装备武器才能输出
@@ -173,13 +189,15 @@
 
 - `scripts/ui/pause_menu.gd`
   - 暂停按钮逻辑
+  - 全屏左右分栏布局：左侧系统信息（标题、按键提示、继续/主菜单），右侧玩家信息（调用 `ResultPanelShared.build_player_stats_block` 构建 HP、移速、惯性、装备武器）
   - Root 设置为 `MOUSE_FILTER_IGNORE`，避免吞掉 HUD 点击
   - 暂停层新增全屏纯色不透明 backdrop
   - 面板样式强制不透明，保证暂停文本可读
   - 显示当前可操作按键（随改键同步）
-  - 显示玩家当前 HP、移速、装备武器列表
+  - 显示玩家当前 HP、移速、惯性及装备武器详情（每把武器的伤害、冷却、范围及近战/远程专属属性）；武器卡片在 HBox 中横向排列
 
 - `scripts/ui/settings_menu.gd`
+  - 全屏展示布局（与暂停页类似）：Panel 铺满、OuterMargin 边距、CenterContainer 居中内容
   - 系统分页：主音量、分辨率
   - 游戏分页：移动键预设、移动惯性、暂停键、血条切换键、敌人血条开关、暂停提示开关
   - 设置层新增全屏纯色不透明 backdrop
@@ -230,6 +248,7 @@ flowchart TD
 
 ### 4.1 `game.gd`
 
+- `victory_wave`：通关波次（默认 5），达到该波次时显示通关界面并跳过升级/商店流程
 - `obstacle_count`：障碍数量
 - `grass_count`：草丛数量
 - `shallow_water_count`：浅水数量
@@ -303,7 +322,7 @@ flowchart TD
 `save.json.settings` 当前结构：
 
 - `settings.system.master_volume`: `0.0~1.0`
-- `settings.system.resolution`: `1280x720/1600x900/1920x1080`
+- `settings.system.resolution`: 窗口模式 `50%`/`75%`/`100%`/`Fullscreen`（兼容旧格式 `1280x720` 等）
 - `settings.game.key_preset`: `wasd/arrows`
 - `settings.game.move_inertia`: `0.0~0.9`（角色移动惯性，越大越“滑”）
 - `settings.game.pause_key`: 暂停键（字符串）
@@ -399,6 +418,22 @@ flowchart TD
 1. `pause_menu` 的全屏 Root 是否吞输入（应 `MOUSE_FILTER_IGNORE`）
 2. 触控容器 `_touch_panel` 是否吞输入（应 `MOUSE_FILTER_IGNORE`）
 3. 升级按钮是否因金币不足被 `disabled`
+
+### 6.5 死亡/通关结算界面按钮无效
+
+优先检查：
+
+1. `game_over_screen` / `victory_screen` 使用 `CanvasLayer` layer=100、`process_mode=PROCESS_MODE_ALWAYS`，确保暂停时仍可响应
+2. 居中 Panel 与 Backdrop 的 `mouse_filter=STOP`，按钮可点击
+3. `game.gd` 中 `_on_player_died()` 调用 `game_over_screen.show_result()`，`_on_wave_cleared()` 在 `wave >= victory_wave` 时调用 `victory_screen.show_result()`
+
+### 6.6 全屏/窗口缩放时画面只占一小块
+
+原因：project.godot 固定 `viewport_width=1280`、`viewport_height=720` 作为设计尺寸，拉伸后可能留黑边。  
+解决：
+1. `project.godot` 使用 `aspect="ignore"` 强制填满（无黑边，可能轻微拉伸）
+2. `game_manager.gd` 在应用窗口设置时调用 `_apply_content_scale_to_window()`，将根视口 `content_scale_size` 设为当前窗口尺寸，覆盖固定 1280×720
+3. `game.gd` 中 `_resize_world_background()` 用 offset 动态设置 WorldBackground 尺寸
 
 ## 7. 验证清单
 

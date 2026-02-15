@@ -206,6 +206,37 @@ func get_equipped_weapon_ids() -> Array[String]:
 	return ids
 
 
+func get_equipped_weapon_details() -> Array[Dictionary]:
+	# 返回每把装备武器的详细数据，供暂停界面等 UI 展示。
+	var result: Array[Dictionary] = []
+	for item in _equipped_weapons:
+		if not is_instance_valid(item):
+			continue
+		var d: Dictionary = {
+			"id": str(item.weapon_id),
+			"type": str(item.weapon_type),
+			"damage": int(item.damage),
+			"cooldown": float(item.cooldown),
+			"range": float(item.attack_range)
+		}
+		if item is WeaponMeleeBase:
+			var melee_item: WeaponMeleeBase = item
+			d["touch_interval"] = float(melee_item.touch_interval)
+			d["swing_duration"] = float(melee_item.swing_duration)
+			d["swing_degrees"] = float(melee_item.swing_degrees)
+			d["swing_reach"] = float(melee_item.swing_reach)
+			d["hitbox_radius"] = float(melee_item.hitbox_radius)
+		elif item is WeaponRangedBase:
+			var ranged_item: WeaponRangedBase = item
+			d["bullet_speed"] = float(ranged_item.bullet_speed)
+			d["pellet_count"] = int(ranged_item.pellet_count)
+			d["spread_degrees"] = float(ranged_item.spread_degrees)
+			d["bullet_pierce"] = int(ranged_item.bullet_pierce)
+			d["bullet_type"] = str(ranged_item.bullet_type)
+		result.append(d)
+	return result
+
+
 func get_weapon_capacity_left() -> int:
 	return maxi(0, GameManager.MAX_WEAPONS - _equipped_weapons.size())
 

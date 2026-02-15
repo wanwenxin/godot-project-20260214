@@ -64,6 +64,8 @@ func _ready() -> void:
 	selected_character_id = int(save_data.get("last_character_id", 0))
 	last_run_result = save_data.get("last_run", last_run_result)
 	apply_saved_settings()
+	# 窗口手动缩放时同步更新 content_scale_size
+	call_deferred("_connect_window_resize")
 
 
 func get_character_data(character_id: int = -1) -> Dictionary:
@@ -130,7 +132,7 @@ func apply_saved_settings() -> void:
 	var system_cfg: Dictionary = settings.get("system", {})
 	var game_cfg: Dictionary = settings.get("game", {})
 	AudioManager.set_master_volume(float(system_cfg.get("master_volume", 0.70)))
-	_apply_resolution_string(str(system_cfg.get("resolution", "1280x720")))
+	_apply_window_mode(str(system_cfg.get("resolution", "100%")))
 	_apply_key_preset(str(game_cfg.get("key_preset", "wasd")))
 	_set_action_single_key("pause", str(game_cfg.get("pause_key", "P")))
 	_set_action_single_key("toggle_enemy_hp", str(game_cfg.get("toggle_enemy_hp_key", "H")))
@@ -138,15 +140,71 @@ func apply_saved_settings() -> void:
 	move_inertia_factor = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, 0.9)
 
 
-func _apply_resolution_string(value: String) -> void:
-	var parts := value.split("x")
-	if parts.size() != 2:
+func _apply_window_mode(value: String) -> void:
+	# 使用 call_deferred 确保在帧末执行，避免设置菜单打开时窗口操作被吞掉
+	call_deferred("_do_apply_window_mode", value)
+
+
+func _do_apply_window_mode(value: String) -> void:
+	# 支持百分比窗口与全屏；同时将 content_scale_size 设为窗口尺寸，使画面填满
+	var scale_factor := 1.0
+	if value == "Fullscreen":
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+		# 全屏后延迟一帧获取窗口尺寸并应用 content_scale
+		call_deferred("_deferred_apply_content_scale_after_fullscreen")
 		return
-	var width := int(parts[0])
-	var height := int(parts[1])
-	if width <= 0 or height <= 0:
+	elif value == "50%":
+		scale_factor = 0.5
+	elif value == "75%":
+		scale_factor = 0.75
+	elif value == "100%" or value == "":
+		scale_factor = 1.0
+	else:
+		var parts := value.split("x")
+		if parts.size() == 2 and int(parts[0]) > 0 and int(parts[1]) > 0:
+			var custom_size := Vector2i(int(parts[0]), int(parts[1]))
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_set_size(custom_size)
+			_apply_content_scale_to_window(custom_size)
+			return
+		scale_factor = 1.0
+	var screen_size: Vector2i = DisplayServer.screen_get_size()
+	var target_size := Vector2i(
+		int(screen_size.x * scale_factor),
+		int(screen_size.y * scale_factor)
+	)
+	target_size.x = maxi(target_size.x, 320)
+	target_size.y = maxi(target_size.y, 180)
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	# 先设位置再设尺寸，避免部分平台下位置被覆盖
+	var cx := int((screen_size.x - target_size.x) / 2.0)
+	var cy := int((screen_size.y - target_size.y) / 2.0)
+	DisplayServer.window_set_position(Vector2i(cx, cy))
+	DisplayServer.window_set_size(target_size)
+	# 将根视口 content_scale_size 设为窗口尺寸，覆盖 project.godot 的固定 1280x720，使画面填满
+	_apply_content_scale_to_window(target_size)
+
+
+func _apply_content_scale_to_window(size: Vector2i) -> void:
+	if size.x <= 0 or size.y <= 0:
 		return
-	DisplayServer.window_set_size(Vector2i(width, height))
+	var root := Engine.get_main_loop().root as Window
+	if root:
+		root.content_scale_size = size
+
+
+func _deferred_apply_content_scale_after_fullscreen() -> void:
+	_apply_content_scale_to_window(DisplayServer.window_get_size())
+
+
+func _connect_window_resize() -> void:
+	var root := Engine.get_main_loop().root as Window
+	if root and not root.size_changed.is_connected(_on_root_size_changed):
+		root.size_changed.connect(_on_root_size_changed)
+
+
+func _on_root_size_changed() -> void:
+	_apply_content_scale_to_window(DisplayServer.window_get_size())
 
 
 func _apply_key_preset(preset: String) -> void:

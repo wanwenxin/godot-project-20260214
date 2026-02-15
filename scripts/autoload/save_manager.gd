@@ -23,7 +23,7 @@ var default_data := {
 	"settings": {
 		"system": {
 			"master_volume": 0.70,
-			"resolution": "1280x720"
+			"resolution": "100%"
 		},
 		"game": {
 			"key_preset": "wasd",

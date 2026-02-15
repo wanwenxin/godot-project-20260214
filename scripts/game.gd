@@ -5,6 +5,7 @@ extends Node2D
 # - 挂接波次系统事件
 # - 维护计时、暂停、死亡结算
 @export var player_scene: PackedScene
+@export var victory_wave := 5
 @export var obstacle_count := 6
 # 地形块数量配置：运行时随机铺设，便于调试地图密度。
 @export var grass_count := 7
@@ -58,6 +59,9 @@ var _mobile_move := Vector2.ZERO
 @onready var wave_manager = $WaveManager
 @onready var hud = $HUD
 @onready var pause_menu = $PauseMenu
+@onready var game_over_screen = $GameOverScreen
+@onready var victory_screen = $VictoryScreen
+@onready var world_background: ColorRect = $WorldBackground
 
 
 func _ready() -> void:
@@ -88,6 +92,19 @@ func _ready() -> void:
 	_equip_weapon_to_player("blade_short", false)
 	_waves_initialized = true
 	wave_manager.setup(player)
+	# 背景随视口尺寸变化，避免全屏/缩放时画面只占一小块。
+	call_deferred("_resize_world_background")
+	get_viewport().size_changed.connect(_resize_world_background)
+
+
+func _resize_world_background() -> void:
+	# 使背景填满视口，解决全屏/窗口缩放时画面只占一小块的问题。
+	# 使用 offset 设置尺寸（Control.size 为只读，由 offset 推导）
+	var vs := get_viewport_rect().size
+	world_background.offset_left = 0
+	world_background.offset_top = 0
+	world_background.offset_right = vs.x
+	world_background.offset_bottom = vs.y
 
 
 func _process(delta: float) -> void:
@@ -151,10 +168,19 @@ func _clear_remaining_enemies_and_bullets() -> void:
 			node.queue_free()
 
 
-func _on_wave_cleared(_wave: int) -> void:
+func _on_wave_cleared(wave: int) -> void:
 	# 波次清场：清除剩余敌人与所有子弹，再进行恢复与升级。
 	_clear_remaining_enemies_and_bullets()
 	if not is_instance_valid(player):
+		return
+	# 通关判定：达到 victory_wave 则显示通关界面，跳过升级/商店流程。
+	if wave >= victory_wave:
+		is_game_over = true
+		_set_ui_modal_active(false)
+		GameManager.save_run_result(wave_manager.current_wave, wave_manager.kill_count, survival_time)
+		hud.hide_upgrade_options()
+		hud.hide_weapon_panel()
+		victory_screen.show_result(wave_manager.current_wave, wave_manager.kill_count, survival_time, player)
 		return
 	player.heal(int(maxf(8.0, player.max_health * 0.12)))
 	player.input_enabled = false
@@ -180,7 +206,7 @@ func _on_player_died() -> void:
 	GameManager.save_run_result(wave_manager.current_wave, wave_manager.kill_count, survival_time)
 	hud.hide_upgrade_options()
 	hud.hide_weapon_panel()
-	hud.show_game_over(wave_manager.current_wave, wave_manager.kill_count, survival_time)
+	game_over_screen.show_result(wave_manager.current_wave, wave_manager.kill_count, survival_time, player)
 
 
 func _toggle_pause() -> void:

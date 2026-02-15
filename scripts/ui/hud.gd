@@ -14,10 +14,6 @@ signal pause_pressed
 @onready var kill_label: Label = $Root/TopRow/KillLabel
 @onready var timer_label: Label = $Root/TopRow/TimerLabel
 @onready var pause_hint: Label = $Root/PauseHint
-@onready var game_over_panel: Panel = $Root/GameOverPanel
-@onready var game_over_text: Label = $Root/GameOverPanel/VBoxContainer/GameOverText
-@onready var retry_btn: Button = $Root/GameOverPanel/VBoxContainer/RetryButton
-@onready var menu_btn: Button = $Root/GameOverPanel/VBoxContainer/MenuButton
 
 var _intermission_label: Label
 var _wave_countdown_label: Label
@@ -53,16 +49,6 @@ var _last_currency := 0
 
 
 func _ready() -> void:
-	# 启动时默认不显示结算面板。
-	game_over_panel.visible = false
-	game_over_panel.anchors_preset = Control.PRESET_FULL_RECT
-	game_over_panel.offset_left = 0
-	game_over_panel.offset_top = 0
-	game_over_panel.offset_right = 0
-	game_over_panel.offset_bottom = 0
-	game_over_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	retry_btn.pressed.connect(_on_retry_pressed)
-	menu_btn.pressed.connect(_on_menu_pressed)
 	LocalizationManager.language_changed.connect(_on_language_changed)
 	_build_runtime_ui()
 	_setup_touch_controls()
@@ -203,34 +189,6 @@ func hide_weapon_panel() -> void:
 	_show_modal_backdrop(false)
 
 
-func show_game_over(wave: int, kills: int, survival_time: float) -> void:
-	# 游戏结束后仅显示 UI，不直接切场，便于玩家选择后续操作。
-	var save_data := SaveManager.load_game()
-	var best_wave := int(save_data.get("best_wave", 0))
-	var best_time := float(save_data.get("best_survival_time", 0.0))
-	var wave_flag := LocalizationManager.tr_key("hud.new_record") if wave >= best_wave else ""
-	var time_flag := LocalizationManager.tr_key("hud.new_record") if survival_time >= best_time else ""
-	game_over_text.text = LocalizationManager.tr_key("hud.game_over", {
-		"wave": wave,
-		"wave_flag": wave_flag,
-		"kills": kills,
-		"time": "%.1f" % survival_time,
-		"time_flag": time_flag
-	})
-	_show_modal_backdrop(true)
-	game_over_panel.visible = true
-
-
-func _on_retry_pressed() -> void:
-	AudioManager.play_button()
-	get_tree().current_scene.restart_game()
-
-
-func _on_menu_pressed() -> void:
-	AudioManager.play_button()
-	get_tree().current_scene.go_main_menu()
-
-
 func _build_runtime_ui() -> void:
 	# HUD 运行时扩展层：避免频繁改动 tscn 布局文件。
 	var root := $Root
@@ -239,6 +197,8 @@ func _build_runtime_ui() -> void:
 	_modal_backdrop.color = VisualAssetRegistry.get_color("ui.modal_backdrop", Color(0.08, 0.09, 0.11, 1.0))
 	_modal_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(_modal_backdrop)
+	# 置于最底层，避免遮挡结算/升级/商店等面板的按钮
+	root.move_child(_modal_backdrop, 0)
 	_currency_label = Label.new()
 	_currency_label.position = Vector2(900, 12)
 	root.add_child(_currency_label)
@@ -285,14 +245,20 @@ func _build_runtime_ui() -> void:
 
 	_add_opaque_backdrop_to_panel(_upgrade_panel)
 
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 0)
+	margin.add_theme_constant_override("margin_top", 0)
+	margin.add_theme_constant_override("margin_right", 0)
+	margin.add_theme_constant_override("margin_bottom", 0)
+	_upgrade_panel.add_child(margin)
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(center)
 	var box := VBoxContainer.new()
-	box.anchors_preset = Control.PRESET_FULL_RECT
-	box.offset_left = 14
-	box.offset_top = 24
-	box.offset_right = -14
-	box.offset_bottom = -24
 	box.add_theme_constant_override("separation", 14)
-	_upgrade_panel.add_child(box)
+	center.add_child(box)
 
 	var title := Label.new()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -345,14 +311,20 @@ func _build_runtime_ui() -> void:
 
 	_add_opaque_backdrop_to_panel(_weapon_panel)
 
+	var weapon_margin := MarginContainer.new()
+	weapon_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	weapon_margin.add_theme_constant_override("margin_left", 0)
+	weapon_margin.add_theme_constant_override("margin_top", 0)
+	weapon_margin.add_theme_constant_override("margin_right", 0)
+	weapon_margin.add_theme_constant_override("margin_bottom", 0)
+	_weapon_panel.add_child(weapon_margin)
+	var weapon_center := CenterContainer.new()
+	weapon_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	weapon_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	weapon_margin.add_child(weapon_center)
 	var weapon_box := VBoxContainer.new()
-	weapon_box.anchors_preset = Control.PRESET_FULL_RECT
-	weapon_box.offset_left = 14
-	weapon_box.offset_top = 24
-	weapon_box.offset_right = -14
-	weapon_box.offset_bottom = -24
 	weapon_box.add_theme_constant_override("separation", 14)
-	_weapon_panel.add_child(weapon_box)
+	weapon_center.add_child(weapon_box)
 
 	var weapon_title := Label.new()
 	weapon_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -394,8 +366,6 @@ func _build_runtime_ui() -> void:
 		weapon_card.add_child(weapon_btn)
 		_weapon_buttons.append(weapon_btn)
 
-	_apply_modal_panel_style(game_over_panel)
-	_add_opaque_backdrop_to_panel(game_over_panel)
 
 
 func _setup_touch_controls() -> void:
@@ -466,8 +436,6 @@ func _on_weapon_button_pressed(btn: Button) -> void:
 
 func _apply_localized_static_texts() -> void:
 	pause_hint.text = LocalizationManager.tr_key("hud.pause_hint")
-	retry_btn.text = LocalizationManager.tr_key("hud.retry")
-	menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
 	if _upgrade_title_label:
 		_upgrade_title_label.text = LocalizationManager.tr_key("hud.upgrade_title")
 	if _upgrade_tip_label:
@@ -552,8 +520,9 @@ func _apply_modal_panel_style(panel: Panel) -> void:
 	panel.add_theme_stylebox_override("panel", style)
 
 
-func _add_opaque_backdrop_to_panel(panel: Control) -> void:
+func _add_opaque_backdrop_to_panel(panel: Control, pass_input := false) -> void:
 	# 为操作面板添加全屏不透明背景色，确保遮住下层游戏画面
+	# pass_input=true 时使用 IGNORE，让点击穿透到下层按钮（如结算面板的重试/回主菜单）
 	var backdrop := ColorRect.new()
 	backdrop.name = "OpaqueBackdrop"
 	backdrop.anchors_preset = Control.PRESET_FULL_RECT
@@ -562,7 +531,7 @@ func _add_opaque_backdrop_to_panel(panel: Control) -> void:
 	backdrop.offset_right = 0
 	backdrop.offset_bottom = 0
 	backdrop.color = VisualAssetRegistry.get_color("ui.modal_backdrop", Color(0.08, 0.09, 0.11, 1.0))
-	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE if pass_input else Control.MOUSE_FILTER_STOP
 	panel.add_child(backdrop)
 	panel.move_child(backdrop, 0)
 

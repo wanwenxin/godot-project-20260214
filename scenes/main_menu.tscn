@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://bk42vtw3xg2xo"]
 
-[ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1"]
+[ext_resource type="Script" uid="uid://g8o5t4k8erqv" path="res://scripts/ui/main_menu.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_menu.tscn" id="2"]
 
-[node name="MainMenu" type="Control"]
+[node name="MainMenu" type="Control" unique_id=1185658076]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,7 +12,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=790099298]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -20,48 +20,49 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer" unique_id=111061856]
 layout_mode = 2
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="Title" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="Title" type="Label" parent="CenterContainer/VBoxContainer" unique_id=775541824]
 layout_mode = 2
 text = "PotatoStyleDemo"
 horizontal_alignment = 1
 
-[node name="SaveInfo" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="SaveInfo" type="Label" parent="CenterContainer/VBoxContainer" unique_id=391092219]
 layout_mode = 2
 text = "BestWave: 0  BestTime: 0.0s  TotalKills: 0"
 horizontal_alignment = 1
 
-[node name="LanguageRow" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+[node name="LanguageRow" type="HBoxContainer" parent="CenterContainer/VBoxContainer" unique_id=235059681]
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="LanguageLabel" type="Label" parent="CenterContainer/VBoxContainer/LanguageRow"]
+[node name="LanguageLabel" type="Label" parent="CenterContainer/VBoxContainer/LanguageRow" unique_id=872765335]
 layout_mode = 2
 text = "Language"
 
-[node name="LanguageOption" type="OptionButton" parent="CenterContainer/VBoxContainer/LanguageRow"]
-layout_mode = 2
+[node name="LanguageOption" type="OptionButton" parent="CenterContainer/VBoxContainer/LanguageRow" unique_id=1319491770]
 custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
 
-[node name="NewGameButton" type="Button" parent="CenterContainer/VBoxContainer"]
+[node name="NewGameButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1890848582]
 layout_mode = 2
 text = "NewGame"
 
-[node name="ContinueButton" type="Button" parent="CenterContainer/VBoxContainer"]
+[node name="ContinueButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1062008865]
 layout_mode = 2
 text = "Continue"
 
-[node name="SettingsButton" type="Button" parent="CenterContainer/VBoxContainer"]
+[node name="SettingsButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1364977882]
 layout_mode = 2
 text = "Settings"
 
-[node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer"]
+[node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=590085531]
 layout_mode = 2
 text = "Quit"
 
-[node name="SettingsMenu" parent="." instance=ExtResource("2")]
+[node name="SettingsMenu" parent="." unique_id=342035354 instance=ExtResource("2")]
+layout_mode = 1
