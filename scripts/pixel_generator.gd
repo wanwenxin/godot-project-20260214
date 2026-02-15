@@ -62,6 +62,24 @@ static func generate_enemy_sprite(enemy_type: int) -> Texture2D:
 		for x in range(2, 16):
 			for y in range(2, 16):
 				img.set_pixel(x, y, color3 if x > 2 and x < 15 and y > 2 and y < 15 else edge)
+	elif enemy_type == 4:
+		# 水中敌人：青色鱼形。
+		var color_aqua := Color(0.20, 0.75, 0.85)
+		for x in range(4, 14):
+			for y in range(5, 13):
+				img.set_pixel(x, y, color_aqua)
+		for y in range(6, 12):
+			img.set_pixel(2, y, color_aqua)
+		for y in range(7, 11):
+			img.set_pixel(15, y, color_aqua)
+	elif enemy_type == 5:
+		# 冲刺敌人：橙色菱形流线型。
+		var color_dash := Color(1.0, 0.45, 0.15)
+		for x in range(1, 17):
+			for y in range(1, 17):
+				if abs(x - 8) + abs(y - 8) <= 6:
+					img.set_pixel(x, y, color_dash)
+		img.set_pixel(8, 8, color_dash.lightened(0.2))
 	else:
 		# Boss：深红核心 + 白色光点。
 		var color4 := Color(0.70, 0.12, 0.18)

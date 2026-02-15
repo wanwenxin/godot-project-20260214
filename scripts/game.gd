@@ -7,15 +7,16 @@ extends Node2D
 @export var player_scene: PackedScene  # 玩家场景
 @export var victory_wave := 5  # 通关波次，达到后显示通关界面
 # 地形块数量范围：每关在 min~max 内随机，严格无重叠。
-@export var grass_count_min := 4
-@export var grass_count_max := 9
-@export var shallow_water_count_min := 3
-@export var shallow_water_count_max := 6
-@export var deep_water_count_min := 2
-@export var deep_water_count_max := 5
-@export var obstacle_count_min := 4
-@export var obstacle_count_max := 8
-@export var terrain_margin := 36.0
+@export var grass_count_min := 2 # 草地数量最小值
+@export var grass_count_max := 4 # 草地数量最大值
+@export var shallow_water_count_min := 1 # 浅水数量最小值
+@export var shallow_water_count_max := 3 # 浅水数量最大值
+@export var deep_water_count_min := 1 # 深水数量最小值
+@export var deep_water_count_max := 2 # 深水数量最大值
+@export var obstacle_count_min := 2 # 障碍物数量最小值
+@export var obstacle_count_max := 4 # 障碍物数量最大值
+@export var zone_area_scale := 5.0  # 单块面积倍率，线性约 sqrt 倍
+@export var terrain_margin := 36.0 # 地形间距
 @export var placement_attempts := 24 # 放置尝试次数
 @export var water_padding := 8.0 # 水体间距
 @export var obstacle_padding := 10.0 # 障碍物间距
@@ -54,6 +55,9 @@ var _upgrade_pool := [
 ]
 var _pending_upgrade_options: Array[Dictionary] = []  # 当前波次三选一升级项
 var _upgrade_selected := false  # 防重入：本轮是否已选择升级
+var _water_spawn_rects: Array[Rect2] = []  # 水域矩形，供水中敌人生成
+var _playable_region: Rect2 = Rect2()  # 可玩区域，供冲刺怪等边界检测
+var _terrain_container: Node2D  # 地形容器，波次重载时整体清除
 var _pending_start_weapon_options: Array[Dictionary] = []  # 开局武器选择候选
 var _pending_shop_weapon_options: Array[Dictionary] = []  # 波次后商店武器候选
 var _waves_initialized := false  # 波次管理器是否已 setup
@@ -73,6 +77,9 @@ func _ready() -> void:
 	AudioManager.play_game_bgm()
 	# 先创建玩家，再初始化依赖玩家引用的系统。
 	_spawn_player()
+	_terrain_container = Node2D.new()
+	_terrain_container.name = "TerrainContainer"
+	add_child(_terrain_container)
 	_spawn_terrain_map()
 
 	wave_manager.wave_started.connect(_on_wave_started)
@@ -147,6 +154,49 @@ func _spawn_player() -> void:
 	add_child(player)
 
 
+# 供 wave_manager 使用：在水中敌人生成时获取随机水域内位置。若无水域则返回视口中心。
+func get_random_water_spawn_position() -> Vector2:
+	if _water_spawn_rects.is_empty():
+		return get_viewport_rect().get_center()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var rect: Rect2 = _water_spawn_rects[rng.randi() % _water_spawn_rects.size()]
+	# 内缩避免贴边。
+	var inset := 16.0
+	var inner := Rect2(rect.position + Vector2(inset, inset), rect.size - Vector2(inset * 2.0, inset * 2.0))
+	if inner.size.x <= 0 or inner.size.y <= 0:
+		return rect.get_center()
+	return Vector2(
+		rng.randf_range(inner.position.x, inner.end.x),
+		rng.randf_range(inner.position.y, inner.end.y)
+	)
+
+
+func has_water_spawn_positions() -> bool:
+	return not _water_spawn_rects.is_empty()
+
+
+# 供水中敌人生成时获取出生位置所属水域矩形。
+func get_water_rect_containing(pos: Vector2) -> Rect2:
+	for rect in _water_spawn_rects:
+		if rect.has_point(pos):
+			return rect
+	# 若无包含点，返回最近的。
+	var best := Rect2()
+	var best_dist := INF
+	for rect in _water_spawn_rects:
+		var d := pos.distance_to(rect.get_center())
+		if d < best_dist:
+			best_dist = d
+			best = rect
+	return best
+
+
+# 供冲刺怪等：获取可玩区域，与地形 region 一致。
+func get_playable_bounds() -> Rect2:
+	return _playable_region
+
+
 func _on_player_health_changed(current: int, max_value: int) -> void:
 	hud.set_health(current, max_value)
 
@@ -160,7 +210,15 @@ func _on_wave_started(wave: int) -> void:
 	hud.show_wave_banner(wave)
 	if is_instance_valid(player):
 		player.global_position = get_viewport_rect().get_center()
+	if wave > 1:
+		_clear_terrain()
+		call_deferred("_spawn_terrain_map")
 	AudioManager.play_wave_start()
+
+
+func _clear_terrain() -> void:
+	for c in _terrain_container.get_children():
+		c.queue_free()
 
 
 func _clear_remaining_enemies_and_bullets() -> void:
@@ -403,6 +461,7 @@ func _spawn_terrain_map() -> void:
 	var viewport := get_viewport_rect().size
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
+	var linear_scale := sqrt(zone_area_scale)
 	# 每关各地形数量在配置范围内随机。
 	var deep_water_count := rng.randi_range(deep_water_count_min, deep_water_count_max)
 	var shallow_water_count := rng.randi_range(shallow_water_count_min, shallow_water_count_max)
@@ -431,9 +490,9 @@ func _spawn_terrain_map() -> void:
 		deep_water_count,
 		deep_centers,
 		deep_water_cluster_items,
-		Vector2(78.0, 70.0),
-		Vector2(128.0, 122.0),
-		deep_water_cluster_radius,
+		Vector2(78.0, 70.0) * linear_scale,
+		Vector2(128.0, 122.0) * linear_scale,
+		deep_water_cluster_radius * linear_scale,
 		region,
 		deep_water_color,
 		"deep_water",
@@ -450,9 +509,9 @@ func _spawn_terrain_map() -> void:
 		shallow_water_count,
 		shallow_centers,
 		shallow_water_cluster_items,
-		Vector2(76.0, 66.0),
-		Vector2(148.0, 130.0),
-		shallow_water_cluster_radius,
+		Vector2(76.0, 66.0) * linear_scale,
+		Vector2(148.0, 130.0) * linear_scale,
+		shallow_water_cluster_radius * linear_scale,
 		region,
 		shallow_water_color,
 		"shallow_water",
@@ -468,32 +527,34 @@ func _spawn_terrain_map() -> void:
 	if placed_deep < deep_water_count:
 		placed_deep += _spawn_scattered_zones(
 			deep_water_count - placed_deep,
-			Vector2(78.0, 70.0),
-			Vector2(128.0, 122.0),
+			Vector2(78.0, 70.0) * linear_scale,
+			Vector2(128.0, 122.0) * linear_scale,
 			region,
 			deep_water_color,
 			"deep_water",
 			0.52,
 			2,
 			1.2,
-			water_occupied,
-			water_padding,
-			rng
+		water_occupied,
+		water_padding,
+		rng,
+		56.0 * linear_scale
 		)
 	if placed_shallow < shallow_water_count:
 		placed_shallow += _spawn_scattered_zones(
 			shallow_water_count - placed_shallow,
-			Vector2(76.0, 66.0),
-			Vector2(148.0, 130.0),
+			Vector2(76.0, 66.0) * linear_scale,
+			Vector2(148.0, 130.0) * linear_scale,
 			region,
 			shallow_water_color,
 			"shallow_water",
 			0.72,
 			0,
 			1.0,
-			water_occupied,
-			water_padding,
-			rng
+		water_occupied,
+		water_padding,
+		rng,
+		56.0 * linear_scale
 		)
 	# 障碍物：避让水域与已生成障碍，全图散布。
 	var hard_occupied: Array[Rect2] = []
@@ -501,8 +562,8 @@ func _spawn_terrain_map() -> void:
 	hard_occupied.append_array(solid_occupied)
 	var placed_obstacles := _spawn_scattered_obstacles(
 		obstacle_count,
-		Vector2(42.0, 38.0),
-		Vector2(96.0, 88.0),
+		Vector2(42.0, 38.0) * linear_scale,
+		Vector2(96.0, 88.0) * linear_scale,
 		region,
 		hard_occupied,
 		solid_occupied,
@@ -517,9 +578,9 @@ func _spawn_terrain_map() -> void:
 		grass_count,
 		grass_centers,
 		grass_cluster_items,
-		Vector2(70.0, 60.0),
-		Vector2(130.0, 120.0),
-		grass_cluster_radius,
+		Vector2(70.0, 60.0) * linear_scale,
+		Vector2(130.0, 120.0) * linear_scale,
+		grass_cluster_radius * linear_scale,
 		region,
 		all_occupied,
 		grass_padding,
@@ -529,6 +590,9 @@ func _spawn_terrain_map() -> void:
 		push_warning("Terrain placement reached limits: deep=%d/%d shallow=%d/%d obstacle=%d/%d grass=%d/%d" % [
 			placed_deep, deep_water_count, placed_shallow, shallow_water_count, placed_obstacles, obstacle_count, placed_grass, grass_count
 		])
+	_water_spawn_rects.clear()
+	_water_spawn_rects.append_array(water_occupied)
+	_playable_region = region
 	_spawn_world_bounds(region)
 
 func _make_cluster_centers(count: int, region: Rect2, rng: RandomNumberGenerator) -> Array[Vector2]:
@@ -599,7 +663,8 @@ func _spawn_scattered_zones(
 	damage_interval: float,
 	occupied: Array[Rect2],
 	padding: float,
-	rng: RandomNumberGenerator
+	rng: RandomNumberGenerator,
+	scatter_radius: float = 56.0
 ) -> int:
 	var placed := 0
 	for i in range(total_count):
@@ -611,7 +676,7 @@ func _spawn_scattered_zones(
 			size_min,
 			size_max,
 			center,
-			56.0,
+			scatter_radius,
 			region,
 			occupied,
 			padding,
@@ -729,7 +794,7 @@ func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
 	body.position = spawn_pos
 	body.add_child(col)
 	body.add_child(rect)
-	add_child(body)
+	_terrain_container.add_child(body)
 
 
 func _spawn_walkable_floor(region: Rect2) -> void:
@@ -737,7 +802,7 @@ func _spawn_walkable_floor(region: Rect2) -> void:
 	var floor_root := Node2D.new()
 	floor_root.name = "FloorLayer"
 	floor_root.z_index = -100
-	add_child(floor_root)
+	_terrain_container.add_child(floor_root)
 	var tile := maxf(12.0, floor_tile_size)
 	var color_a := VisualAssetRegistry.get_color("terrain.floor_a", floor_color_a)
 	var color_b := VisualAssetRegistry.get_color("terrain.floor_b", floor_color_b)
@@ -790,7 +855,7 @@ func _spawn_boundary_body(rect: Rect2) -> void:
 	body.z_index = 10
 	body.add_child(col)
 	body.add_child(vis)
-	add_child(body)
+	_terrain_container.add_child(body)
 
 
 func _try_place_rect(
@@ -935,4 +1000,4 @@ func _spawn_terrain_zone(
 	rect.position = -size * 0.5
 	zone.add_child(rect)
 
-	add_child(zone)
+	_terrain_container.add_child(zone)

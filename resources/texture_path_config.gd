@@ -11,6 +11,8 @@ extends Resource
 @export_file("*.png") var enemy_ranged: String = "res://assets/enemies/enemy_ranged.png"
 @export_file("*.png") var enemy_tank: String = "res://assets/enemies/enemy_tank.png"
 @export_file("*.png") var enemy_boss: String = "res://assets/enemies/enemy_boss.png"
+@export_file("*.png") var enemy_aquatic: String = "res://assets/enemies/enemy_aquatic.png"
+@export_file("*.png") var enemy_dasher: String = "res://assets/enemies/enemy_dasher.png"
 
 @export_group("Weapon Icons")
 @export_file("*.png") var weapon_blade_short: String = "res://assets/weapons/blade_short.png"

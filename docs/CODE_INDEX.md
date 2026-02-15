@@ -80,6 +80,8 @@
 | [scripts/enemy_ranged.gd](scripts/enemy_ranged.gd) | 保持距离并射击 | 继承 enemy_base |
 | [scripts/enemy_tank.gd](scripts/enemy_tank.gd) | 高血低速坦克 | 继承 enemy_base |
 | [scripts/enemy_boss.gd](scripts/enemy_boss.gd) | Boss 波扇形弹幕 | 继承 enemy_base |
+| [scripts/enemy_aquatic.gd](scripts/enemy_aquatic.gd) | 水中专属敌人，离水扣血 | 继承 enemy_base，`is_water_only()` |
+| [scripts/enemy_dasher.gd](scripts/enemy_dasher.gd) | 蓄力冲刺攻击敌人 | 继承 enemy_base |
 | [scripts/wave_manager.gd](scripts/wave_manager.gd) | 波次推进、敌人生成、掉落、倒计时 | `wave_started`、`wave_cleared`、`kill_count_changed` |
 | [scripts/spawn_telegraph.gd](scripts/spawn_telegraph.gd) | 敌人生成前警示 | 配合 wave_manager 使用 |
 
@@ -150,6 +152,8 @@
 | scripts/enemy_ranged.gd | 敌人 | 远程型 |
 | scripts/enemy_tank.gd | 敌人 | 坦克型 |
 | scripts/enemy_boss.gd | 敌人 | Boss |
+| scripts/enemy_aquatic.gd | 敌人 | 水中专属 |
+| scripts/enemy_dasher.gd | 敌人 | 冲刺攻击 |
 | scripts/wave_manager.gd | 波次 | 波次推进、敌人生成、掉落 |
 | scripts/spawn_telegraph.gd | 波次 | 生成警示 |
 | scripts/terrain_zone.gd | 地形 | 草丛/浅水/深水 |

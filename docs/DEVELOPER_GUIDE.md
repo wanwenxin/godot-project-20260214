@@ -288,6 +288,8 @@ flowchart TD
 - `heal_drop_chance`：治疗掉落概率（默认 0.17）
 - `boss_bonus_coin_count`：Boss 额外掉落金币数量范围（默认 `2~3`）
 - `tank_scene/boss_scene`：进阶敌人
+- `aquatic_scene`：水中专属敌人，仅在有水域时在水域内生成
+- `dasher_scene`：冲刺攻击敌人，波次 ≥ 2 时生成
 - `coin_pickup_scene/heal_pickup_scene`：掉落资源
 - `telegraph_scene`：出生提示节点场景
 
@@ -302,6 +304,7 @@ flowchart TD
 - `speed_multiplier`
 - `damage_per_tick`
 - `damage_interval`
+- 水域（`shallow_water`/`deep_water`）时对进入 body 设置 `water_zone_count` meta，供水中敌人 `_is_in_water()` 判断
 
 ### 4.5 地形色块统一配置
 
@@ -313,7 +316,7 @@ flowchart TD
 
 - `resources/texture_paths.tres`：纹理路径统一入口，含人物、敌人、武器图标、子弹、掉落等
 - `resources/texture_path_config.gd`：Resource 脚本，`@export_file` 定义各纹理路径
-- 分类：Player（`player_scheme_0/1`）、Enemies（`enemy_melee/ranged/tank/boss`）、Weapon Icons（`weapon_blade_short` 等）、Other（`bullet_player/enemy`、`pickup_coin/heal`）
+- 分类：Player（`player_scheme_0/1`）、Enemies（`enemy_melee/ranged/tank/boss/aquatic/dasher`）、Weapon Icons（`weapon_blade_short` 等）、Other（`bullet_player/enemy`、`pickup_coin/heal`）
 - `VisualAssetRegistry` 启动时加载，`get_texture(asset_key)` 优先从该配置读取
 - 新增武器时：在 `texture_path_config.gd` 增加 `weapon_{id}` 属性，并在 `texture_paths.tres` 配置路径
 
@@ -362,6 +365,8 @@ flowchart TD
 1. 继承 `enemy_base.gd`
 2. 新建 `scenes/enemies/*.tscn`
 3. 在 `wave_manager.gd::_start_next_wave()` 接入生成策略
+4. 若需水中专属敌人：`is_water_only()` 返回 true，由 `terrain_zone` 维护 `water_zone_count` meta，离水时 `enemy_base` 自动施加伤害
+5. 若需自定义出生点（如水中）：`_queue_enemy_spawn(scene, hp_scale, speed_scale, spawn_position_override)` 传入 `Vector2` 位置；`game.gd` 提供 `get_random_water_spawn_position()`、`has_water_spawn_positions()`
 
 ### 5.3 调整敌人出生规则（无需改代码）
 

@@ -10,6 +10,9 @@ signal died(enemy: Node)
 @export var speed := 90.0
 @export var contact_damage := 8
 @export var contact_damage_interval := 0.6
+# 水中专属敌人离水伤害（子类 is_water_only 返回 true 时生效）。
+@export var out_of_water_damage_per_tick := 5
+@export var out_of_water_damage_interval := 0.2
 
 var current_health := 25
 var player_ref: Node2D
@@ -25,6 +28,16 @@ var _terrain_speed_multiplier := 1.0
 
 var _health_bar: ProgressBar
 var _knockback_velocity := Vector2.ZERO
+var _out_of_water_cd := 0.0  # 离水伤害 CD
+
+
+func is_water_only() -> bool:
+	# 子类（如 enemy_aquatic）override 返回 true。
+	return false
+
+
+func _is_in_water() -> bool:
+	return get_meta("water_zone_count", 0) > 0
 
 
 func _ready() -> void:
@@ -43,6 +56,19 @@ func _ready() -> void:
 		contact_timer.timeout.connect(_on_contact_timer_timeout)
 
 
+func _process(delta: float) -> void:
+	# 水中专属敌人离水时持续扣血。
+	if not is_water_only():
+		return
+	if _is_in_water():
+		_out_of_water_cd = out_of_water_damage_interval
+		return
+	_out_of_water_cd -= delta
+	if _out_of_water_cd <= 0.0:
+		take_damage(out_of_water_damage_per_tick)
+		_out_of_water_cd = out_of_water_damage_interval
+
+
 func set_player(node: Node2D) -> void:
 	player_ref = node
 
@@ -55,8 +81,12 @@ func set_enemy_texture(enemy_type: int) -> void:
 			key = "enemy.ranged"
 		elif enemy_type == 2:
 			key = "enemy.tank"
-		elif enemy_type >= 3:
+		elif enemy_type == 3:
 			key = "enemy.boss"
+		elif enemy_type == 4:
+			key = "enemy.aquatic"
+		elif enemy_type >= 5:
+			key = "enemy.dasher"
 		var fallback := func() -> Texture2D:
 			return PixelGenerator.generate_enemy_sprite(enemy_type)
 		sprite.texture = VisualAssetRegistry.get_texture(key, fallback)
@@ -81,6 +111,19 @@ func _move_towards_player(_delta: float, move_scale: float = 1.0) -> void:
 	var dir := (player_ref.global_position - global_position).normalized()
 	velocity = dir * speed * move_scale * _terrain_speed_multiplier + _knockback_velocity
 	_knockback_velocity = _knockback_velocity.lerp(Vector2.ZERO, 0.5)
+	move_and_slide()
+
+
+func _move_towards_player_clamped(_delta: float, move_scale: float, clamp_rect: Rect2) -> void:
+	if not is_instance_valid(player_ref):
+		return
+	var dir := (player_ref.global_position - global_position).normalized()
+	velocity = dir * speed * move_scale * _terrain_speed_multiplier + _knockback_velocity
+	_knockback_velocity = _knockback_velocity.lerp(Vector2.ZERO, 0.5)
+	var next_pos := global_position + velocity * _delta
+	next_pos.x = clampf(next_pos.x, clamp_rect.position.x, clamp_rect.end.x)
+	next_pos.y = clampf(next_pos.y, clamp_rect.position.y, clamp_rect.end.y)
+	velocity = (next_pos - global_position) / _delta if _delta > 0.0001 else Vector2.ZERO
 	move_and_slide()
 
 

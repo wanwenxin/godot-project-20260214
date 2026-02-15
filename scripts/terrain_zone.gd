@@ -49,6 +49,9 @@ func _on_body_entered(body: Node) -> void:
 		# 速度变化交给单位本身合并多个地形影响。
 		body.set_terrain_effect(get_instance_id(), speed_multiplier)
 	body.set_meta("terrain_damage_cd_%s" % str(get_instance_id()), damage_interval)
+	# 水域类型维护 water_zone_count，供水中专属敌人判断是否在水中。
+	if terrain_type == "shallow_water" or terrain_type == "deep_water":
+		body.set_meta("water_zone_count", body.get_meta("water_zone_count", 0) + 1)
 
 
 func _on_body_exited(body: Node) -> void:
@@ -56,3 +59,5 @@ func _on_body_exited(body: Node) -> void:
 	if body.has_method("clear_terrain_effect"):
 		body.clear_terrain_effect(get_instance_id())
 	body.remove_meta("terrain_damage_cd_%s" % str(get_instance_id()))
+	if terrain_type == "shallow_water" or terrain_type == "deep_water":
+		body.set_meta("water_zone_count", maxi(0, body.get_meta("water_zone_count", 1) - 1))

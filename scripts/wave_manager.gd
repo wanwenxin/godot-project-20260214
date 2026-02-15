@@ -17,6 +17,8 @@ signal wave_countdown_changed(seconds_left: float)
 @export var ranged_scene: PackedScene
 @export var tank_scene: PackedScene = preload("res://scenes/enemies/enemy_tank.tscn")
 @export var boss_scene: PackedScene = preload("res://scenes/enemies/enemy_boss.tscn")
+@export var aquatic_scene: PackedScene = preload("res://scenes/enemies/enemy_aquatic.tscn")
+@export var dasher_scene: PackedScene = preload("res://scenes/enemies/enemy_dasher.tscn")
 @export var coin_pickup_scene: PackedScene = preload("res://scenes/pickup.tscn")
 @export var heal_pickup_scene: PackedScene = preload("res://scenes/pickup.tscn")
 @export var telegraph_scene: PackedScene = preload("res://scenes/spawn_telegraph.tscn")
@@ -31,6 +33,8 @@ signal wave_countdown_changed(seconds_left: float)
 @export var coin_drop_chance := 0.38
 @export var heal_drop_chance := 0.17
 @export var boss_bonus_coin_count := Vector2i(2, 3)
+@export var spawn_batch_count := 3
+@export var spawn_batch_interval := 6.0
 
 var current_wave := 0  # 当前波次编号
 var kill_count := 0  # 本局总击杀数
@@ -43,6 +47,8 @@ var _player_ref: Node2D  # 玩家引用，用于出生点避让
 var _viewport_size := Vector2(1280, 720)  # 视口尺寸，用于生成区域
 var _wave_countdown_left := 0.0  # 波次倒计时剩余秒数
 var _wave_cleared_emitted := false  # 防重复发射 wave_cleared
+var _pending_spawn_batches: Array = []  # 分批生成队列，每批为 Array[Dictionary]
+var _batch_index := 0
 
 @onready var intermission_timer: Timer = $IntermissionTimer
 
@@ -84,6 +90,14 @@ func _process(delta: float) -> void:
 	var capped_delta := minf(delta, 0.5)
 	_wave_countdown_left = maxf(0.0, _wave_countdown_left - capped_delta)
 	emit_signal("wave_countdown_changed", _wave_countdown_left)
+	# 分批生成：当波次已过去 batch_index * interval 秒时，生成下一批。
+	var elapsed := wave_duration - _wave_countdown_left
+	while _batch_index < _pending_spawn_batches.size():
+		var batch_time := float(_batch_index) * spawn_batch_interval
+		if elapsed < batch_time:
+			break
+		_spawn_batch(_pending_spawn_batches[_batch_index])
+		_batch_index += 1
 	if _wave_countdown_left <= 0.0:
 		_try_emit_wave_cleared()
 
@@ -108,25 +122,76 @@ func _start_next_wave() -> void:
 		tank_count = maxi(1, int(current_wave / 4.0))
 	var melee_count: int = maxi(total_to_spawn - ranged_count - tank_count, 1)
 
+	var orders: Array = []
 	for i in range(melee_count):
-		_queue_enemy_spawn(melee_scene, 0.9 + current_wave * 0.06, 1.0 + current_wave * 0.08)
+		orders.append({"scene": melee_scene, "hp_scale": 0.9 + current_wave * 0.06, "speed_scale": 1.0 + current_wave * 0.08, "pos_override": null})
 	for i in range(ranged_count):
-		_queue_enemy_spawn(ranged_scene, 1.0 + current_wave * 0.08, 1.0 + current_wave * 0.10)
+		orders.append({"scene": ranged_scene, "hp_scale": 1.0 + current_wave * 0.08, "speed_scale": 1.0 + current_wave * 0.10, "pos_override": null})
 	for i in range(tank_count):
-		_queue_enemy_spawn(tank_scene, 1.0 + current_wave * 0.12, 0.9 + current_wave * 0.05)
+		orders.append({"scene": tank_scene, "hp_scale": 1.0 + current_wave * 0.12, "speed_scale": 0.9 + current_wave * 0.05, "pos_override": null})
 
-	# 每 5 波生成 Boss，普通敌人数量减半以避免同屏过载。
+	var game_node = get_parent()
+	var aquatic_count := 0
+	if game_node != null and game_node.has_method("has_water_spawn_positions") and game_node.has_water_spawn_positions():
+		aquatic_count = mini(maxi(1, int(current_wave * 0.5)), 2)
+	for i in range(aquatic_count):
+		var water_pos: Vector2 = game_node.get_random_water_spawn_position() if game_node != null else Vector2.ZERO
+		orders.append({"scene": aquatic_scene, "hp_scale": 0.9 + current_wave * 0.06, "speed_scale": 1.0 + current_wave * 0.06, "pos_override": water_pos})
+
+	var dasher_count := 0
+	if current_wave >= 2 and dasher_scene != null:
+		dasher_count = _rng.randi_range(1, 2)
+	for i in range(dasher_count):
+		orders.append({"scene": dasher_scene, "hp_scale": 0.9 + current_wave * 0.06, "speed_scale": 1.0 + current_wave * 0.06, "pos_override": null})
+
 	if current_wave % 5 == 0:
-		_queue_enemy_spawn(boss_scene, 1.0 + current_wave * 0.15, 1.0)
+		orders.append({"scene": boss_scene, "hp_scale": 1.0 + current_wave * 0.15, "speed_scale": 1.0, "pos_override": null})
+
+	# 拆分为多批。
+	_pending_spawn_batches.clear()
+	_batch_index = 0
+	var batch_count := maxi(1, spawn_batch_count)
+	var per_batch := int(orders.size() / batch_count)
+	var remainder := orders.size() % batch_count
+	var idx := 0
+	for b in range(batch_count):
+		var batch_size := per_batch + (1 if b < remainder else 0)
+		var batch: Array = []
+		for j in range(batch_size):
+			if idx < orders.size():
+				batch.append(orders[idx])
+				idx += 1
+		_pending_spawn_batches.append(batch)
+
+	# 第 1 批立即生成。
+	if _pending_spawn_batches.size() > 0:
+		_spawn_batch(_pending_spawn_batches[0])
+		_batch_index = 1
 
 	is_spawning = false
 
 
+func _spawn_batch(batch: Array) -> void:
+	for order in batch:
+		var o: Dictionary = order
+		_queue_enemy_spawn(
+			o.get("scene", null),
+			o.get("hp_scale", 1.0),
+			o.get("speed_scale", 1.0),
+			o.get("pos_override")
+		)
+
+
 # 排队生成敌人：若启用警示则先实例化 telegraph，完成后再生成；否则直接生成。
-func _queue_enemy_spawn(scene: PackedScene, hp_scale: float, speed_scale: float) -> void:
+# spawn_position_override：可选，传入时使用该位置（如水中敌人在水域内生成）。
+func _queue_enemy_spawn(scene: PackedScene, hp_scale: float, speed_scale: float, spawn_position_override: Variant = null) -> void:
 	if scene == null or not is_instance_valid(_player_ref):
 		return
-	var spawn_position := _random_spawn_position()
+	var spawn_position: Vector2
+	if spawn_position_override != null and spawn_position_override is Vector2:
+		spawn_position = spawn_position_override
+	else:
+		spawn_position = _random_spawn_position()
 	pending_spawn_count += 1
 	if telegraph_enabled and telegraph_scene != null:
 		var telegraph = telegraph_scene.instantiate()
@@ -155,6 +220,10 @@ func _spawn_enemy_at(scene: PackedScene, spawn_position: Vector2, hp_scale: floa
 	var enemy := scene.instantiate()
 	enemy.global_position = spawn_position
 	enemy.set_player(_player_ref)
+	if enemy.has_method("set_water_bounds"):
+		var game_node = get_parent()
+		if game_node != null and game_node.has_method("get_water_rect_containing"):
+			enemy.set_water_bounds(game_node.get_water_rect_containing(spawn_position))
 	if enemy.has_signal("died"):
 		enemy.died.connect(_on_enemy_died)
 
@@ -200,8 +269,6 @@ func _on_enemy_died(enemy: Node) -> void:
 	emit_signal("kill_count_changed", kill_count)
 	_try_spawn_drop(enemy)
 	_try_spawn_boss_bonus_drop(enemy)
-	if living_enemy_count <= 0 and pending_spawn_count <= 0:
-		_try_emit_wave_cleared()
 
 
 # 在场敌人与待生成均为 0 或倒计时归零时发射一次 wave_cleared。
