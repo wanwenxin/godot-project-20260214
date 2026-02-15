@@ -6,6 +6,7 @@ const BUS_BGM := "Master"
 
 var _bgm_player: AudioStreamPlayer
 var _sfx_players: Array[AudioStreamPlayer] = []
+var _master_volume := 0.70
 
 
 func _ready() -> void:
@@ -18,6 +19,9 @@ func _ready() -> void:
 		player.bus = BUS_SFX
 		add_child(player)
 		_sfx_players.append(player)
+	var settings := SaveManager.get_settings()
+	_master_volume = float(settings.get("system", {}).get("master_volume", 0.70))
+	set_master_volume(_master_volume)
 
 
 func play_shoot() -> void:
@@ -50,6 +54,17 @@ func play_menu_bgm() -> void:
 
 func play_game_bgm() -> void:
 	_play_bgm_loop(130.0, 0.12)
+
+
+func set_master_volume(volume_01: float) -> void:
+	_master_volume = clampf(volume_01, 0.0, 1.0)
+	var normalized := _master_volume
+	var db := linear_to_db(maxf(0.0001, normalized))
+	if _bgm_player == null:
+		return
+	_bgm_player.volume_db = db
+	for player in _sfx_players:
+		player.volume_db = db
 
 
 func _play_bgm_loop(base_freq: float, volume: float) -> void:

@@ -47,6 +47,7 @@ var last_run_result := {
 	"survival_time": 0.0
 }
 var run_currency := 0
+var enemy_healthbar_visible := true
 
 
 func _ready() -> void:
@@ -54,6 +55,7 @@ func _ready() -> void:
 	var save_data := SaveManager.load_game()
 	selected_character_id = int(save_data.get("last_character_id", 0))
 	last_run_result = save_data.get("last_run", last_run_result)
+	apply_saved_settings()
 
 
 func get_character_data(character_id: int = -1) -> Dictionary:
@@ -111,3 +113,52 @@ func spend_currency(amount: int) -> bool:
 		return false
 	run_currency -= amount
 	return true
+
+
+func apply_saved_settings() -> void:
+	var settings := SaveManager.get_settings()
+	var system_cfg: Dictionary = settings.get("system", {})
+	var game_cfg: Dictionary = settings.get("game", {})
+	AudioManager.set_master_volume(float(system_cfg.get("master_volume", 0.70)))
+	_apply_resolution_string(str(system_cfg.get("resolution", "1280x720")))
+	_apply_key_preset(str(game_cfg.get("key_preset", "wasd")))
+	_set_action_single_key("pause", str(game_cfg.get("pause_key", "P")))
+	_set_action_single_key("toggle_enemy_hp", str(game_cfg.get("toggle_enemy_hp_key", "H")))
+	enemy_healthbar_visible = bool(game_cfg.get("show_enemy_health_bar", true))
+
+
+func _apply_resolution_string(value: String) -> void:
+	var parts := value.split("x")
+	if parts.size() != 2:
+		return
+	var width := int(parts[0])
+	var height := int(parts[1])
+	if width <= 0 or height <= 0:
+		return
+	DisplayServer.window_set_size(Vector2i(width, height))
+
+
+func _apply_key_preset(preset: String) -> void:
+	if preset == "arrows":
+		_set_action_single_key("move_left", "Left")
+		_set_action_single_key("move_right", "Right")
+		_set_action_single_key("move_up", "Up")
+		_set_action_single_key("move_down", "Down")
+	else:
+		_set_action_single_key("move_left", "A")
+		_set_action_single_key("move_right", "D")
+		_set_action_single_key("move_up", "W")
+		_set_action_single_key("move_down", "S")
+
+
+func _set_action_single_key(action: StringName, key_name: String) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action)
+	for event in InputMap.action_get_events(action):
+		InputMap.action_erase_event(action, event)
+	var keycode := OS.find_keycode_from_string(key_name)
+	if keycode == 0:
+		return
+	var event_key := InputEventKey.new()
+	event_key.keycode = keycode
+	InputMap.action_add_event(action, event_key)

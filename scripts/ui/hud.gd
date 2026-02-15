@@ -121,15 +121,15 @@ func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void
 		var affordable := current_gold >= cost
 		# 金币不足直接置灰，仍保留文案给玩家决策反馈。
 		btn.disabled = not affordable
-		var title_text := LocalizationManager.tr_key(String(option.get("title_key", "upgrade.skip.title")))
-		var desc_text := LocalizationManager.tr_key(String(option.get("desc_key", "upgrade.skip.desc")))
+		var title_text := LocalizationManager.tr_key(str(option.get("title_key", "upgrade.skip.title")))
+		var desc_text := LocalizationManager.tr_key(str(option.get("desc_key", "upgrade.skip.desc")))
 		btn.text = LocalizationManager.tr_key("hud.upgrade_button", {
 			"title": title_text,
 			"desc": desc_text,
 			"cost": cost,
 			"need": "" if affordable else LocalizationManager.tr_key("hud.need_gold")
 		})
-		btn.set_meta("upgrade_id", String(option.get("id", "")))
+		btn.set_meta("upgrade_id", str(option.get("id", "")))
 		btn.set_meta("upgrade_cost", cost)
 
 
@@ -273,7 +273,7 @@ func _on_upgrade_button_pressed(btn: Button) -> void:
 		return
 	if btn.disabled:
 		return
-	var upgrade_id := String(btn.get_meta("upgrade_id"))
+	var upgrade_id := str(btn.get_meta("upgrade_id"))
 	emit_signal("upgrade_selected", upgrade_id)
 
 

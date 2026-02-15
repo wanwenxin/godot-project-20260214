@@ -23,12 +23,17 @@ var _terrain_speed_multiplier := 1.0
 @onready var contact_timer: Timer = $ContactDamageTimer
 @onready var hurt_area: Area2D = $HurtArea
 
+var _health_bar: ProgressBar
+
 
 func _ready() -> void:
 	add_to_group("enemies")
 	collision_layer = 2
 	collision_mask = 1 | 8
 	current_health = max_health
+	_create_health_bar()
+	_refresh_health_bar()
+	set_healthbar_visible(GameManager.enemy_healthbar_visible)
 	if hurt_area:
 		hurt_area.body_entered.connect(_on_hurt_area_body_entered)
 	if contact_timer:
@@ -49,6 +54,7 @@ func set_enemy_texture(enemy_type: int) -> void:
 
 func take_damage(amount: int) -> void:
 	current_health -= amount
+	_refresh_health_bar()
 	if current_health <= 0:
 		emit_signal("died", self)
 		queue_free()
@@ -91,3 +97,27 @@ func _recompute_terrain_speed() -> void:
 	_terrain_speed_multiplier = 1.0
 	for key in _terrain_effects.keys():
 		_terrain_speed_multiplier = minf(_terrain_speed_multiplier, float(_terrain_effects[key]))
+
+
+func set_healthbar_visible(value: bool) -> void:
+	if _health_bar:
+		_health_bar.visible = value
+
+
+func _create_health_bar() -> void:
+	_health_bar = ProgressBar.new()
+	_health_bar.min_value = 0.0
+	_health_bar.max_value = float(max_health)
+	_health_bar.value = float(current_health)
+	_health_bar.show_percentage = false
+	_health_bar.custom_minimum_size = Vector2(28.0, 5.0)
+	_health_bar.position = Vector2(-14.0, -22.0)
+	_health_bar.z_index = 20
+	add_child(_health_bar)
+
+
+func _refresh_health_bar() -> void:
+	if not _health_bar:
+		return
+	_health_bar.max_value = float(max_health)
+	_health_bar.value = clampf(float(current_health), 0.0, float(max_health))

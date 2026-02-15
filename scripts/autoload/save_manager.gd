@@ -19,7 +19,20 @@ var default_data := {
 	},
 	"best_wave_per_character": {},
 	"total_kills_per_character": {},
-	"achievements": []
+	"achievements": [],
+	"settings": {
+		"system": {
+			"master_volume": 0.70,
+			"resolution": "1280x720"
+		},
+		"game": {
+			"key_preset": "wasd",
+			"pause_key": "P",
+			"toggle_enemy_hp_key": "H",
+			"show_enemy_health_bar": true,
+			"show_key_hints_in_pause": true
+		}
+	}
 }
 
 
@@ -106,6 +119,18 @@ func update_run_result(wave: int, survival_time: float, kills: int, character_id
 func set_language(language_code: String) -> Dictionary:
 	var data := load_game()
 	data["language"] = language_code
+	save_game(data)
+	return data
+
+
+func get_settings() -> Dictionary:
+	var data := load_game()
+	return data.get("settings", default_data["settings"]).duplicate(true)
+
+
+func set_settings(settings: Dictionary) -> Dictionary:
+	var data := load_game()
+	data["settings"] = settings.duplicate(true)
 	save_game(data)
 	return data
 

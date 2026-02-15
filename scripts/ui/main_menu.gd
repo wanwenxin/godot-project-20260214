@@ -5,12 +5,14 @@ extends Control
 # - 继续游戏（直接开局，沿用上次角色）
 # - 读取并展示存档统计
 @onready var continue_btn: Button = $CenterContainer/VBoxContainer/ContinueButton
+@onready var settings_btn: Button = $CenterContainer/VBoxContainer/SettingsButton
 @onready var new_game_btn: Button = $CenterContainer/VBoxContainer/NewGameButton
 @onready var quit_btn: Button = $CenterContainer/VBoxContainer/QuitButton
 @onready var save_info: Label = $CenterContainer/VBoxContainer/SaveInfo
 @onready var title_label: Label = $CenterContainer/VBoxContainer/Title
 @onready var language_label: Label = $CenterContainer/VBoxContainer/LanguageRow/LanguageLabel
 @onready var language_option: OptionButton = $CenterContainer/VBoxContainer/LanguageRow/LanguageOption
+@onready var settings_menu: Control = $SettingsMenu
 
 var _is_updating_option := false
 
@@ -20,6 +22,7 @@ func _ready() -> void:
 	AudioManager.play_menu_bgm()
 	new_game_btn.pressed.connect(_on_new_game_pressed)
 	continue_btn.pressed.connect(_on_continue_pressed)
+	settings_btn.pressed.connect(_on_settings_pressed)
 	quit_btn.pressed.connect(_on_quit_pressed)
 	language_option.item_selected.connect(_on_language_item_selected)
 	LocalizationManager.language_changed.connect(_on_language_changed)
@@ -33,6 +36,7 @@ func _apply_localized_texts() -> void:
 	language_label.text = LocalizationManager.tr_key("menu.language")
 	new_game_btn.text = LocalizationManager.tr_key("menu.new_game")
 	continue_btn.text = LocalizationManager.tr_key("menu.continue")
+	settings_btn.text = LocalizationManager.tr_key("menu.settings")
 	quit_btn.text = LocalizationManager.tr_key("menu.quit")
 
 	var save_data := SaveManager.load_game()
@@ -71,6 +75,12 @@ func _on_quit_pressed() -> void:
 	get_tree().quit()
 
 
+func _on_settings_pressed() -> void:
+	AudioManager.play_button()
+	if settings_menu.has_method("open_menu"):
+		settings_menu.call("open_menu")
+
+
 func _refresh_language_options() -> void:
 	_is_updating_option = true
 	language_option.clear()
@@ -78,9 +88,9 @@ func _refresh_language_options() -> void:
 	var selected_idx := 0
 	for i in range(options.size()):
 		var option: Dictionary = options[i]
-		language_option.add_item(String(option.get("name", "")))
-		language_option.set_item_metadata(i, String(option.get("code", "")))
-		if String(option.get("code", "")) == LocalizationManager.current_language:
+		language_option.add_item(str(option.get("name", "")))
+		language_option.set_item_metadata(i, str(option.get("code", "")))
+		if str(option.get("code", "")) == LocalizationManager.current_language:
 			selected_idx = i
 	language_option.select(selected_idx)
 	_is_updating_option = false
@@ -89,7 +99,7 @@ func _refresh_language_options() -> void:
 func _on_language_item_selected(index: int) -> void:
 	if _is_updating_option:
 		return
-	var code := String(language_option.get_item_metadata(index))
+	var code := str(language_option.get_item_metadata(index))
 	LocalizationManager.set_language(code)
 
 

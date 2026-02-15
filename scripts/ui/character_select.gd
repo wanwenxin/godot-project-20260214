@@ -77,4 +77,4 @@ func _get_character_display_name(character_id: int, data: Dictionary) -> String:
 			return LocalizationManager.tr_key("char_select.card_a")
 		1:
 			return LocalizationManager.tr_key("char_select.card_b")
-	return String(data.get("name", "Unknown"))
+	return str(data.get("name", "Unknown"))

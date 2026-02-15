@@ -100,6 +100,8 @@ func _process(delta: float) -> void:
 
 	if Input.is_action_just_pressed("pause"):
 		_toggle_pause()
+	if Input.is_action_just_pressed("toggle_enemy_hp"):
+		_toggle_enemy_healthbar_visibility()
 
 
 func _spawn_player() -> void:
@@ -164,6 +166,18 @@ func _toggle_pause() -> void:
 	pause_menu.set_visible_menu(new_paused)
 
 
+func _toggle_enemy_healthbar_visibility() -> void:
+	GameManager.enemy_healthbar_visible = not GameManager.enemy_healthbar_visible
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy.has_method("set_healthbar_visible"):
+			enemy.set_healthbar_visible(GameManager.enemy_healthbar_visible)
+	var settings := SaveManager.get_settings()
+	var game_cfg: Dictionary = settings.get("game", {})
+	game_cfg["show_enemy_health_bar"] = GameManager.enemy_healthbar_visible
+	settings["game"] = game_cfg
+	SaveManager.set_settings(settings)
+
+
 func restart_game() -> void:
 	get_tree().paused = false
 	get_tree().reload_current_scene()
@@ -192,7 +206,7 @@ func _on_upgrade_selected(upgrade_id: String) -> void:
 		return
 	var target: Dictionary = {}
 	for item in _pending_upgrade_options:
-		if String(item.get("id", "")) == upgrade_id:
+		if str(item.get("id", "")) == upgrade_id:
 			target = item
 			break
 	if target.is_empty():
@@ -278,6 +292,37 @@ func _spawn_terrain_map() -> void:
 		true,
 		rng
 	)
+	# 兜底：簇团不足时，补少量全图散点，降低“未达目标数量”的概率。
+	if placed_deep < deep_water_count:
+		placed_deep += _spawn_scattered_zones(
+			deep_water_count - placed_deep,
+			Vector2(78.0, 70.0),
+			Vector2(128.0, 122.0),
+			region,
+			Color(0.08, 0.20, 0.42, 0.56),
+			"deep_water",
+			0.52,
+			2,
+			1.2,
+			water_occupied,
+			water_padding,
+			rng
+		)
+	if placed_shallow < shallow_water_count:
+		placed_shallow += _spawn_scattered_zones(
+			shallow_water_count - placed_shallow,
+			Vector2(76.0, 66.0),
+			Vector2(148.0, 130.0),
+			region,
+			Color(0.24, 0.55, 0.80, 0.48),
+			"shallow_water",
+			0.72,
+			0,
+			1.0,
+			water_occupied,
+			water_padding,
+			rng
+		)
 	var hard_occupied: Array[Rect2] = []
 	hard_occupied.append_array(water_occupied)
 	hard_occupied.append_array(solid_occupied)
@@ -365,6 +410,53 @@ func _spawn_clustered_zones(
 			if write_to_occupied:
 				occupied.append(item["rect"])
 			placed += 1
+	return placed
+
+
+func _spawn_scattered_zones(
+	total_count: int,
+	size_min: Vector2,
+	size_max: Vector2,
+	region: Rect2,
+	color: Color,
+	terrain_type: String,
+	speed_multiplier: float,
+	damage_per_tick: int,
+	damage_interval: float,
+	occupied: Array[Rect2],
+	padding: float,
+	rng: RandomNumberGenerator
+) -> int:
+	var placed := 0
+	for i in range(total_count):
+		var center := Vector2(
+			rng.randf_range(region.position.x, region.end.x),
+			rng.randf_range(region.position.y, region.end.y)
+		)
+		var item := _try_place_rect(
+			size_min,
+			size_max,
+			center,
+			56.0,
+			region,
+			occupied,
+			padding,
+			placement_attempts * 2,
+			rng
+		)
+		if item.is_empty():
+			continue
+		_spawn_terrain_zone(
+			item["position"],
+			item["size"],
+			color,
+			terrain_type,
+			speed_multiplier,
+			damage_per_tick,
+			damage_interval
+		)
+		occupied.append(item["rect"])
+		placed += 1
 	return placed
 
 

@@ -25,11 +25,13 @@
   - 角色模板数据
   - 本局金币 `run_currency`
   - 最近战绩缓存 `last_run_result`
+  - 设置应用入口（分辨率/按键映射/敌人血条显隐）
 
 - `scripts/autoload/save_manager.gd`
   - `user://savegame/save.json` 读写
   - 字段兼容合并（避免老存档缺字段崩溃）
   - 聚合统计：全局最佳、按角色统计、最近战绩、成就
+  - 设置结构持久化：`settings.system` + `settings.game`
 
 - `scripts/autoload/audio_manager.gd`
   - 运行时合成提示音（射击/受击/击杀/拾取/按钮/波次）
@@ -127,6 +129,7 @@
 
 - `scripts/ui/main_menu.gd`
   - 显示总统计、最近战绩、成就数量
+  - 设置入口按钮（弹出 `settings_menu`）
 
 - `scripts/ui/character_select.gd`
   - 显示角色属性 + 该角色历史战绩
@@ -134,6 +137,12 @@
 - `scripts/ui/pause_menu.gd`
   - 暂停按钮逻辑
   - Root 设置为 `MOUSE_FILTER_IGNORE`，避免吞掉 HUD 点击
+  - 显示当前可操作按键（随改键同步）
+
+- `scripts/ui/settings_menu.gd`
+  - 系统分页：主音量、分辨率
+  - 游戏分页：移动键预设、暂停键、血条切换键、敌人血条开关、暂停提示开关
+  - 修改即生效并自动保存
 
 ## 3. 当前数据流
 
@@ -234,6 +243,18 @@ flowchart TD
 - 运行时刷新：
   - 各 UI 监听 `LocalizationManager.language_changed` 并重绘文本
 
+### 4.6 设置结构（SaveManager）
+
+`save.json.settings` 当前结构：
+
+- `settings.system.master_volume`: `0.0~1.0`
+- `settings.system.resolution`: `1280x720/1600x900/1920x1080`
+- `settings.game.key_preset`: `wasd/arrows`
+- `settings.game.pause_key`: 暂停键（字符串）
+- `settings.game.toggle_enemy_hp_key`: 敌人血条切换键（字符串）
+- `settings.game.show_enemy_health_bar`: 是否显示敌人血条
+- `settings.game.show_key_hints_in_pause`: 暂停页是否显示按键提示
+
 ## 5. 常见扩展入口
 
 ### 5.1 新增升级项
@@ -283,6 +304,13 @@ flowchart TD
 3. 在 JSON 中补齐已有 key
 4. 在主菜单下拉中验证切换和回退逻辑
 
+### 5.7 扩展设置项
+
+1. 在 `save_manager.gd` 的 `default_data.settings` 增加字段
+2. 在 `settings_menu.gd` 新增控件并在 `_reload_from_save()` 绑定值
+3. 在 `_save_and_apply()` 之后由 `game_manager.gd::apply_saved_settings()` 统一应用
+4. 若涉及战斗运行时行为，在 `game.gd` 或对应模块监听输入并回写设置
+
 ## 6. 常见问题与排障
 
 ### 6.1 `Can't change this state while flushing queries`
@@ -316,4 +344,6 @@ flowchart TD
 4. 掉落可拾取（金钱/治疗）且无 flushing 报错
 5. 升级面板可点击并进入下一波间隔
 6. 地形交互生效（草丛/浅水/深水/障碍）
-7. 无 parser/lint 错误
+7. 设置菜单可用（音量/分辨率/按键/血条）且重启后保持
+8. 暂停页按键提示与改键结果一致
+9. 无 parser/lint 错误
