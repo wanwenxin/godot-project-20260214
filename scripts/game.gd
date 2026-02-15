@@ -38,13 +38,13 @@ var survival_time := 0.0
 var is_game_over := false
 var intermission_left := 0.0
 var _upgrade_pool := [
-	{"id": "damage", "title": "Power", "desc": "Damage", "cost": 2},
-	{"id": "fire_rate", "title": "Rapid", "desc": "FireRate", "cost": 2},
-	{"id": "max_health", "title": "Vital", "desc": "MaxHP", "cost": 3},
-	{"id": "speed", "title": "Swift", "desc": "Speed", "cost": 2},
-	{"id": "bullet_speed", "title": "Velocity", "desc": "BulletSpeed", "cost": 1},
-	{"id": "multi_shot", "title": "Spread", "desc": "MultiShot", "cost": 4},
-	{"id": "pierce", "title": "Pierce", "desc": "Penetration", "cost": 4}
+	{"id": "damage", "title_key": "upgrade.damage.title", "desc_key": "upgrade.damage.desc", "cost": 2},
+	{"id": "fire_rate", "title_key": "upgrade.fire_rate.title", "desc_key": "upgrade.fire_rate.desc", "cost": 2},
+	{"id": "max_health", "title_key": "upgrade.max_health.title", "desc_key": "upgrade.max_health.desc", "cost": 3},
+	{"id": "speed", "title_key": "upgrade.speed.title", "desc_key": "upgrade.speed.desc", "cost": 2},
+	{"id": "bullet_speed", "title_key": "upgrade.bullet_speed.title", "desc_key": "upgrade.bullet_speed.desc", "cost": 1},
+	{"id": "multi_shot", "title_key": "upgrade.multi_shot.title", "desc_key": "upgrade.multi_shot.desc", "cost": 4},
+	{"id": "pierce", "title_key": "upgrade.pierce.title", "desc_key": "upgrade.pierce.desc", "cost": 4}
 ]
 var _pending_upgrade_options: Array[Dictionary] = []
 var _upgrade_selected := false
@@ -182,7 +182,7 @@ func _roll_upgrade_options(count: int) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for i in range(mini(count - 1, shuffled.size())):
 		result.append(shuffled[i])
-	result.append({"id": "skip", "title": "Skip", "desc": "No Upgrade", "cost": 0})
+	result.append({"id": "skip", "title_key": "upgrade.skip.title", "desc_key": "upgrade.skip.desc", "cost": 0})
 	return result
 
 
@@ -449,7 +449,7 @@ func _spawn_clustered_grass(
 	return placed
 
 
-func _spawn_obstacle(position: Vector2, size: Vector2) -> void:
+func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
 	# 障碍物是 StaticBody2D，玩家与敌人都被阻挡。
 	var body := StaticBody2D.new()
 	var col := CollisionShape2D.new()
@@ -462,7 +462,7 @@ func _spawn_obstacle(position: Vector2, size: Vector2) -> void:
 	rect.color = Color(0.16, 0.16, 0.20, 1.0)
 	rect.size = size
 	rect.position = -size * 0.5
-	body.position = position
+	body.position = spawn_pos
 	body.add_child(col)
 	body.add_child(rect)
 	add_child(body)
@@ -659,7 +659,7 @@ func _overlap_area(a: Rect2, b: Rect2) -> float:
 
 
 func _spawn_terrain_zone(
-	position: Vector2,
+	spawn_pos: Vector2,
 	size: Vector2,
 	color: Color,
 	terrain_type: String,
@@ -670,7 +670,7 @@ func _spawn_terrain_zone(
 	# 用同一个 terrain_zone.gd 统一草地/水面的行为，避免复制脚本。
 	var zone := Area2D.new()
 	zone.set_script(load("res://scripts/terrain_zone.gd"))
-	zone.position = position
+	zone.position = spawn_pos
 	zone.terrain_type = terrain_type
 	zone.speed_multiplier = speed_multiplier
 	zone.damage_per_tick = damage_per_tick

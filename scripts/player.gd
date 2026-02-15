@@ -69,7 +69,7 @@ func _physics_process(delta: float) -> void:
 
 	if _invulnerable_timer > 0.0:
 		_invulnerable_timer -= delta
-		var blink := int(Time.get_ticks_msec() / 80) % 2 == 0
+		var blink := int(Time.get_ticks_msec() / 80.0) % 2 == 0
 		sprite.modulate = Color(1.0, 1.0, 1.0, 0.45 if blink else 1.0)
 	else:
 		sprite.modulate = Color.WHITE

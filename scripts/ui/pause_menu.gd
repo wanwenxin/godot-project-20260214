@@ -16,6 +16,8 @@ func _ready() -> void:
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	resume_btn.pressed.connect(_on_resume_pressed)
 	menu_btn.pressed.connect(_on_menu_pressed)
+	LocalizationManager.language_changed.connect(_on_language_changed)
+	_apply_localized_texts()
 
 
 func set_visible_menu(value: bool) -> void:
@@ -33,3 +35,12 @@ func _on_menu_pressed() -> void:
 	AudioManager.play_button()
 	get_tree().paused = false
 	GameManager.open_main_menu()
+
+
+func _apply_localized_texts() -> void:
+	resume_btn.text = LocalizationManager.tr_key("pause.resume")
+	menu_btn.text = LocalizationManager.tr_key("pause.main_menu")
+
+
+func _on_language_changed(_language_code: String) -> void:
+	_apply_localized_texts()

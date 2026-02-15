@@ -36,6 +36,11 @@
   - 轻量 BGM（菜单与战斗）
   - 后续替换真实音频资源时，优先改这里
 
+- `scripts/autoload/localization_manager.gd`
+  - 管理当前语言（`zh-CN` / `en-US`）
+  - 从 `i18n/*.json` 读取文案 key
+  - 提供 `tr_key(key, params)` 与 `language_changed` 信号
+
 ### 2.2 战斗核心
 
 - `scripts/game.gd`
@@ -217,6 +222,18 @@ flowchart TD
 - `damage_per_tick`
 - `damage_interval`
 
+### 4.5 多语言配置
+
+- 语言文件：
+  - `i18n/zh-CN.json`
+  - `i18n/en-US.json`
+- 存档字段：
+  - `save.json.language`
+- 入口：
+  - 主菜单语言下拉（`main_menu.tscn` + `main_menu.gd`）
+- 运行时刷新：
+  - 各 UI 监听 `LocalizationManager.language_changed` 并重绘文本
+
 ## 5. 常见扩展入口
 
 ### 5.1 新增升级项
@@ -258,6 +275,13 @@ flowchart TD
 
 1. 在 `audio_manager.gd` 中改 `play_*` 实现
 2. 可保持对外 API 不变，避免改动调用方
+
+### 5.6 新增一种语言
+
+1. 在 `i18n/` 下新增语言 JSON（例如 `ja-JP.json`）
+2. 在 `localization_manager.gd` 的 `LANGUAGE_FILES` 增加映射
+3. 在 JSON 中补齐已有 key
+4. 在主菜单下拉中验证切换和回退逻辑
 
 ## 6. 常见问题与排障
 

@@ -21,8 +21,10 @@ var _intermission_label: Label
 var _currency_label: Label
 var _wave_banner: Label
 var _upgrade_panel: Panel
+var _upgrade_title_label: Label
 var _upgrade_buttons: Array[Button] = []
 var _touch_panel: Control
+var _pause_touch_btn: Button
 # 触控方向状态字典，组合成归一化向量后回传给 Player。
 var _move_state := {
 	"left": false,
@@ -30,6 +32,12 @@ var _move_state := {
 	"up": false,
 	"down": false
 }
+var _last_health_current := 0
+var _last_health_max := 0
+var _last_wave := 1
+var _last_kills := 0
+var _last_time := 0.0
+var _last_currency := 0
 
 
 func _ready() -> void:
@@ -37,28 +45,39 @@ func _ready() -> void:
 	game_over_panel.visible = false
 	retry_btn.pressed.connect(_on_retry_pressed)
 	menu_btn.pressed.connect(_on_menu_pressed)
+	LocalizationManager.language_changed.connect(_on_language_changed)
 	_build_runtime_ui()
 	_setup_touch_controls()
-	_currency_label.text = "Gold: 0"
+	_apply_localized_static_texts()
+	set_health(0, 0)
+	set_wave(1)
+	set_kills(0)
+	set_survival_time(0.0)
+	set_currency(0)
 	_intermission_label.visible = false
 	_wave_banner.visible = false
 	_upgrade_panel.visible = false
 
 
 func set_health(current: int, max_value: int) -> void:
-	health_label.text = "HP: %d/%d" % [current, max_value]
+	_last_health_current = current
+	_last_health_max = max_value
+	health_label.text = LocalizationManager.tr_key("hud.hp", {"current": current, "max": max_value})
 
 
 func set_wave(value: int) -> void:
-	wave_label.text = "Wave: %d" % value
+	_last_wave = value
+	wave_label.text = LocalizationManager.tr_key("hud.wave", {"value": value})
 
 
 func set_kills(value: int) -> void:
-	kill_label.text = "Kills: %d" % value
+	_last_kills = value
+	kill_label.text = LocalizationManager.tr_key("hud.kills", {"value": value})
 
 
 func set_survival_time(value: float) -> void:
-	timer_label.text = "Time: %.1fs" % value
+	_last_time = value
+	timer_label.text = LocalizationManager.tr_key("hud.time", {"value": "%.1f" % value})
 
 
 func set_pause_hint(show_hint: bool) -> void:
@@ -66,7 +85,8 @@ func set_pause_hint(show_hint: bool) -> void:
 
 
 func set_currency(value: int) -> void:
-	_currency_label.text = "Gold: %d" % value
+	_last_currency = value
+	_currency_label.text = LocalizationManager.tr_key("hud.gold", {"value": value})
 
 
 func set_intermission_countdown(seconds_left: float) -> void:
@@ -74,12 +94,12 @@ func set_intermission_countdown(seconds_left: float) -> void:
 		_intermission_label.visible = false
 		return
 	_intermission_label.visible = true
-	_intermission_label.text = "Next Wave: %.1fs" % seconds_left
+	_intermission_label.text = LocalizationManager.tr_key("hud.next_wave", {"value": "%.1f" % seconds_left})
 
 
 func show_wave_banner(wave: int) -> void:
 	_wave_banner.visible = true
-	_wave_banner.text = "WAVE %d" % wave
+	_wave_banner.text = LocalizationManager.tr_key("hud.wave_banner", {"wave": wave})
 	var tween := create_tween()
 	_wave_banner.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	tween.tween_property(_wave_banner, "modulate", Color(1.0, 1.0, 1.0, 0.0), 1.0)
@@ -88,7 +108,8 @@ func show_wave_banner(wave: int) -> void:
 
 func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void:
 	_upgrade_panel.visible = true
-	_currency_label.text = "Gold: %d" % current_gold
+	_currency_label.text = LocalizationManager.tr_key("hud.gold", {"value": current_gold})
+	_upgrade_title_label.text = LocalizationManager.tr_key("hud.upgrade_title")
 	for i in range(_upgrade_buttons.size()):
 		var btn := _upgrade_buttons[i]
 		if i >= options.size():
@@ -100,12 +121,14 @@ func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void
 		var affordable := current_gold >= cost
 		# 金币不足直接置灰，仍保留文案给玩家决策反馈。
 		btn.disabled = not affordable
-		btn.text = "%s (+%s)  Cost:%d%s" % [
-			String(option.get("title", "Upgrade")),
-			String(option.get("desc", "")),
-			cost,
-			"" if affordable else " [Need Gold]"
-		]
+		var title_text := LocalizationManager.tr_key(String(option.get("title_key", "upgrade.skip.title")))
+		var desc_text := LocalizationManager.tr_key(String(option.get("desc_key", "upgrade.skip.desc")))
+		btn.text = LocalizationManager.tr_key("hud.upgrade_button", {
+			"title": title_text,
+			"desc": desc_text,
+			"cost": cost,
+			"need": "" if affordable else LocalizationManager.tr_key("hud.need_gold")
+		})
 		btn.set_meta("upgrade_id", String(option.get("id", "")))
 		btn.set_meta("upgrade_cost", cost)
 
@@ -119,9 +142,15 @@ func show_game_over(wave: int, kills: int, survival_time: float) -> void:
 	var save_data := SaveManager.load_game()
 	var best_wave := int(save_data.get("best_wave", 0))
 	var best_time := float(save_data.get("best_survival_time", 0.0))
-	var wave_flag := "NEW" if wave >= best_wave else ""
-	var time_flag := "NEW" if survival_time >= best_time else ""
-	game_over_text.text = "Game Over\nWave: %d %s\nKills: %d\nTime: %.1fs %s" % [wave, wave_flag, kills, survival_time, time_flag]
+	var wave_flag := LocalizationManager.tr_key("hud.new_record") if wave >= best_wave else ""
+	var time_flag := LocalizationManager.tr_key("hud.new_record") if survival_time >= best_time else ""
+	game_over_text.text = LocalizationManager.tr_key("hud.game_over", {
+		"wave": wave,
+		"wave_flag": wave_flag,
+		"kills": kills,
+		"time": "%.1f" % survival_time,
+		"time_flag": time_flag
+	})
 	game_over_panel.visible = true
 
 
@@ -184,6 +213,7 @@ func _build_runtime_ui() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.text = "Choose Upgrade"
 	box.add_child(title)
+	_upgrade_title_label = title
 
 	for i in range(3):
 		var btn := Button.new()
@@ -228,6 +258,7 @@ func _setup_touch_controls() -> void:
 	pause_btn.position = Vector2(1120, 620)
 	pause_btn.pressed.connect(func() -> void: emit_signal("pause_pressed"))
 	root.add_child(pause_btn)
+	_pause_touch_btn = pause_btn
 
 
 func _emit_mobile_move() -> void:
@@ -244,3 +275,22 @@ func _on_upgrade_button_pressed(btn: Button) -> void:
 		return
 	var upgrade_id := String(btn.get_meta("upgrade_id"))
 	emit_signal("upgrade_selected", upgrade_id)
+
+
+func _apply_localized_static_texts() -> void:
+	pause_hint.text = LocalizationManager.tr_key("hud.pause_hint")
+	retry_btn.text = LocalizationManager.tr_key("hud.retry")
+	menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
+	if _upgrade_title_label:
+		_upgrade_title_label.text = LocalizationManager.tr_key("hud.upgrade_title")
+	if _pause_touch_btn:
+		_pause_touch_btn.text = LocalizationManager.tr_key("hud.pause_button")
+
+
+func _on_language_changed(_language_code: String) -> void:
+	_apply_localized_static_texts()
+	set_health(_last_health_current, _last_health_max)
+	set_wave(_last_wave)
+	set_kills(_last_kills)
+	set_survival_time(_last_time)
+	set_currency(_last_currency)

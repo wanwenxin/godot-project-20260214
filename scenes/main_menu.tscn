@@ -34,6 +34,19 @@ layout_mode = 2
 text = "BestWave: 0  BestTime: 0.0s  TotalKills: 0"
 horizontal_alignment = 1
 
+[node name="LanguageRow" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="LanguageLabel" type="Label" parent="CenterContainer/VBoxContainer/LanguageRow"]
+layout_mode = 2
+text = "Language"
+
+[node name="LanguageOption" type="OptionButton" parent="CenterContainer/VBoxContainer/LanguageRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+
 [node name="NewGameButton" type="Button" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
 text = "NewGame"
