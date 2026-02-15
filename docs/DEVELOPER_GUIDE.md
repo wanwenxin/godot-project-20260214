@@ -74,6 +74,7 @@
   - 同目标去重命中
   - 穿透后延迟销毁
   - 加入 `bullets` 组，波次结束时统一清除
+  - 玩家子弹支持 `bullet_type` / `bullet_color` 区分外观与命中反馈
 
 - `scripts/pickup.gd`
   - 掉落物（金币/治疗）
@@ -85,6 +86,7 @@
 - `scripts/enemy_base.gd`
   - 通用生命/接触伤害
   - 地形速度系数（与玩家规则一致）
+  - `apply_knockback(dir, force)`：受击击退，累加冲击速度并每帧衰减
 
 - `scripts/enemy_melee.gd`：追击型
 - `scripts/enemy_ranged.gd`：保持距离并射击
@@ -153,7 +155,10 @@
   - 仅武器碰触敌人时生效
   - `touch_interval` 按“每把武器 x 每个敌人”独立计时
 - 远程子弹从武器节点位置发射，不再固定从玩家中心出生
-- 武器数值集中配置于：`resources/weapon_defs.gd`
+- 子弹按 `bullet_type` 区分：pistol（手枪 4x4）、shotgun（霰弹 6x6）、rifle（机枪 8x2）、laser（法杖 12x2），颜色取自武器 `color`
+- 分类型射击音效：`AudioManager.play_shoot_by_type(type)` 对应不同音高与时长
+- 命中反馈：击退（`enemy_base.apply_knockback`）、命中闪烁（颜色与子弹一致）
+- 武器数值集中配置于：`resources/weapon_defs.gd`，远程武器需配置 `bullet_type`
 - 玩家默认最多持有 6 把武器，并在玩家周围显示色块
 - 流程：
   1. 开局默认装备短刃（blade_short）直接开始波次

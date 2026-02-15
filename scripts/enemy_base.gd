@@ -24,6 +24,7 @@ var _terrain_speed_multiplier := 1.0
 @onready var hurt_area: Area2D = $HurtArea
 
 var _health_bar: ProgressBar
+var _knockback_velocity := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -61,6 +62,11 @@ func set_enemy_texture(enemy_type: int) -> void:
 		sprite.texture = VisualAssetRegistry.get_texture(key, fallback)
 
 
+func apply_knockback(dir: Vector2, force: float) -> void:
+	# 受击击退：累加冲击速度，由移动逻辑每帧衰减。
+	_knockback_velocity += dir.normalized() * force
+
+
 func take_damage(amount: int) -> void:
 	current_health -= amount
 	_refresh_health_bar()
@@ -73,7 +79,8 @@ func _move_towards_player(_delta: float, move_scale: float = 1.0) -> void:
 	if not is_instance_valid(player_ref):
 		return
 	var dir := (player_ref.global_position - global_position).normalized()
-	velocity = dir * speed * move_scale * _terrain_speed_multiplier
+	velocity = dir * speed * move_scale * _terrain_speed_multiplier + _knockback_velocity
+	_knockback_velocity = _knockback_velocity.lerp(Vector2.ZERO, 0.5)
 	move_and_slide()
 
 

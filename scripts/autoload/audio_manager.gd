@@ -28,6 +28,21 @@ func play_shoot() -> void:
 	_play_tone(680.0, 0.04, 0.20)
 
 
+func play_shoot_by_type(bullet_type: String) -> void:
+	# 按子弹类型播放差异化射击音效：手枪清脆、霰弹浑厚、机枪锐利、激光科幻
+	match bullet_type:
+		"pistol":
+			_play_tone(720.0, 0.03, 0.18)
+		"shotgun":
+			_play_tone(420.0, 0.08, 0.28)
+		"rifle":
+			_play_tone(900.0, 0.025, 0.16)
+		"laser":
+			_play_tone(1200.0, 0.02, 0.14)
+		_:
+			play_shoot()
+
+
 func play_hit() -> void:
 	_play_tone(220.0, 0.08, 0.30)
 

@@ -89,6 +89,52 @@ static func generate_bullet_sprite(is_enemy: bool = false) -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 
+static func generate_bullet_sprite_by_type(type: String, color: Color, size: Vector2i = Vector2i.ZERO) -> Texture2D:
+	# 按 bullet_type 生成不同形状与颜色的子弹贴图。
+	var w := size.x
+	var h := size.y
+	match type:
+		"pistol":
+			w = 4
+			h = 4
+		"shotgun":
+			w = 6
+			h = 6
+		"rifle":
+			w = 8
+			h = 2
+		"laser":
+			w = 12
+			h = 2
+		_:
+			w = 4 if w <= 0 else w
+			h = 4 if h <= 0 else h
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	if type == "pistol" or type == "":
+		for x in range(w):
+			for y in range(h):
+				if abs(x - (w - 1) * 0.5) + abs(y - (h - 1) * 0.5) <= 2:
+					img.set_pixel(x, y, color)
+	elif type == "shotgun":
+		var r := (minf(w, h) - 1) * 0.5
+		for x in range(w):
+			for y in range(h):
+				if Vector2(x - (w - 1) * 0.5, y - (h - 1) * 0.5).length() <= r:
+					img.set_pixel(x, y, color)
+	elif type == "rifle" or type == "laser":
+		# 细长条：沿宽度方向
+		for x in range(w):
+			for y in range(h):
+				img.set_pixel(x, y, color)
+	else:
+		for x in range(w):
+			for y in range(h):
+				if abs(x - (w - 1) * 0.5) + abs(y - (h - 1) * 0.5) <= 2:
+					img.set_pixel(x, y, color)
+	return ImageTexture.create_from_image(img)
+
+
 static func generate_panel_texture(size: Vector2i, color: Color) -> Texture2D:
 	var img := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
 	img.fill(color)

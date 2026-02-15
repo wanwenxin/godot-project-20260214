@@ -9,11 +9,15 @@ extends Area2D
 @export var hit_player := false
 # 穿透次数：>0 时命中后不销毁，递减至 0 后销毁。
 @export var remaining_pierce := 0
+# 玩家子弹按类型区分外观：pistol/shotgun/rifle/laser
+var bullet_type := ""
+var bullet_color := Color(1.0, 1.0, 0.4, 1.0)
 
 var direction := Vector2.RIGHT
 var _hit_targets: Dictionary = {}
 
 @onready var sprite: Sprite2D = $Sprite2D
+@onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 
 func _ready() -> void:
@@ -21,11 +25,26 @@ func _ready() -> void:
 	# 子弹在 layer_3，仅与目标层发生重叠检测。
 	collision_layer = 1 << 2
 	collision_mask = 1 if hit_player else 2
-	var texture_key := "bullet.enemy" if hit_player else "bullet.player"
-	var fallback := func() -> Texture2D:
-		return PixelGenerator.generate_bullet_sprite(hit_player)
-	sprite.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
+	_apply_bullet_appearance()
 	body_entered.connect(_on_body_entered)
+
+
+func _apply_bullet_appearance() -> void:
+	if not hit_player and bullet_type != "":
+		sprite.texture = PixelGenerator.generate_bullet_sprite_by_type(bullet_type, bullet_color)
+		# 细长型子弹（rifle/laser）旋转以对准飞行方向
+		if bullet_type == "rifle" or bullet_type == "laser":
+			sprite.rotation = direction.angle()
+		# 按类型调整碰撞体积
+		if bullet_type == "shotgun" and collision_shape and collision_shape.shape is CircleShape2D:
+			(collision_shape.shape as CircleShape2D).radius = 4.0
+		elif (bullet_type == "rifle" or bullet_type == "laser") and collision_shape and collision_shape.shape is CircleShape2D:
+			(collision_shape.shape as CircleShape2D).radius = 2.0
+	else:
+		var texture_key := "bullet.enemy" if hit_player else "bullet.player"
+		var fallback := func() -> Texture2D:
+			return PixelGenerator.generate_bullet_sprite(hit_player)
+		sprite.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
 
 
 func _process(delta: float) -> void:
@@ -51,7 +70,30 @@ func _on_body_entered(body: Node) -> void:
 	elif (not hit_player) and body.is_in_group("enemies"):
 		if body.has_method("take_damage"):
 			body.take_damage(damage)
+		if body.has_method("apply_knockback") and bullet_type != "":
+			var force := 40.0
+			match bullet_type:
+				"shotgun": force = 80.0
+				"rifle": force = 55.0
+				"laser": force = 25.0
+				_: force = 40.0
+			body.apply_knockback(direction, force)
+		_spawn_hit_flash(global_position, bullet_color if bullet_type != "" else Color(1.0, 1.0, 0.4))
 		_handle_pierce_or_destroy()
+
+
+func _spawn_hit_flash(pos: Vector2, color: Color) -> void:
+	# 简单命中反馈：短暂闪烁，颜色与子弹一致。
+	var flash := ColorRect.new()
+	flash.size = Vector2(12, 12)
+	flash.position = pos - flash.size * 0.5
+	flash.color = color
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	get_tree().current_scene.add_child(flash)
+	flash.z_index = 100
+	var tween := flash.create_tween()
+	tween.tween_property(flash, "color", Color(color.r, color.g, color.b, 0.0), 0.08)
+	tween.tween_callback(flash.queue_free)
 
 
 func _handle_pierce_or_destroy() -> void:

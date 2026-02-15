@@ -51,6 +51,7 @@ const WEAPON_DEFS := [
 		"desc_key": "weapon.pistol_basic.desc",
 		"cost": 6,
 		"color": Color(0.25, 0.80, 0.95, 1.0),
+		"bullet_type": "pistol",
 		"stats": {"damage": 8, "cooldown": 0.28, "range": 1200.0, "bullet_speed": 520.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 0}
 	},
 	{
@@ -61,6 +62,7 @@ const WEAPON_DEFS := [
 		"desc_key": "weapon.shotgun_wide.desc",
 		"cost": 9,
 		"color": Color(0.50, 0.88, 0.30, 1.0),
+		"bullet_type": "shotgun",
 		"stats": {"damage": 6, "cooldown": 0.46, "range": 980.0, "bullet_speed": 460.0, "pellet_count": 3, "spread_degrees": 20.0, "bullet_pierce": 0}
 	},
 	{
@@ -71,6 +73,7 @@ const WEAPON_DEFS := [
 		"desc_key": "weapon.rifle_long.desc",
 		"cost": 10,
 		"color": Color(0.65, 0.66, 0.95, 1.0),
+		"bullet_type": "rifle",
 		"stats": {"damage": 12, "cooldown": 0.52, "range": 1400.0, "bullet_speed": 700.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 1}
 	},
 	{
@@ -81,6 +84,7 @@ const WEAPON_DEFS := [
 		"desc_key": "weapon.wand_focus.desc",
 		"cost": 7,
 		"color": Color(0.88, 0.46, 0.95, 1.0),
+		"bullet_type": "laser",
 		"stats": {"damage": 9, "cooldown": 0.34, "range": 1180.0, "bullet_speed": 560.0, "pellet_count": 2, "spread_degrees": 10.0, "bullet_pierce": 0}
 	}
 ]

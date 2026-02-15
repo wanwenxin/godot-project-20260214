@@ -283,6 +283,8 @@ func _build_runtime_ui() -> void:
 	_apply_modal_panel_style(_upgrade_panel)
 	root.add_child(_upgrade_panel)
 
+	_add_opaque_backdrop_to_panel(_upgrade_panel)
+
 	var box := VBoxContainer.new()
 	box.anchors_preset = Control.PRESET_FULL_RECT
 	box.offset_left = 14
@@ -341,6 +343,8 @@ func _build_runtime_ui() -> void:
 	_apply_modal_panel_style(_weapon_panel)
 	root.add_child(_weapon_panel)
 
+	_add_opaque_backdrop_to_panel(_weapon_panel)
+
 	var weapon_box := VBoxContainer.new()
 	weapon_box.anchors_preset = Control.PRESET_FULL_RECT
 	weapon_box.offset_left = 14
@@ -391,6 +395,7 @@ func _build_runtime_ui() -> void:
 		_weapon_buttons.append(weapon_btn)
 
 	_apply_modal_panel_style(game_over_panel)
+	_add_opaque_backdrop_to_panel(game_over_panel)
 
 
 func _setup_touch_controls() -> void:
@@ -545,6 +550,21 @@ func _apply_modal_panel_style(panel: Panel) -> void:
 	style.corner_radius_bottom_left = 8
 	style.corner_radius_bottom_right = 8
 	panel.add_theme_stylebox_override("panel", style)
+
+
+func _add_opaque_backdrop_to_panel(panel: Control) -> void:
+	# 为操作面板添加全屏不透明背景色，确保遮住下层游戏画面
+	var backdrop := ColorRect.new()
+	backdrop.name = "OpaqueBackdrop"
+	backdrop.anchors_preset = Control.PRESET_FULL_RECT
+	backdrop.offset_left = 0
+	backdrop.offset_top = 0
+	backdrop.offset_right = 0
+	backdrop.offset_bottom = 0
+	backdrop.color = VisualAssetRegistry.get_color("ui.modal_backdrop", Color(0.08, 0.09, 0.11, 1.0))
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.add_child(backdrop)
+	panel.move_child(backdrop, 0)
 
 
 func _show_modal_backdrop(backdrop_visible: bool) -> void:
