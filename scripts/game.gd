@@ -4,8 +4,8 @@ extends Node2D
 # - 生成玩家
 # - 挂接波次系统事件
 # - 维护计时、暂停、死亡结算
-@export var player_scene: PackedScene
-@export var victory_wave := 5
+@export var player_scene: PackedScene  # 玩家场景
+@export var victory_wave := 5  # 通关波次，达到后显示通关界面
 @export var obstacle_count := 6
 # 地形块数量配置：运行时随机铺设，便于调试地图密度。
 @export var grass_count := 7
@@ -34,10 +34,11 @@ extends Node2D
 @export var boundary_thickness := 28.0
 @export var boundary_color := Color(0.33, 0.33, 0.35, 1.0)
 
-var player
-var survival_time := 0.0
-var is_game_over := false
-var intermission_left := 0.0
+var player  # 玩家节点引用
+var survival_time := 0.0  # 本局生存时长（秒）
+var is_game_over := false  # 死亡或通关后为 true，停止运行时统计
+var intermission_left := 0.0  # 波次间隔剩余秒数
+# 升级候选池：每项含 id、title_key、desc_key、cost
 var _upgrade_pool := [
 	{"id": "damage", "title_key": "upgrade.damage.title", "desc_key": "upgrade.damage.desc", "cost": 2},
 	{"id": "fire_rate", "title_key": "upgrade.fire_rate.title", "desc_key": "upgrade.fire_rate.desc", "cost": 2},
@@ -47,12 +48,12 @@ var _upgrade_pool := [
 	{"id": "multi_shot", "title_key": "upgrade.multi_shot.title", "desc_key": "upgrade.multi_shot.desc", "cost": 4},
 	{"id": "pierce", "title_key": "upgrade.pierce.title", "desc_key": "upgrade.pierce.desc", "cost": 4}
 ]
-var _pending_upgrade_options: Array[Dictionary] = []
-var _upgrade_selected := false
-var _pending_start_weapon_options: Array[Dictionary] = []
-var _pending_shop_weapon_options: Array[Dictionary] = []
-var _waves_initialized := false
-var _ui_modal_active := false
+var _pending_upgrade_options: Array[Dictionary] = []  # 当前波次三选一升级项
+var _upgrade_selected := false  # 防重入：本轮是否已选择升级
+var _pending_start_weapon_options: Array[Dictionary] = []  # 开局武器选择候选
+var _pending_shop_weapon_options: Array[Dictionary] = []  # 波次后商店武器候选
+var _waves_initialized := false  # 波次管理器是否已 setup
+var _ui_modal_active := false  # 升级/商店等模态面板是否打开
 # 触控方向缓存（由 HUD 虚拟按键驱动）。
 var _mobile_move := Vector2.ZERO
 
@@ -247,6 +248,7 @@ func go_main_menu() -> void:
 	GameManager.open_main_menu()
 
 
+# 从 _upgrade_pool 随机抽取 count-1 项，并追加“跳过”选项。
 func _roll_upgrade_options(count: int) -> Array[Dictionary]:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -350,6 +352,7 @@ func _on_weapon_shop_selected(weapon_id: String) -> void:
 	_finish_wave_settlement()
 
 
+# 从武器定义中排除已装备的，随机抽取 count 项作为商店候选。
 func _roll_weapon_shop_options(count: int) -> Array[Dictionary]:
 	var defs := GameManager.get_weapon_defs()
 	var owned: Array[String] = player.get_equipped_weapon_ids()
@@ -413,10 +416,12 @@ func _spawn_terrain_map() -> void:
 	var shallow_water_color := VisualAssetRegistry.get_color("terrain.shallow_water", Color(0.24, 0.55, 0.80, 0.48))
 	_spawn_walkable_floor(region)
 
+	# 簇团中心：在 region 内随机取点，后续围绕中心生成块。
 	var deep_centers := _make_cluster_centers(deep_water_cluster_count, region, rng)
 	var shallow_centers := _make_cluster_centers(shallow_water_cluster_count, region, rng)
 	var grass_centers := _make_cluster_centers(grass_cluster_count, region, rng)
 
+	# 深水：簇团式生成，写入 water_occupied 供浅水避让。
 	var placed_deep := _spawn_clustered_zones(
 		deep_water_count,
 		deep_centers,
@@ -435,6 +440,7 @@ func _spawn_terrain_map() -> void:
 		true,
 		rng
 	)
+	# 浅水：与深水互斥，共用 water_occupied。
 	var placed_shallow := _spawn_clustered_zones(
 		shallow_water_count,
 		shallow_centers,
@@ -484,6 +490,7 @@ func _spawn_terrain_map() -> void:
 			water_padding,
 			rng
 		)
+	# 障碍物：避让水域与已生成障碍，全图散布。
 	var hard_occupied: Array[Rect2] = []
 	hard_occupied.append_array(water_occupied)
 	hard_occupied.append_array(solid_occupied)
@@ -497,6 +504,7 @@ func _spawn_terrain_map() -> void:
 		obstacle_padding,
 		rng
 	)
+	# 草丛：允许与水域/障碍轻度重叠，簇团式生成。
 	var grass_occupied_hint: Array[Rect2] = []
 	grass_occupied_hint.append_array(water_occupied)
 	grass_occupied_hint.append_array(solid_occupied)

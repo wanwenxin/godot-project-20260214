@@ -11,7 +11,7 @@ extends Control
 @onready var back_button: Button = $CenterContainer/VBoxContainer/BackButton
 @onready var title_label: Label = $CenterContainer/VBoxContainer/Title
 
-var selected_character_id := 0
+var selected_character_id := 0  # 当前选中的角色 id（0 或 1）
 
 
 func _ready() -> void:
@@ -71,6 +71,7 @@ func _on_language_changed(_language_code: String) -> void:
 	_select_character(selected_character_id)
 
 
+# 根据 character_id 返回本地化显示名。
 func _get_character_display_name(character_id: int, data: Dictionary) -> String:
 	match character_id:
 		0:

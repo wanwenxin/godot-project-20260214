@@ -69,7 +69,7 @@ func load_game() -> Dictionary:
 		# 数据损坏时回退默认值，不让游戏因存档异常崩溃。
 		return default_data.duplicate(true)
 
-	# 以 default_data 为模板合并，兼容未来新增字段。
+	# 以 default_data 为模板合并：老存档缺字段时用默认值，新字段自动兼容。
 	var merged := default_data.duplicate(true)
 	for key in parsed.keys():
 		merged[key] = parsed[key]

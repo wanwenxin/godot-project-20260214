@@ -41,7 +41,7 @@ var characters := [
 	}
 ]
 
-var weapon_defs: Array[Dictionary] = []
+var weapon_defs: Array[Dictionary] = []  # 从 weapon_defs.gd 载入的武器定义池
 
 var selected_character_id := 0
 # 最近一局战斗结果，当前主要用于运行期查看，持久化统计由 SaveManager 负责。
@@ -50,10 +50,10 @@ var last_run_result := {
 	"kills": 0,
 	"survival_time": 0.0
 }
-var run_currency := 0
-var enemy_healthbar_visible := true
-var move_inertia_factor := 0.0
-var run_weapons: Array[String] = []
+var run_currency := 0  # 本局金币
+var enemy_healthbar_visible := true  # 敌人血条显隐
+var move_inertia_factor := 0.0  # 玩家移动惯性，0~0.9
+var run_weapons: Array[String] = []  # 本局已装备武器 id 列表，最多 MAX_WEAPONS
 
 
 func _ready() -> void:
@@ -127,6 +127,7 @@ func spend_currency(amount: int) -> bool:
 	return true
 
 
+# 从 SaveManager 读取设置并应用到音量、窗口、按键、血条、惯性。
 func apply_saved_settings() -> void:
 	var settings := SaveManager.get_settings()
 	var system_cfg: Dictionary = settings.get("system", {})

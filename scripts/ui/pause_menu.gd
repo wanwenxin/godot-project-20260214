@@ -59,6 +59,7 @@ func _on_language_changed(_language_code: String) -> void:
 	_apply_localized_texts()
 
 
+# 清空右侧玩家区并填充 ResultPanelShared 构建的 HP/移速/惯性/武器卡片。
 func set_player_stats_full(hp_current: int, hp_max: int, speed: float, inertia: float, weapon_details: Array) -> void:
 	if _stats_container == null:
 		return

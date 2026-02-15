@@ -29,8 +29,8 @@ const KEY_CHOICES := ["P", "Escape", "H", "Tab", "F1", "F2"]
 @onready var enemy_hp_check: CheckBox = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/EnemyHpCheck
 @onready var pause_hint_check: CheckBox = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/PauseHintCheck
 
-var _settings: Dictionary = {}
-var _silent := false
+var _settings: Dictionary = {}  # 当前设置副本，修改后写回 SaveManager
+var _silent := false  # 防重入：_reload_from_save 时忽略控件回调
 var _fullscreen_backdrop: ColorRect
 
 

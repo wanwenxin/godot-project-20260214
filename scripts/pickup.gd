@@ -1,10 +1,11 @@
 extends Area2D
 
-@export var pickup_type := "coin"
-@export var value := 1
-@export var life_time := 10.0
+# 掉落物：金币或治疗，玩家接触后生效并销毁；带初始向上飘动。
+@export var pickup_type := "coin"  # "coin" 或 "heal"
+@export var value := 1  # 金币数量或治疗量
+@export var life_time := 10.0  # 超时未拾取则销毁（秒）
 
-var _velocity := Vector2.ZERO
+var _velocity := Vector2.ZERO  # 飘动速度，每帧衰减
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -31,6 +32,8 @@ func _process(delta: float) -> void:
 	if life_time <= 0.0:
 		queue_free()
 		return
+	# 飘动：初速度向上，逐渐衰减至静止。
+	# 飘动：初速度向上，逐渐衰减至静止。
 	_velocity = _velocity.move_toward(Vector2.ZERO, 60.0 * delta)
 	global_position += _velocity * delta
 

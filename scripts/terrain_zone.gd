@@ -9,7 +9,7 @@ extends Area2D
 @export var damage_per_tick := 0
 @export var damage_interval := 1.0
 
-var _tracked_bodies: Dictionary = {}
+var _tracked_bodies: Dictionary = {}  # 当前在地形内的单位 instance_id -> body，用于 DOT 与离开时清除
 
 
 func _ready() -> void:
@@ -25,7 +25,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if damage_per_tick <= 0:
 		return
-	# 对留在地形中的单位做持续效果（当前仅深水 DOT）。
+	# 对 _tracked_bodies 中的单位按 damage_interval 施加 DOT（当前仅深水）。
 	var ids := _tracked_bodies.keys()
 	for body_id in ids:
 		var body: Node = _tracked_bodies.get(body_id, null)

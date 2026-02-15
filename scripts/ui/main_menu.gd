@@ -14,7 +14,7 @@ extends Control
 @onready var language_option: OptionButton = $CenterContainer/VBoxContainer/LanguageRow/LanguageOption
 @onready var settings_menu: Control = $SettingsMenu
 
-var _is_updating_option := false
+var _is_updating_option := false  # 防重入：语言选项刷新时忽略 item_selected
 
 
 func _ready() -> void:

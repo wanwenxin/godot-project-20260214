@@ -32,17 +32,17 @@ signal wave_countdown_changed(seconds_left: float)
 @export var heal_drop_chance := 0.17
 @export var boss_bonus_coin_count := Vector2i(2, 3)
 
-var current_wave := 0
-var kill_count := 0
-var living_enemy_count := 0
-var pending_spawn_count := 0
-var is_spawning := false
-var _current_intermission := 0.0
+var current_wave := 0  # 当前波次编号
+var kill_count := 0  # 本局总击杀数
+var living_enemy_count := 0  # 在场敌人数量，归零且无待生成时触发 wave_cleared
+var pending_spawn_count := 0  # 待生成数量（含警示中的）
+var is_spawning := false  # 防重入：是否正在执行 _start_next_wave
+var _current_intermission := 0.0  # 间隔剩余秒数（由 Timer 驱动）
 var _rng := RandomNumberGenerator.new()
-var _player_ref: Node2D
-var _viewport_size := Vector2(1280, 720)
-var _wave_countdown_left := 0.0
-var _wave_cleared_emitted := false
+var _player_ref: Node2D  # 玩家引用，用于出生点避让
+var _viewport_size := Vector2(1280, 720)  # 视口尺寸，用于生成区域
+var _wave_countdown_left := 0.0  # 波次倒计时剩余秒数
+var _wave_cleared_emitted := false  # 防重复发射 wave_cleared
 
 @onready var intermission_timer: Timer = $IntermissionTimer
 
@@ -122,6 +122,7 @@ func _start_next_wave() -> void:
 	is_spawning = false
 
 
+# 排队生成敌人：若启用警示则先实例化 telegraph，完成后再生成；否则直接生成。
 func _queue_enemy_spawn(scene: PackedScene, hp_scale: float, speed_scale: float) -> void:
 	if scene == null or not is_instance_valid(_player_ref):
 		return
@@ -203,6 +204,7 @@ func _on_enemy_died(enemy: Node) -> void:
 		_try_emit_wave_cleared()
 
 
+# 在场敌人与待生成均为 0 或倒计时归零时发射一次 wave_cleared。
 func _try_emit_wave_cleared() -> void:
 	if _wave_cleared_emitted:
 		return
@@ -212,6 +214,7 @@ func _try_emit_wave_cleared() -> void:
 	emit_signal("wave_cleared", current_wave)
 
 
+# 敌人死亡时按概率掉落金币或治疗；使用 call_deferred 避免 physics flushing。
 func _try_spawn_drop(enemy: Node) -> void:
 	if not is_instance_valid(enemy):
 		return

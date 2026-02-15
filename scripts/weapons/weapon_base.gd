@@ -16,6 +16,7 @@ var _slot_base_position := Vector2.ZERO
 var _slot_base_rotation := 0.0
 
 
+# 从武器定义字典初始化 id、type、color、damage、cooldown、range。
 func configure_from_def(def: Dictionary) -> void:
 	weapon_id = str(def.get("id", ""))
 	weapon_type = str(def.get("type", ""))
@@ -26,6 +27,7 @@ func configure_from_def(def: Dictionary) -> void:
 	attack_range = float(stats.get("range", attack_range))
 
 
+# 每帧调用：扣减冷却，冷却归零且距离足够时尝试 _start_attack，成功则重置冷却。
 func tick_and_try_attack(owner_node: Node2D, target: Node2D, delta: float) -> void:
 	_tick_attack(owner_node, target, delta)
 	_cooldown_left = maxf(_cooldown_left - delta, 0.0)

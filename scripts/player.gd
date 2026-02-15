@@ -24,8 +24,8 @@ var _cached_nearest_enemy: Node2D
 # 多地形叠加时记录每个 zone 的速度系数，取最慢值。
 var _terrain_effects: Dictionary = {}
 var _terrain_speed_multiplier := 1.0
-var _equipped_weapons: Array[Node2D] = []
-var _weapon_visuals: Array[Sprite2D] = []
+var _equipped_weapons: Array[Node2D] = []  # 已装备武器节点，最多 MAX_WEAPONS 把
+var _weapon_visuals: Array[Sprite2D] = []  # 武器环上的色块图标，随装备刷新
 const WEAPON_FALLBACK_SCRIPTS := {
 	"blade_short": "res://scripts/weapons/melee/weapon_blade_short.gd",
 	"hammer_heavy": "res://scripts/weapons/melee/weapon_hammer_heavy.gd",
@@ -112,6 +112,7 @@ func heal(amount: int) -> void:
 	emit_signal("health_changed", current_health, max_health)
 
 
+# 应用升级到玩家与所有装备武器；damage/fire_rate 等由武器自身处理。
 func apply_upgrade(upgrade_id: String) -> void:
 	match upgrade_id:
 		"damage":
@@ -130,6 +131,7 @@ func apply_upgrade(upgrade_id: String) -> void:
 			pass
 		"pierce":
 			pass
+	# 将升级传递给每把武器（伤害、射速、穿透等由武器实现）。
 	for weapon in _equipped_weapons:
 		if weapon.has_method("apply_upgrade"):
 			weapon.apply_upgrade(upgrade_id)
@@ -181,6 +183,7 @@ func _recompute_terrain_speed() -> void:
 		_terrain_speed_multiplier = minf(_terrain_speed_multiplier, float(_terrain_effects[key]))
 
 
+# 装备指定武器；返回是否成功（槽位满或已装备则失败）。
 func equip_weapon_by_id(weapon_id: String) -> bool:
 	if _equipped_weapons.size() >= GameManager.MAX_WEAPONS:
 		return false
@@ -241,6 +244,7 @@ func get_weapon_capacity_left() -> int:
 	return maxi(0, GameManager.MAX_WEAPONS - _equipped_weapons.size())
 
 
+# 刷新武器环布局：清除旧图标，按装备数量均匀分布槽位，更新每把武器的 set_slot_pose。
 func _refresh_weapon_visuals() -> void:
 	for node in _weapon_visuals:
 		if is_instance_valid(node):

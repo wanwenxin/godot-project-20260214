@@ -14,7 +14,7 @@ var bullet_type := ""
 var bullet_color := Color(1.0, 1.0, 0.4, 1.0)
 
 var direction := Vector2.RIGHT
-var _hit_targets: Dictionary = {}
+var _hit_targets: Dictionary = {}  # 已命中目标 instance_id，用于同目标去重
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -96,6 +96,7 @@ func _spawn_hit_flash(pos: Vector2, color: Color) -> void:
 	tween.tween_callback(flash.queue_free)
 
 
+# 穿透弹：remaining_pierce>0 时递减并保留，否则销毁。
 func _handle_pierce_or_destroy() -> void:
 	if remaining_pierce > 0:
 		remaining_pierce -= 1

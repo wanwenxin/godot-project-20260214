@@ -1,8 +1,9 @@
 extends CanvasLayer
 
 # HUD 与结算层：
-# - 战斗中显示 HP/波次/击杀/时间
-# - 死亡后展示结算面板并提供重开/回主菜单入口
+# - 战斗中显示 HP/波次/击杀/时间/金币
+# - 升级三选一、武器商店、开局武器选择（运行时构建）
+# - 触控虚拟按键（移动 + 暂停）
 signal upgrade_selected(upgrade_id: String)
 signal start_weapon_selected(weapon_id: String)
 signal weapon_shop_selected(weapon_id: String)
@@ -15,24 +16,24 @@ signal pause_pressed
 @onready var timer_label: Label = $Root/TopRow/TimerLabel
 @onready var pause_hint: Label = $Root/PauseHint
 
-var _intermission_label: Label
-var _wave_countdown_label: Label
-var _currency_label: Label
-var _wave_banner: Label
-var _upgrade_panel: Panel
+var _intermission_label: Label  # 波次间隔倒计时
+var _wave_countdown_label: Label  # 波次剩余时间（正上方）
+var _currency_label: Label  # 金币
+var _wave_banner: Label  # 波次横幅（淡出动画）
+var _upgrade_panel: Panel  # 升级三选一面板
 var _upgrade_title_label: Label
 var _upgrade_tip_label: Label
 var _upgrade_buttons: Array[Button] = []
 var _upgrade_icons: Array[TextureRect] = []
-var _weapon_panel: Panel
+var _weapon_panel: Panel  # 武器商店/开局选择面板
 var _weapon_title_label: Label
 var _weapon_tip_label: Label
 var _weapon_buttons: Array[Button] = []
 var _weapon_icons: Array[TextureRect] = []
-var _modal_backdrop: ColorRect
-var _weapon_mode := ""
-var _touch_panel: Control
-var _pause_touch_btn: Button
+var _modal_backdrop: ColorRect  # 全屏遮罩，升级/商店时显示
+var _weapon_mode := ""  # "start" 或 "shop"，区分开局选择与波次商店
+var _touch_panel: Control  # 触控按钮容器
+var _pause_touch_btn: Button  # 触控暂停按钮
 # 触控方向状态字典，组合成归一化向量后回传给 Player。
 var _move_state := {
 	"left": false,
@@ -40,7 +41,7 @@ var _move_state := {
 	"up": false,
 	"down": false
 }
-var _last_health_current := 0
+var _last_health_current := 0  # 语言切换时重绘用
 var _last_health_max := 0
 var _last_wave := 1
 var _last_kills := 0
@@ -189,8 +190,8 @@ func hide_weapon_panel() -> void:
 	_show_modal_backdrop(false)
 
 
+# 运行时构建：金币、间隔/波次倒计时、波次横幅、升级面板、武器面板、全屏遮罩。
 func _build_runtime_ui() -> void:
-	# HUD 运行时扩展层：避免频繁改动 tscn 布局文件。
 	var root := $Root
 	_modal_backdrop = ColorRect.new()
 	_modal_backdrop.anchors_preset = Control.PRESET_FULL_RECT
@@ -368,6 +369,7 @@ func _build_runtime_ui() -> void:
 
 
 
+# 触控设备下创建 L/R/U/D 移动键与暂停键，通过 mobile_move_changed 回传方向。
 func _setup_touch_controls() -> void:
 	if not DisplayServer.is_touchscreen_available():
 		return
@@ -455,6 +457,7 @@ func _on_language_changed(_language_code: String) -> void:
 	set_currency(_last_currency)
 
 
+# 填充武器按钮：标题、属性、价格；is_shop 时追加“跳过”按钮。
 func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gold: int, capacity_left: int) -> void:
 	var button_index := 0
 	for option in options:

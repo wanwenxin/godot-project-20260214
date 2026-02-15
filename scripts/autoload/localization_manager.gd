@@ -10,7 +10,7 @@ const LANGUAGE_FILES := {
 }
 
 var current_language := DEFAULT_LANGUAGE
-var _dict_cache: Dictionary = {}
+var _dict_cache: Dictionary = {}  # 语言码 -> key->text 字典，启动时载入
 
 
 func _ready() -> void:
@@ -35,6 +35,7 @@ func get_language_options() -> Array[Dictionary]:
 	]
 
 
+# 根据 key 查找文案，params 替换 {key} 占位符；缺省时回退到 fallback 语言。
 func tr_key(key: String, params: Dictionary = {}) -> String:
 	var text := _lookup(current_language, key)
 	if text == "":
