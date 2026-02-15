@@ -1,11 +1,11 @@
 ---
 name: godot-game-development
-description: Follows GDScript conventions, scene layout, and common patterns for Godot 4.x projects. Use when developing Godot games, writing .gd scripts, editing .tscn scenes, or adding new game features. Mandatory: add comments to generated code; reserve extension interfaces for new modules.
+description: Follows GDScript conventions, scene layout, and common patterns for Godot 4.x projects. Use when developing Godot games, writing .gd scripts, editing .tscn scenes, or adding new game features. Mandatory: add comments to generated code; reserve extension interfaces for new modules; update docs/DEVELOPER_GUIDE.md when adding or changing features.
 ---
 
 # Godot 游戏开发规范
 
-开发 Godot 4.x 项目时遵循本规范。**强制要求**：1）生成代码时必须写注释；2）生成新功能模块时必须预留拓展接口。
+开发 Godot 4.x 项目时遵循本规范。**强制要求**：1）生成代码时必须写注释；2）生成新功能模块时必须预留拓展接口；3）新增或修改功能时同步更新 `docs/DEVELOPER_GUIDE.md`。
 
 ## 1. 代码注释
 
@@ -85,7 +85,16 @@ signal spawn_requested(type: String, position: Vector2)  # 外部可监听
 - 禁止在碰撞回调链中直接 `add_child`
 - 使用 `call_deferred("add_child", node)` 或 `call_deferred` 包裹生成逻辑
 
-## 6. 项目参考
+## 6. 文档更新
+
+新增或修改功能后，同步更新 `docs/DEVELOPER_GUIDE.md`：
+
+- 新增模块：在「核心模块职责」中补充
+- 新增扩展入口：在「常见扩展入口」中补充
+- 新增配置项：在「关键配置项」中补充
+- 典型问题与解法：在「常见问题与排障」中补充
+
+## 7. 项目参考
 
 - 架构与数据流：`docs/DEVELOPER_GUIDE.md`
 - 核心脚本示例：`scripts/game.gd`、`scripts/enemy_base.gd`

@@ -80,6 +80,7 @@
   - 波次推进、敌人构成、难度缩放
   - 清场信号、击杀信号、间隔信号
   - 掉落生成（使用 `call_deferred` 避免 physics flushing 报错）
+  - 生成规则：边界内随机、避开玩家安全半径、提示后落地
 
 ### 2.4 地形系统
 
@@ -88,11 +89,28 @@
   - 进入时设置速度倍率，离开时清除
   - 深水支持持续伤害（DOT）
 
-- 在 `game.gd::_spawn_terrain_map()` 运行时生成：
-  - 灰色障碍物（实体阻挡）
-  - 草丛（轻减速）
-  - 浅水（中减速）
-  - 深水（强减速 + DOT）
+- 在 `game.gd::_spawn_terrain_map()` 中使用“簇团式分层生成”：
+  - 先铺浅灰可移动地面块（FloorLayer）
+  1. 深水（严格占位）
+  2. 浅水（与深水互斥）
+  3. 障碍物（全图散布，避让所有水域，障碍物间保留间距）
+  4. 草丛（允许轻度覆盖，保持自然感）
+  - 最后生成四周边界（实体阻挡）
+
+地形冲突矩阵（当前规则）：
+
+| 地形A \\ 地形B | 深水 | 浅水 | 障碍 | 草丛 |
+| --- | --- | --- | --- | --- |
+| 深水 | 禁止 | 禁止 | 禁止 | 允许轻度 |
+| 浅水 | 禁止 | 禁止 | 禁止 | 允许轻度 |
+| 障碍 | 禁止 | 禁止 | 禁止 | 允许轻度 |
+| 草丛 | 允许轻度 | 允许轻度 | 允许轻度 | 允许 |
+
+说明：
+
+- “障碍全图散布”通过网格 cell + 随机抖动实现，避免只在局部聚堆。
+- 可移动地面采用浅灰色棋盘块，提升空间可读性。
+- 边界使用与障碍同碰撞层，玩家和敌人均不可越界。
 
 ### 2.5 HUD 与菜单
 
@@ -160,14 +178,33 @@ flowchart TD
 - `grass_count`：草丛数量
 - `shallow_water_count`：浅水数量
 - `deep_water_count`：深水数量
+- `terrain_margin`：生成边界留白
+- `placement_attempts`：单块最大尝试次数
+- `water_padding`：水域互斥间距
+- `obstacle_padding`：障碍物最小间距
+- `grass_max_overlap_ratio`：草丛允许覆盖比例上限
+- `floor_tile_size`：可移动地面块尺寸
+- `floor_color_a / floor_color_b`：可移动地面块配色
+- `boundary_thickness`：地图边界厚度
+- `boundary_color`：地图边界颜色
+- `*_cluster_count`：每类地形簇数量
+- `*_cluster_radius`：每类簇半径
+- `*_cluster_items`：每簇生成块数量范围
 - `_upgrade_pool`：升级候选池
 
 ### 4.2 `wave_manager.gd`
 
 - `intermission_time`：波次间隔
-- `spawn_radius_extra`：刷怪外环半径补偿
+- `spawn_min_player_distance`：与玩家的最小出生距离（默认 300）
+- `spawn_attempts`：合法出生点采样重试次数
+- `spawn_region_margin`：出生区域边界留白
+- `telegraph_enabled`：是否启用出生提示
+- `telegraph_duration`：提示持续时长
+- `telegraph_show_ring`：是否显示警示圈
+- `telegraph_show_countdown`：是否显示倒计时
 - `tank_scene/boss_scene`：进阶敌人
 - `coin_pickup_scene/heal_pickup_scene`：掉落资源
+- `telegraph_scene`：出生提示节点场景
 
 ### 4.3 `game_manager.gd`
 
@@ -194,13 +231,30 @@ flowchart TD
 2. 新建 `scenes/enemies/*.tscn`
 3. 在 `wave_manager.gd::_start_next_wave()` 接入生成策略
 
-### 5.3 新增地形效果
+### 5.3 调整敌人出生规则（无需改代码）
+
+优先调整 `wave_manager.gd` 导出参数：
+
+1. `spawn_min_player_distance`：决定“刷脸”强度
+2. `spawn_region_margin`：决定出生点离边界的安全空间
+3. `spawn_attempts`：决定严格规则下的稳定性
+4. `telegraph_duration`：决定玩家反应窗口
+5. `telegraph_show_ring/show_countdown`：决定提示信息密度
+
+### 5.4 新增地形效果
 
 1. `game.gd::_spawn_terrain_map()` 增加生成逻辑
 2. `terrain_zone.gd` 添加新效果字段与处理
 3. 若是单位侧效果，扩展 Player/Enemy 的 terrain 接口
 
-### 5.4 真音频替换
+如果是“只改分布规则不改效果”，优先调整：
+
+1. `terrain_margin`（可通行空间）
+2. `*_cluster_count` 和 `*_cluster_radius`（簇团密度与自然感）
+3. `water_padding` / `obstacle_padding`（冲突强度）
+4. `placement_attempts`（生成成功率）
+
+### 5.5 真音频替换
 
 1. 在 `audio_manager.gd` 中改 `play_*` 实现
 2. 可保持对外 API 不变，避免改动调用方

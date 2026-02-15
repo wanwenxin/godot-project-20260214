@@ -10,6 +10,28 @@ extends Node2D
 @export var grass_count := 7
 @export var shallow_water_count := 5
 @export var deep_water_count := 4
+@export var terrain_margin := 36.0
+@export var placement_attempts := 24
+@export var water_padding := 8.0
+@export var obstacle_padding := 10.0
+@export var grass_max_overlap_ratio := 0.45
+@export var deep_water_cluster_count := 2
+@export var shallow_water_cluster_count := 2
+@export var obstacle_cluster_count := 3
+@export var grass_cluster_count := 4
+@export var deep_water_cluster_radius := 120.0
+@export var shallow_water_cluster_radius := 140.0
+@export var obstacle_cluster_radius := 150.0
+@export var grass_cluster_radius := 170.0
+@export var deep_water_cluster_items := Vector2i(2, 4)
+@export var shallow_water_cluster_items := Vector2i(2, 5)
+@export var obstacle_cluster_items := Vector2i(2, 4)
+@export var grass_cluster_items := Vector2i(3, 6)
+@export var floor_tile_size := 40.0
+@export var floor_color_a := Color(0.78, 0.78, 0.80, 1.0)
+@export var floor_color_b := Color(0.72, 0.72, 0.74, 1.0)
+@export var boundary_thickness := 28.0
+@export var boundary_color := Color(0.33, 0.33, 0.35, 1.0)
 
 var player
 var survival_time := 0.0
@@ -197,65 +219,443 @@ func _on_mobile_move_changed(direction: Vector2) -> void:
 
 
 func _spawn_terrain_map() -> void:
-	# 地图分为 4 类交互区域：草地、浅水、深水、障碍物。
+	# 簇团式分层生成：深水 -> 浅水 -> 障碍 -> 草丛。
+	# 约束：
+	# - 深/浅水互斥（共享 water_occupied）
+	# - 障碍避让水域和已生成障碍（solid_occupied）
+	# - 草丛允许与其它区块轻度重叠（自然感优先）
 	var viewport := get_viewport_rect().size
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-
-	for i in range(grass_count):
-		_spawn_terrain_zone(
-			Vector2(rng.randf_range(120.0, viewport.x - 120.0), rng.randf_range(100.0, viewport.y - 100.0)),
-			Vector2(rng.randf_range(70.0, 130.0), rng.randf_range(60.0, 120.0)),
-			Color(0.20, 0.45, 0.18, 0.45),
-			"grass",
-			0.88,
-			0,
-			1.0
+	var region := Rect2(
+		Vector2(terrain_margin, terrain_margin),
+		Vector2(
+			maxf(64.0, viewport.x - terrain_margin * 2.0),
+			maxf(64.0, viewport.y - terrain_margin * 2.0)
 		)
+	)
+	var water_occupied: Array[Rect2] = []
+	var solid_occupied: Array[Rect2] = []
+	_spawn_walkable_floor(region)
 
-	for i in range(shallow_water_count):
-		_spawn_terrain_zone(
-			Vector2(rng.randf_range(120.0, viewport.x - 120.0), rng.randf_range(100.0, viewport.y - 100.0)),
-			Vector2(rng.randf_range(76.0, 148.0), rng.randf_range(66.0, 130.0)),
-			Color(0.24, 0.55, 0.80, 0.48),
-			"shallow_water",
-			0.72,
-			0,
-			1.0
-		)
+	var deep_centers := _make_cluster_centers(deep_water_cluster_count, region, rng)
+	var shallow_centers := _make_cluster_centers(shallow_water_cluster_count, region, rng)
+	var grass_centers := _make_cluster_centers(grass_cluster_count, region, rng)
 
-	for i in range(deep_water_count):
-		_spawn_terrain_zone(
-			Vector2(rng.randf_range(130.0, viewport.x - 130.0), rng.randf_range(110.0, viewport.y - 110.0)),
-			Vector2(rng.randf_range(78.0, 128.0), rng.randf_range(70.0, 122.0)),
-			Color(0.08, 0.20, 0.42, 0.56),
-			"deep_water",
-			0.52,
-			2,
-			1.2
-		)
+	var placed_deep := _spawn_clustered_zones(
+		deep_water_count,
+		deep_centers,
+		deep_water_cluster_items,
+		Vector2(78.0, 70.0),
+		Vector2(128.0, 122.0),
+		deep_water_cluster_radius,
+		region,
+		Color(0.08, 0.20, 0.42, 0.56),
+		"deep_water",
+		0.52,
+		2,
+		1.2,
+		water_occupied,
+		water_padding,
+		true,
+		rng
+	)
+	var placed_shallow := _spawn_clustered_zones(
+		shallow_water_count,
+		shallow_centers,
+		shallow_water_cluster_items,
+		Vector2(76.0, 66.0),
+		Vector2(148.0, 130.0),
+		shallow_water_cluster_radius,
+		region,
+		Color(0.24, 0.55, 0.80, 0.48),
+		"shallow_water",
+		0.72,
+		0,
+		1.0,
+		water_occupied,
+		water_padding,
+		true,
+		rng
+	)
+	var hard_occupied: Array[Rect2] = []
+	hard_occupied.append_array(water_occupied)
+	hard_occupied.append_array(solid_occupied)
+	var placed_obstacles := _spawn_scattered_obstacles(
+		obstacle_count,
+		Vector2(42.0, 38.0),
+		Vector2(96.0, 88.0),
+		region,
+		hard_occupied,
+		solid_occupied,
+		obstacle_padding,
+		rng
+	)
+	var grass_occupied_hint: Array[Rect2] = []
+	grass_occupied_hint.append_array(water_occupied)
+	grass_occupied_hint.append_array(solid_occupied)
+	var placed_grass := _spawn_clustered_grass(
+		grass_count,
+		grass_centers,
+		grass_cluster_items,
+		Vector2(70.0, 60.0),
+		Vector2(130.0, 120.0),
+		grass_cluster_radius,
+		region,
+		grass_occupied_hint,
+		grass_max_overlap_ratio,
+		rng
+	)
+	if placed_deep < deep_water_count or placed_shallow < shallow_water_count or placed_obstacles < obstacle_count or placed_grass < grass_count:
+		push_warning("Terrain placement reached limits: deep=%d/%d shallow=%d/%d obstacle=%d/%d grass=%d/%d" % [
+			placed_deep, deep_water_count, placed_shallow, shallow_water_count, placed_obstacles, obstacle_count, placed_grass, grass_count
+		])
+	_spawn_world_bounds(region)
 
-	for i in range(obstacle_count):
-		# 障碍物是 StaticBody2D，玩家与敌人都被阻挡。
-		var body := StaticBody2D.new()
-		var col := CollisionShape2D.new()
-		var shape := RectangleShape2D.new()
-		var rect := ColorRect.new()
-		var size := Vector2(rng.randf_range(42.0, 96.0), rng.randf_range(38.0, 88.0))
-		shape.size = size
-		col.shape = shape
-		body.collision_layer = 8
-		body.collision_mask = 0
-		rect.color = Color(0.16, 0.16, 0.20, 1.0)
-		rect.size = size
-		rect.position = -size * 0.5
-		body.position = Vector2(
-			rng.randf_range(180.0, viewport.x - 180.0),
-			rng.randf_range(120.0, viewport.y - 120.0)
+func _make_cluster_centers(count: int, region: Rect2, rng: RandomNumberGenerator) -> Array[Vector2]:
+	var centers: Array[Vector2] = []
+	var safe_count := maxi(1, count)
+	for i in range(safe_count):
+		var p := Vector2(
+			rng.randf_range(region.position.x, region.end.x),
+			rng.randf_range(region.position.y, region.end.y)
 		)
-		body.add_child(col)
-		body.add_child(rect)
-		add_child(body)
+		centers.append(p)
+	return centers
+
+
+func _spawn_clustered_zones(
+	total_count: int,
+	centers: Array[Vector2],
+	items_per_cluster: Vector2i,
+	size_min: Vector2,
+	size_max: Vector2,
+	cluster_radius: float,
+	region: Rect2,
+	color: Color,
+	terrain_type: String,
+	speed_multiplier: float,
+	damage_per_tick: int,
+	damage_interval: float,
+	occupied: Array[Rect2],
+	padding: float,
+	write_to_occupied: bool,
+	rng: RandomNumberGenerator
+) -> int:
+	var placed := 0
+	for center in centers:
+		if placed >= total_count:
+			break
+		var items := rng.randi_range(items_per_cluster.x, items_per_cluster.y)
+		for i in range(items):
+			if placed >= total_count:
+				break
+			var item := _try_place_rect(size_min, size_max, center, cluster_radius, region, occupied, padding, placement_attempts, rng)
+			if item.is_empty():
+				continue
+			_spawn_terrain_zone(
+				item["position"],
+				item["size"],
+				color,
+				terrain_type,
+				speed_multiplier,
+				damage_per_tick,
+				damage_interval
+			)
+			if write_to_occupied:
+				occupied.append(item["rect"])
+			placed += 1
+	return placed
+
+
+func _spawn_scattered_obstacles(
+	total_count: int,
+	size_min: Vector2,
+	size_max: Vector2,
+	region: Rect2,
+	hard_occupied: Array[Rect2],
+	solid_occupied: Array[Rect2],
+	padding: float,
+	rng: RandomNumberGenerator
+) -> int:
+	# 障碍物采用“全图散布”策略，避免过分簇团导致布局偏一角。
+	var placed := 0
+	var cells := _build_scatter_cells(total_count, region)
+	cells.shuffle()
+	for cell in cells:
+		if placed >= total_count:
+			break
+		var item := _try_place_rect_in_cell(size_min, size_max, cell, hard_occupied, padding, placement_attempts, rng)
+		if item.is_empty():
+			continue
+		_spawn_obstacle(item["position"], item["size"])
+		var rect: Rect2 = item["rect"]
+		hard_occupied.append(rect)
+		solid_occupied.append(rect)
+		placed += 1
+	if placed < total_count:
+		# 兜底：若 cell 放置不足，补随机尝试。
+		for i in range(total_count - placed):
+			var random_cell := cells[rng.randi_range(0, maxi(0, cells.size() - 1))]
+			var fallback := _try_place_rect_in_cell(size_min, size_max, random_cell, hard_occupied, padding, placement_attempts, rng)
+			if fallback.is_empty():
+				continue
+			_spawn_obstacle(fallback["position"], fallback["size"])
+			var f_rect: Rect2 = fallback["rect"]
+			hard_occupied.append(f_rect)
+			solid_occupied.append(f_rect)
+			placed += 1
+	return placed
+
+
+func _spawn_clustered_grass(
+	total_count: int,
+	centers: Array[Vector2],
+	items_per_cluster: Vector2i,
+	size_min: Vector2,
+	size_max: Vector2,
+	cluster_radius: float,
+	region: Rect2,
+	hard_occupied_hint: Array[Rect2],
+	max_overlap_ratio: float,
+	rng: RandomNumberGenerator
+) -> int:
+	var placed := 0
+	var local_grass_occupied: Array[Rect2] = []
+	for center in centers:
+		if placed >= total_count:
+			break
+		var items := rng.randi_range(items_per_cluster.x, items_per_cluster.y)
+		for i in range(items):
+			if placed >= total_count:
+				break
+			var item := _try_place_rect(size_min, size_max, center, cluster_radius, region, local_grass_occupied, -8.0, placement_attempts, rng)
+			if item.is_empty():
+				continue
+			var rect: Rect2 = item["rect"]
+			if not _can_place_rect_soft(rect, hard_occupied_hint, max_overlap_ratio):
+				continue
+			_spawn_terrain_zone(
+				item["position"],
+				item["size"],
+				Color(0.20, 0.45, 0.18, 0.45),
+				"grass",
+				0.88,
+				0,
+				1.0
+			)
+			local_grass_occupied.append(rect)
+			placed += 1
+	return placed
+
+
+func _spawn_obstacle(position: Vector2, size: Vector2) -> void:
+	# 障碍物是 StaticBody2D，玩家与敌人都被阻挡。
+	var body := StaticBody2D.new()
+	var col := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	var rect := ColorRect.new()
+	shape.size = size
+	col.shape = shape
+	body.collision_layer = 8
+	body.collision_mask = 0
+	rect.color = Color(0.16, 0.16, 0.20, 1.0)
+	rect.size = size
+	rect.position = -size * 0.5
+	body.position = position
+	body.add_child(col)
+	body.add_child(rect)
+	add_child(body)
+
+
+func _spawn_walkable_floor(region: Rect2) -> void:
+	# 可移动地面：使用浅灰色块铺满可玩区域，形成统一“地砖”视觉基底。
+	var floor_root := Node2D.new()
+	floor_root.name = "FloorLayer"
+	floor_root.z_index = -100
+	add_child(floor_root)
+	var tile := maxf(12.0, floor_tile_size)
+	var x := region.position.x
+	var row := 0
+	while x < region.end.x:
+		var y := region.position.y
+		var col := 0
+		while y < region.end.y:
+			var block := ColorRect.new()
+			var w := minf(tile - 1.0, region.end.x - x)
+			var h := minf(tile - 1.0, region.end.y - y)
+			block.size = Vector2(maxf(4.0, w), maxf(4.0, h))
+			block.position = Vector2(x, y)
+			block.color = floor_color_a if ((row + col) % 2 == 0) else floor_color_b
+			block.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			floor_root.add_child(block)
+			y += tile
+			col += 1
+		x += tile
+		row += 1
+
+
+func _spawn_world_bounds(region: Rect2) -> void:
+	# 四周边界：阻止单位离开可玩区域，并提供清晰边缘视觉。
+	var t := maxf(8.0, boundary_thickness)
+	var top_rect := Rect2(region.position - Vector2(t, t), Vector2(region.size.x + t * 2.0, t))
+	var bottom_rect := Rect2(Vector2(region.position.x - t, region.end.y), Vector2(region.size.x + t * 2.0, t))
+	var left_rect := Rect2(Vector2(region.position.x - t, region.position.y), Vector2(t, region.size.y))
+	var right_rect := Rect2(Vector2(region.end.x, region.position.y), Vector2(t, region.size.y))
+	_spawn_boundary_body(top_rect)
+	_spawn_boundary_body(bottom_rect)
+	_spawn_boundary_body(left_rect)
+	_spawn_boundary_body(right_rect)
+
+
+func _spawn_boundary_body(rect: Rect2) -> void:
+	var body := StaticBody2D.new()
+	body.collision_layer = 8
+	body.collision_mask = 0
+	var shape := RectangleShape2D.new()
+	shape.size = rect.size
+	var col := CollisionShape2D.new()
+	col.shape = shape
+	var vis := ColorRect.new()
+	vis.color = boundary_color
+	vis.size = rect.size
+	vis.position = -rect.size * 0.5
+	body.position = rect.position + rect.size * 0.5
+	body.z_index = 10
+	body.add_child(col)
+	body.add_child(vis)
+	add_child(body)
+
+
+func _try_place_rect(
+	size_min: Vector2,
+	size_max: Vector2,
+	cluster_center: Vector2,
+	cluster_radius: float,
+	region: Rect2,
+	occupied: Array[Rect2],
+	padding: float,
+	max_attempts: int,
+	rng: RandomNumberGenerator
+) -> Dictionary:
+	for attempt in range(maxi(1, max_attempts)):
+		var size := Vector2(
+			rng.randf_range(size_min.x, size_max.x),
+			rng.randf_range(size_min.y, size_max.y)
+		)
+		var pos := cluster_center + Vector2(
+			rng.randf_range(-cluster_radius, cluster_radius),
+			rng.randf_range(-cluster_radius, cluster_radius)
+		)
+		pos.x = clampf(pos.x, region.position.x, region.end.x)
+		pos.y = clampf(pos.y, region.position.y, region.end.y)
+		var rect := Rect2(pos - size * 0.5, size)
+		if not _rect_inside_region(rect, region):
+			continue
+		if not _can_place_rect(rect, occupied, padding):
+			continue
+		return {
+			"position": pos,
+			"size": size,
+			"rect": rect
+		}
+	return {}
+
+
+func _try_place_rect_in_cell(
+	size_min: Vector2,
+	size_max: Vector2,
+	cell: Rect2,
+	occupied: Array[Rect2],
+	padding: float,
+	max_attempts: int,
+	rng: RandomNumberGenerator
+) -> Dictionary:
+	for attempt in range(maxi(1, max_attempts)):
+		var size := Vector2(
+			rng.randf_range(size_min.x, minf(size_max.x, cell.size.x - 4.0)),
+			rng.randf_range(size_min.y, minf(size_max.y, cell.size.y - 4.0))
+		)
+		var x_min := cell.position.x + size.x * 0.5
+		var x_max := cell.end.x - size.x * 0.5
+		var y_min := cell.position.y + size.y * 0.5
+		var y_max := cell.end.y - size.y * 0.5
+		if x_min >= x_max or y_min >= y_max:
+			continue
+		var pos := Vector2(
+			rng.randf_range(x_min, x_max),
+			rng.randf_range(y_min, y_max)
+		)
+		var rect := Rect2(pos - size * 0.5, size)
+		if not _can_place_rect(rect, occupied, padding):
+			continue
+		return {
+			"position": pos,
+			"size": size,
+			"rect": rect
+		}
+	return {}
+
+
+func _build_scatter_cells(total_count: int, region: Rect2) -> Array[Rect2]:
+	var cells: Array[Rect2] = []
+	var safe_count := maxi(1, total_count)
+	var aspect := maxf(0.2, region.size.x / maxf(1.0, region.size.y))
+	var cols := maxi(1, int(round(sqrt(float(safe_count) * aspect))))
+	var rows := maxi(1, int(ceil(float(safe_count) / float(cols))))
+	var cell_w := region.size.x / float(cols)
+	var cell_h := region.size.y / float(rows)
+	for r in range(rows):
+		for c in range(cols):
+			var cell := Rect2(
+				Vector2(region.position.x + c * cell_w, region.position.y + r * cell_h),
+				Vector2(cell_w, cell_h)
+			)
+			cells.append(cell)
+	return cells
+
+
+func _rect_inside_region(rect: Rect2, region: Rect2) -> bool:
+	return (
+		rect.position.x >= region.position.x and
+		rect.position.y >= region.position.y and
+		rect.end.x <= region.end.x and
+		rect.end.y <= region.end.y
+	)
+
+
+func _can_place_rect(rect: Rect2, occupied: Array[Rect2], padding: float) -> bool:
+	for other in occupied:
+		if _rect_overlaps(rect, other, padding):
+			return false
+	return true
+
+
+func _can_place_rect_soft(rect: Rect2, occupied: Array[Rect2], max_overlap_ratio: float) -> bool:
+	var area := maxf(1.0, rect.size.x * rect.size.y)
+	for other in occupied:
+		var overlap := _overlap_area(rect, other)
+		if overlap / area > max_overlap_ratio:
+			return false
+	return true
+
+
+func _rect_overlaps(a: Rect2, b: Rect2, padding: float) -> bool:
+	var aa := Rect2(
+		a.position - Vector2(padding, padding),
+		a.size + Vector2(padding * 2.0, padding * 2.0)
+	)
+	return aa.intersects(b)
+
+
+func _overlap_area(a: Rect2, b: Rect2) -> float:
+	var left := maxf(a.position.x, b.position.x)
+	var top := maxf(a.position.y, b.position.y)
+	var right := minf(a.end.x, b.end.x)
+	var bottom := minf(a.end.y, b.end.y)
+	if right <= left or bottom <= top:
+		return 0.0
+	return (right - left) * (bottom - top)
 
 
 func _spawn_terrain_zone(

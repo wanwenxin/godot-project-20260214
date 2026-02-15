@@ -16,12 +16,20 @@ signal intermission_started(duration: float)
 @export var boss_scene: PackedScene = preload("res://scenes/enemies/enemy_boss.tscn")
 @export var coin_pickup_scene: PackedScene = preload("res://scenes/pickup.tscn")
 @export var heal_pickup_scene: PackedScene = preload("res://scenes/pickup.tscn")
-@export var spawn_radius_extra := 110.0
+@export var telegraph_scene: PackedScene = preload("res://scenes/spawn_telegraph.tscn")
+@export var spawn_min_player_distance := 300.0
+@export var spawn_attempts := 24
+@export var spawn_region_margin := 24.0
+@export var telegraph_enabled := true
+@export var telegraph_duration := 0.9
+@export var telegraph_show_ring := true
+@export var telegraph_show_countdown := true
 @export var intermission_time := 3.5
 
 var current_wave := 0
 var kill_count := 0
 var living_enemy_count := 0
+var pending_spawn_count := 0
 var is_spawning := false
 var _current_intermission := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -67,6 +75,7 @@ func _start_next_wave() -> void:
 	intermission_timer.stop()
 	is_spawning = true
 	current_wave += 1
+	pending_spawn_count = 0
 	emit_signal("wave_started", current_wave)
 	_current_intermission = 0.0
 
@@ -79,24 +88,50 @@ func _start_next_wave() -> void:
 	var melee_count: int = maxi(total_to_spawn - ranged_count - tank_count, 1)
 
 	for i in range(melee_count):
-		_spawn_enemy(melee_scene, 0.9 + current_wave * 0.06, 1.0 + current_wave * 0.08)
+		_queue_enemy_spawn(melee_scene, 0.9 + current_wave * 0.06, 1.0 + current_wave * 0.08)
 	for i in range(ranged_count):
-		_spawn_enemy(ranged_scene, 1.0 + current_wave * 0.08, 1.0 + current_wave * 0.10)
+		_queue_enemy_spawn(ranged_scene, 1.0 + current_wave * 0.08, 1.0 + current_wave * 0.10)
 	for i in range(tank_count):
-		_spawn_enemy(tank_scene, 1.0 + current_wave * 0.12, 0.9 + current_wave * 0.05)
+		_queue_enemy_spawn(tank_scene, 1.0 + current_wave * 0.12, 0.9 + current_wave * 0.05)
 
 	# 每 5 波生成 Boss，普通敌人数量减半以避免同屏过载。
 	if current_wave % 5 == 0:
-		_spawn_enemy(boss_scene, 1.0 + current_wave * 0.15, 1.0)
+		_queue_enemy_spawn(boss_scene, 1.0 + current_wave * 0.15, 1.0)
 
 	is_spawning = false
 
 
-func _spawn_enemy(scene: PackedScene, hp_scale: float, speed_scale: float) -> void:
+func _queue_enemy_spawn(scene: PackedScene, hp_scale: float, speed_scale: float) -> void:
+	if scene == null or not is_instance_valid(_player_ref):
+		return
+	var spawn_position := _random_spawn_position()
+	pending_spawn_count += 1
+	if telegraph_enabled and telegraph_scene != null:
+		var telegraph = telegraph_scene.instantiate()
+		telegraph.global_position = spawn_position
+		telegraph.set("duration", telegraph_duration)
+		telegraph.set("show_ring", telegraph_show_ring)
+		telegraph.set("show_countdown", telegraph_show_countdown)
+		telegraph.telegraph_finished.connect(_on_telegraph_finished.bind(scene, hp_scale, speed_scale, telegraph))
+		get_tree().current_scene.add_child(telegraph)
+	else:
+		_spawn_enemy_at(scene, spawn_position, hp_scale, speed_scale)
+		pending_spawn_count = maxi(pending_spawn_count - 1, 0)
+
+
+func _on_telegraph_finished(scene: PackedScene, hp_scale: float, speed_scale: float, telegraph_node: Node) -> void:
+	var spawn_position: Vector2 = telegraph_node.global_position if is_instance_valid(telegraph_node) else _random_spawn_position()
+	if is_instance_valid(telegraph_node):
+		telegraph_node.queue_free()
+	_spawn_enemy_at(scene, spawn_position, hp_scale, speed_scale)
+	pending_spawn_count = maxi(pending_spawn_count - 1, 0)
+
+
+func _spawn_enemy_at(scene: PackedScene, spawn_position: Vector2, hp_scale: float, speed_scale: float) -> void:
 	if scene == null or not is_instance_valid(_player_ref):
 		return
 	var enemy := scene.instantiate()
-	enemy.global_position = _random_spawn_position()
+	enemy.global_position = spawn_position
 	enemy.set_player(_player_ref)
 	if enemy.has_signal("died"):
 		enemy.died.connect(_on_enemy_died)
@@ -111,11 +146,29 @@ func _spawn_enemy(scene: PackedScene, hp_scale: float, speed_scale: float) -> vo
 
 
 func _random_spawn_position() -> Vector2:
-	# 以玩家为中心，在屏幕外环随机点刷怪，避免贴脸生成。
-	var center: Vector2 = _player_ref.global_position if is_instance_valid(_player_ref) else _viewport_size * 0.5
-	var angle: float = _rng.randf_range(0.0, TAU)
-	var radius: float = maxf(_viewport_size.x, _viewport_size.y) * 0.5 + spawn_radius_extra
-	return center + Vector2(cos(angle), sin(angle)) * radius
+	# 在边界内采样，且尽量远离玩家；若反复失败则用“最远候选点”兜底。
+	var region := Rect2(
+		Vector2(spawn_region_margin, spawn_region_margin),
+		Vector2(
+			maxf(16.0, _viewport_size.x - spawn_region_margin * 2.0),
+			maxf(16.0, _viewport_size.y - spawn_region_margin * 2.0)
+		)
+	)
+	var player_pos := _player_ref.global_position if is_instance_valid(_player_ref) else _viewport_size * 0.5
+	var best_pos := region.position + region.size * 0.5
+	var best_dist := -1.0
+	for i in range(maxi(1, spawn_attempts)):
+		var candidate := Vector2(
+			_rng.randf_range(region.position.x, region.end.x),
+			_rng.randf_range(region.position.y, region.end.y)
+		)
+		var dist := candidate.distance_to(player_pos)
+		if dist > best_dist:
+			best_dist = dist
+			best_pos = candidate
+		if dist >= spawn_min_player_distance:
+			return candidate
+	return best_pos
 
 
 func _on_enemy_died(enemy: Node) -> void:
@@ -124,7 +177,7 @@ func _on_enemy_died(enemy: Node) -> void:
 	AudioManager.play_kill()
 	emit_signal("kill_count_changed", kill_count)
 	_try_spawn_drop(enemy)
-	if living_enemy_count <= 0:
+	if living_enemy_count <= 0 and pending_spawn_count <= 0:
 		emit_signal("wave_cleared", current_wave)
 
 

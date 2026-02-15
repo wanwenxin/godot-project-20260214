@@ -16,6 +16,7 @@ model: inherit
 
 1. **代码注释**：文件头 1–3 行说明职责；复杂逻辑加行内/块注释；`@export` 变量加用途说明
 2. **拓展接口**：新模块必须预留：虚方法（`_on_xxx`/`_handle_xxx`）、关键事件 emit 信号、`@export` 可配置参数
+3. **文档更新**：新增或修改功能后，同步更新 `docs/DEVELOPER_GUIDE.md` 对应章节（模块职责、扩展入口、配置项、排障）
 
 ## 常见实现路径
 
@@ -32,3 +33,4 @@ model: inherit
 - 实现完整、可运行
 - 类型标注完整（`var x: Type`、`func f() -> Type`）
 - 命名：`snake_case` 变量/函数，`PascalCase` 类/场景
+- 已更新 `docs/DEVELOPER_GUIDE.md` 中相关章节
