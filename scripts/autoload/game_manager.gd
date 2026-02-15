@@ -5,6 +5,7 @@ const SCENE_MAIN_MENU := "res://scenes/main_menu.tscn"
 const SCENE_CHARACTER_SELECT := "res://scenes/character_select.tscn"
 const SCENE_GAME := "res://scenes/game.tscn"
 const MAX_WEAPONS := 6
+const WEAPON_DEFS_RESOURCE = preload("res://resources/weapon_defs.gd")
 
 # 角色配置表。
 # 说明：
@@ -40,62 +41,7 @@ var characters := [
 	}
 ]
 
-var weapon_defs := [
-	{
-		"id": "blade_short",
-		"type": "melee",
-		"name_key": "weapon.blade_short.name",
-		"desc_key": "weapon.blade_short.desc",
-		"cost": 5,
-		"color": Color(0.95, 0.30, 0.30, 1.0),
-		"stats": {"damage": 14, "cooldown": 0.40, "range": 58.0}
-	},
-	{
-		"id": "hammer_heavy",
-		"type": "melee",
-		"name_key": "weapon.hammer_heavy.name",
-		"desc_key": "weapon.hammer_heavy.desc",
-		"cost": 8,
-		"color": Color(0.90, 0.58, 0.24, 1.0),
-		"stats": {"damage": 24, "cooldown": 0.72, "range": 68.0}
-	},
-	{
-		"id": "pistol_basic",
-		"type": "ranged",
-		"name_key": "weapon.pistol_basic.name",
-		"desc_key": "weapon.pistol_basic.desc",
-		"cost": 6,
-		"color": Color(0.25, 0.80, 0.95, 1.0),
-		"stats": {"damage": 8, "cooldown": 0.28, "range": 1200.0, "bullet_speed": 520.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 0}
-	},
-	{
-		"id": "shotgun_wide",
-		"type": "ranged",
-		"name_key": "weapon.shotgun_wide.name",
-		"desc_key": "weapon.shotgun_wide.desc",
-		"cost": 9,
-		"color": Color(0.50, 0.88, 0.30, 1.0),
-		"stats": {"damage": 6, "cooldown": 0.46, "range": 980.0, "bullet_speed": 460.0, "pellet_count": 3, "spread_degrees": 20.0, "bullet_pierce": 0}
-	},
-	{
-		"id": "rifle_long",
-		"type": "ranged",
-		"name_key": "weapon.rifle_long.name",
-		"desc_key": "weapon.rifle_long.desc",
-		"cost": 10,
-		"color": Color(0.65, 0.66, 0.95, 1.0),
-		"stats": {"damage": 12, "cooldown": 0.52, "range": 1400.0, "bullet_speed": 700.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 1}
-	},
-	{
-		"id": "wand_focus",
-		"type": "ranged",
-		"name_key": "weapon.wand_focus.name",
-		"desc_key": "weapon.wand_focus.desc",
-		"cost": 7,
-		"color": Color(0.88, 0.46, 0.95, 1.0),
-		"stats": {"damage": 9, "cooldown": 0.34, "range": 1180.0, "bullet_speed": 560.0, "pellet_count": 2, "spread_degrees": 10.0, "bullet_pierce": 0}
-	}
-]
+var weapon_defs: Array[Dictionary] = []
 
 var selected_character_id := 0
 # 最近一局战斗结果，当前主要用于运行期查看，持久化统计由 SaveManager 负责。
@@ -106,11 +52,14 @@ var last_run_result := {
 }
 var run_currency := 0
 var enemy_healthbar_visible := true
+var move_inertia_factor := 0.0
 var run_weapons: Array[String] = []
 
 
 func _ready() -> void:
 	# 启动时读取上次选择的角色，保证“继续游戏”体验一致。
+	for item in WEAPON_DEFS_RESOURCE.WEAPON_DEFS:
+		weapon_defs.append(item.duplicate(true))
 	var save_data := SaveManager.load_game()
 	selected_character_id = int(save_data.get("last_character_id", 0))
 	last_run_result = save_data.get("last_run", last_run_result)
@@ -186,6 +135,7 @@ func apply_saved_settings() -> void:
 	_set_action_single_key("pause", str(game_cfg.get("pause_key", "P")))
 	_set_action_single_key("toggle_enemy_hp", str(game_cfg.get("toggle_enemy_hp_key", "H")))
 	enemy_healthbar_visible = bool(game_cfg.get("show_enemy_health_bar", true))
+	move_inertia_factor = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, 0.9)
 
 
 func _apply_resolution_string(value: String) -> void:

@@ -17,7 +17,7 @@ signal intermission_started(duration: float)
 @export var coin_pickup_scene: PackedScene = preload("res://scenes/pickup.tscn")
 @export var heal_pickup_scene: PackedScene = preload("res://scenes/pickup.tscn")
 @export var telegraph_scene: PackedScene = preload("res://scenes/spawn_telegraph.tscn")
-@export var spawn_min_player_distance := 300.0
+@export var spawn_min_player_distance := 340.0
 @export var spawn_attempts := 24
 @export var spawn_region_margin := 24.0
 @export var telegraph_enabled := true
@@ -25,6 +25,9 @@ signal intermission_started(duration: float)
 @export var telegraph_show_ring := true
 @export var telegraph_show_countdown := true
 @export var intermission_time := 3.5
+@export var coin_drop_chance := 0.38
+@export var heal_drop_chance := 0.17
+@export var boss_bonus_coin_count := Vector2i(2, 3)
 
 var current_wave := 0
 var kill_count := 0
@@ -177,6 +180,7 @@ func _on_enemy_died(enemy: Node) -> void:
 	AudioManager.play_kill()
 	emit_signal("kill_count_changed", kill_count)
 	_try_spawn_drop(enemy)
+	_try_spawn_boss_bonus_drop(enemy)
 	if living_enemy_count <= 0 and pending_spawn_count <= 0:
 		emit_signal("wave_cleared", current_wave)
 
@@ -185,16 +189,40 @@ func _try_spawn_drop(enemy: Node) -> void:
 	if not is_instance_valid(enemy):
 		return
 	var r := _rng.randf()
-	if r < 0.18 and coin_pickup_scene != null:
-		var coin := coin_pickup_scene.instantiate()
-		coin.global_position = enemy.global_position
-		coin.pickup_type = "coin"
-		coin.value = 1 + int(current_wave / 4.0)
-		# 在物理回调链里延迟 add_child，避免 flushing_queries 报错。
-		get_tree().current_scene.call_deferred("add_child", coin)
-	elif r < 0.23 and heal_pickup_scene != null:
+	if r < coin_drop_chance and coin_pickup_scene != null:
+		var coin_value := 1 + int(current_wave / 4.0)
+		_spawn_coin_drop(enemy.global_position, coin_value)
+	elif r < coin_drop_chance + heal_drop_chance and heal_pickup_scene != null:
 		var heal := heal_pickup_scene.instantiate()
 		heal.global_position = enemy.global_position
 		heal.pickup_type = "heal"
 		heal.value = 6 + int(current_wave / 3.0)
 		get_tree().current_scene.call_deferred("add_child", heal)
+
+
+func _try_spawn_boss_bonus_drop(enemy: Node) -> void:
+	# Boss 死亡时额外掉落多枚高价值金币，强化关键战反馈。
+	if not _is_boss_enemy(enemy):
+		return
+	var extra_count := _rng.randi_range(boss_bonus_coin_count.x, boss_bonus_coin_count.y)
+	for i in range(extra_count):
+		var bonus_value := 3 + int(current_wave / 5.0)
+		var offset := Vector2(_rng.randf_range(-20.0, 20.0), _rng.randf_range(-18.0, 18.0))
+		_spawn_coin_drop(enemy.global_position + offset, bonus_value)
+
+
+func _spawn_coin_drop(spawn_position: Vector2, coin_value: int) -> void:
+	if coin_pickup_scene == null:
+		return
+	var coin := coin_pickup_scene.instantiate()
+	coin.global_position = spawn_position
+	coin.pickup_type = "coin"
+	coin.value = maxi(1, coin_value)
+	# 在物理回调链里延迟 add_child，避免 flushing_queries 报错。
+	get_tree().current_scene.call_deferred("add_child", coin)
+
+
+func _is_boss_enemy(enemy: Node) -> bool:
+	if not is_instance_valid(enemy):
+		return false
+	return enemy.is_in_group("boss") or str(enemy.name).to_lower().contains("boss")

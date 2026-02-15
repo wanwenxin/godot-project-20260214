@@ -9,12 +9,16 @@ extends CanvasLayer
 @onready var menu_btn: Button = $Root/Panel/VBoxContainer/MainMenuButton
 @onready var key_hints_label: Label = $Root/Panel/VBoxContainer/KeyHintsLabel
 
+var _fullscreen_backdrop: ColorRect
+
 
 func _ready() -> void:
 	# Root 全屏容器默认不拦截输入，避免在面板隐藏时吞掉 HUD 点击。
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ensure_fullscreen_backdrop()
 	# 仅可见的暂停面板负责接收点击。
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style()
 	resume_btn.pressed.connect(_on_resume_pressed)
 	menu_btn.pressed.connect(_on_menu_pressed)
 	LocalizationManager.language_changed.connect(_on_language_changed)
@@ -24,6 +28,8 @@ func _ready() -> void:
 func set_visible_menu(value: bool) -> void:
 	# 保持一个统一入口控制显隐，便于后续扩展动画。
 	panel.visible = value
+	if _fullscreen_backdrop:
+		_fullscreen_backdrop.visible = value
 	if value:
 		_refresh_key_hints()
 
@@ -75,3 +81,35 @@ func _action_to_text(actions: Array[StringName]) -> String:
 	if result.is_empty():
 		return "-"
 	return "/".join(result)
+
+
+func _apply_panel_style() -> void:
+	# 暂停菜单使用不透明面板，确保战斗背景不会干扰可读性。
+	var style := StyleBoxFlat.new()
+	style.bg_color = VisualAssetRegistry.get_color("ui.modal_panel_bg", Color(0.16, 0.17, 0.20, 1.0))
+	style.border_color = VisualAssetRegistry.get_color("ui.modal_panel_border", Color(0.82, 0.84, 0.90, 1.0))
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	panel.add_theme_stylebox_override("panel", style)
+
+
+func _ensure_fullscreen_backdrop() -> void:
+	# 暂停页全屏纯色背景，保证暂停菜单整体是完整弹层。
+	_fullscreen_backdrop = ColorRect.new()
+	_fullscreen_backdrop.name = "FullscreenBackdrop"
+	_fullscreen_backdrop.anchors_preset = Control.PRESET_FULL_RECT
+	_fullscreen_backdrop.offset_left = 0
+	_fullscreen_backdrop.offset_top = 0
+	_fullscreen_backdrop.offset_right = 0
+	_fullscreen_backdrop.offset_bottom = 0
+	_fullscreen_backdrop.visible = false
+	_fullscreen_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	_fullscreen_backdrop.color = VisualAssetRegistry.get_color("ui.modal_backdrop", Color(0.08, 0.09, 0.11, 1.0))
+	root.add_child(_fullscreen_backdrop)
+	root.move_child(_fullscreen_backdrop, 0)

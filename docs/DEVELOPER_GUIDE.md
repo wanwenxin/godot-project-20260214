@@ -55,6 +55,7 @@
 
 - `scripts/player.gd`
   - 键盘+触控移动融合
+  - 支持可配置移动惯性（`inertia_factor`）
   - 自动索敌与开火
   - 无敌帧/受伤/死亡
   - 升级应用（伤害、射速、穿透、多弹等）
@@ -72,6 +73,7 @@
 
 - `scripts/pickup.gd`
   - 掉落物（金币/治疗）
+  - 金币按价值分级着色（铜/银/金）
   - 自动飘动与超时销毁
 
 ### 2.3 敌人与波次
@@ -89,6 +91,7 @@
   - 波次推进、敌人构成、难度缩放
   - 清场信号、击杀信号、间隔信号
   - 掉落生成（使用 `call_deferred` 避免 physics flushing 报错）
+  - Boss 额外金币掉落与掉落概率配置
   - 生成规则：边界内随机、避开玩家安全半径、提示后落地
 
 ### 2.4 地形系统
@@ -128,16 +131,23 @@
   - 波次倒计时与波次横幅
   - 升级三选一面板（运行时构建）
   - 开局免费武器选择与波次武器商店
+  - 升级/商店结算层使用全屏纯色不透明 backdrop
   - 触控按钮（移动 + 暂停）
 
 ### 2.6 武器系统
 
 - 角色默认不带攻击，必须装备武器才能输出
-- 武器分为：
-  - 近战：`scripts/weapons/weapon_melee.gd`
-  - 远程：`scripts/weapons/weapon_ranged.gd`
+- 武器分层：
   - 统一基类：`scripts/weapons/weapon_base.gd`
+  - 近战基类：`scripts/weapons/weapon_melee_base.gd`
+  - 远程基类：`scripts/weapons/weapon_ranged_base.gd`
+  - 具体武器：`scripts/weapons/melee/*.gd` 与 `scripts/weapons/ranged/*.gd`
 - 每把武器独立冷却与独立伤害结算
+- 近战采用“挥击位移 + 碰触判定”：
+  - 仅武器碰触敌人时生效
+  - `touch_interval` 按“每把武器 x 每个敌人”独立计时
+- 远程子弹从武器节点位置发射，不再固定从玩家中心出生
+- 武器数值集中配置于：`resources/weapon_defs.gd`
 - 玩家默认最多持有 6 把武器，并在玩家周围显示色块
 - 流程：
   1. 开局免费三选一
@@ -153,11 +163,15 @@
 - `scripts/ui/pause_menu.gd`
   - 暂停按钮逻辑
   - Root 设置为 `MOUSE_FILTER_IGNORE`，避免吞掉 HUD 点击
+  - 暂停层新增全屏纯色不透明 backdrop
+  - 面板样式强制不透明，保证暂停文本可读
   - 显示当前可操作按键（随改键同步）
 
 - `scripts/ui/settings_menu.gd`
   - 系统分页：主音量、分辨率
-  - 游戏分页：移动键预设、暂停键、血条切换键、敌人血条开关、暂停提示开关
+  - 游戏分页：移动键预设、移动惯性、暂停键、血条切换键、敌人血条开关、暂停提示开关
+  - 设置层新增全屏纯色不透明 backdrop
+  - 面板样式强制不透明，避免底层画面干扰设置阅读
   - 修改即生效并自动保存
 
 ## 3. 当前数据流
@@ -225,13 +239,16 @@ flowchart TD
 ### 4.2 `wave_manager.gd`
 
 - `intermission_time`：波次间隔
-- `spawn_min_player_distance`：与玩家的最小出生距离（默认 300）
+- `spawn_min_player_distance`：与玩家的最小出生距离（默认 340）
 - `spawn_attempts`：合法出生点采样重试次数
 - `spawn_region_margin`：出生区域边界留白
 - `telegraph_enabled`：是否启用出生提示
 - `telegraph_duration`：提示持续时长
 - `telegraph_show_ring`：是否显示警示圈
 - `telegraph_show_countdown`：是否显示倒计时
+- `coin_drop_chance`：金币掉落概率（默认 0.38）
+- `heal_drop_chance`：治疗掉落概率（默认 0.17）
+- `boss_bonus_coin_count`：Boss 额外掉落金币数量范围（默认 `2~3`）
 - `tank_scene/boss_scene`：进阶敌人
 - `coin_pickup_scene/heal_pickup_scene`：掉落资源
 - `telegraph_scene`：出生提示节点场景
@@ -239,6 +256,7 @@ flowchart TD
 ### 4.3 `game_manager.gd`
 
 - `characters`：角色模板（含多弹/穿透字段）
+- `weapon_defs`：启动时从 `resources/weapon_defs.gd::WEAPON_DEFS` 载入
 
 ### 4.4 `terrain_zone.gd`
 
@@ -249,9 +267,10 @@ flowchart TD
 
 ### 4.5 武器配置
 
-- `game_manager.gd::weapon_defs` 字段说明：
+- `resources/weapon_defs.gd::WEAPON_DEFS` 字段说明：
   - `id`, `type`, `name_key`, `desc_key`, `cost`, `color`
-  - `stats`（示例：`damage`, `cooldown`, `range`, `bullet_speed`, `pellet_count`, `spread_degrees`, `bullet_pierce`）
+  - `script_path`（具体武器脚本路径）
+  - `stats`（示例：`damage`, `cooldown`, `range`, `touch_interval`, `swing_duration`, `swing_degrees`, `swing_reach`, `hitbox_radius`, `bullet_speed`, `pellet_count`, `spread_degrees`, `bullet_pierce`）
 
 ### 4.6 多语言配置
 
@@ -272,6 +291,7 @@ flowchart TD
 - `settings.system.master_volume`: `0.0~1.0`
 - `settings.system.resolution`: `1280x720/1600x900/1920x1080`
 - `settings.game.key_preset`: `wasd/arrows`
+- `settings.game.move_inertia`: `0.0~0.9`（角色移动惯性，越大越“滑”）
 - `settings.game.pause_key`: 暂停键（字符串）
 - `settings.game.toggle_enemy_hp_key`: 敌人血条切换键（字符串）
 - `settings.game.show_enemy_health_bar`: 是否显示敌人血条
@@ -331,14 +351,15 @@ flowchart TD
 1. 在 `save_manager.gd` 的 `default_data.settings` 增加字段
 2. 在 `settings_menu.gd` 新增控件并在 `_reload_from_save()` 绑定值
 3. 在 `_save_and_apply()` 之后由 `game_manager.gd::apply_saved_settings()` 统一应用
-4. 若涉及战斗运行时行为，在 `game.gd` 或对应模块监听输入并回写设置
+4. 若涉及战斗运行时行为，在 `game.gd` 或对应模块监听输入并回写设置（如 `player.set_move_inertia()`）
 
 ### 5.8 新增武器
 
-1. 在 `game_manager.gd::weapon_defs` 增加武器定义
-2. 若是新攻击模式，新增 `scripts/weapons/weapon_*.gd` 并继承 `weapon_base.gd`
-3. 在 `player.gd::equip_weapon_by_id()` 中接入新类型实例化逻辑
-4. 在 i18n 文件补齐 `weapon.*` 文案 key
+1. 在 `resources/weapon_defs.gd::WEAPON_DEFS` 增加武器定义（含 `script_path`）
+2. 若是近战，新增 `scripts/weapons/melee/weapon_*.gd` 并继承 `weapon_melee_base.gd`
+3. 若是远程，新增 `scripts/weapons/ranged/weapon_*.gd` 并继承 `weapon_ranged_base.gd`
+4. 在 `player.gd::equip_weapon_by_id()` 中验证该脚本可实例化
+5. 在 i18n 文件补齐 `weapon.*` 文案 key
 
 ## 6. 常见问题与排障
 

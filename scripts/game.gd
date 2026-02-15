@@ -116,6 +116,7 @@ func _spawn_player() -> void:
 	var character_data := GameManager.get_character_data()
 	# 将角色模板参数下发给玩家（生命、移速、射速、伤害等）。
 	player.set_character_data(character_data)
+	player.set_move_inertia(GameManager.move_inertia_factor)
 	player.died.connect(_on_player_died)
 	player.health_changed.connect(_on_player_health_changed)
 	player.damaged.connect(_on_player_damaged)

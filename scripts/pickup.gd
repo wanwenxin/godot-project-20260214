@@ -21,6 +21,7 @@ func _ready() -> void:
 		var fallback_coin := func() -> Texture2D:
 			return PixelGenerator.generate_pickup_sprite(false)
 		sprite.texture = VisualAssetRegistry.get_texture("pickup.coin", fallback_coin)
+		_apply_coin_visual_by_value()
 	body_entered.connect(_on_body_entered)
 	_velocity = Vector2(randf_range(-20.0, 20.0), randf_range(-30.0, -10.0))
 
@@ -43,3 +44,13 @@ func _on_body_entered(body: Node) -> void:
 		body.heal(value)
 	AudioManager.play_pickup()
 	queue_free()
+
+
+func _apply_coin_visual_by_value() -> void:
+	# 金币价值分层配色：低值铜币，中值银币，高值金币。
+	if value <= 1:
+		sprite.modulate = Color(0.80, 0.55, 0.25, 1.0)
+	elif value <= 3:
+		sprite.modulate = Color(0.75, 0.78, 0.82, 1.0)
+	else:
+		sprite.modulate = Color(1.0, 0.85, 0.22, 1.0)

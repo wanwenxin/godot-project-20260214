@@ -45,6 +45,7 @@
   "settings.system.volume": "Master Volume",
   "settings.system.resolution": "Resolution",
   "settings.game.preset": "Move Key Preset",
+  "settings.game.move_inertia": "Move Inertia",
   "settings.game.pause_key": "Pause Key",
   "settings.game.toggle_hp_key": "Enemy HP Toggle Key",
   "settings.game.enemy_hp": "Show Enemy Health Bar",

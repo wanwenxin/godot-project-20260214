@@ -11,6 +11,7 @@ signal damaged(amount: int)
 @export var base_speed := 160.0
 @export var max_health := 100
 @export var invulnerable_duration := 0.35
+@export var inertia_factor := 0.0  # 移动惯性系数：0=无惯性，越大越“滑”。
 
 var current_health := 100
 var move_input := Vector2.ZERO
@@ -23,10 +24,16 @@ var _cached_nearest_enemy: Node2D
 # 多地形叠加时记录每个 zone 的速度系数，取最慢值。
 var _terrain_effects: Dictionary = {}
 var _terrain_speed_multiplier := 1.0
-var _equipped_weapons: Array[Node] = []
+var _equipped_weapons: Array[Node2D] = []
 var _weapon_visuals: Array[Sprite2D] = []
-const WEAPON_MELEE_SCRIPT = preload("res://scripts/weapons/weapon_melee.gd")
-const WEAPON_RANGED_SCRIPT = preload("res://scripts/weapons/weapon_ranged.gd")
+const WEAPON_FALLBACK_SCRIPTS := {
+	"blade_short": "res://scripts/weapons/melee/weapon_blade_short.gd",
+	"hammer_heavy": "res://scripts/weapons/melee/weapon_hammer_heavy.gd",
+	"pistol_basic": "res://scripts/weapons/ranged/weapon_pistol_basic.gd",
+	"shotgun_wide": "res://scripts/weapons/ranged/weapon_shotgun_wide.gd",
+	"rifle_long": "res://scripts/weapons/ranged/weapon_rifle_long.gd",
+	"wand_focus": "res://scripts/weapons/ranged/weapon_wand_focus.gd"
+}
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var weapon_slots: Node2D = $WeaponSlots
@@ -60,7 +67,10 @@ func _physics_process(delta: float) -> void:
 		move_input = external_move_input
 	if not input_enabled:
 		move_input = Vector2.ZERO
-	velocity = move_input * base_speed * _terrain_speed_multiplier
+	# 通过插值速度制造惯性，系数越大收敛越慢。
+	var target_velocity := move_input * base_speed * _terrain_speed_multiplier
+	var response := clampf(1.0 - inertia_factor, 0.05, 1.0)
+	velocity = velocity.lerp(target_velocity, response)
 	move_and_slide()
 
 	if _invulnerable_timer > 0.0:
@@ -135,6 +145,11 @@ func clear_terrain_effect(zone_id: int) -> void:
 	_recompute_terrain_speed()
 
 
+func set_move_inertia(value: float) -> void:
+	# 统一入口，便于从设置菜单或其他系统动态调整惯性。
+	inertia_factor = clampf(value, 0.0, 0.9)
+
+
 func _get_nearest_enemy() -> Node2D:
 	# 简单线性扫描，敌人数量较少时足够稳定。
 	var enemies := get_tree().get_nodes_in_group("enemies")
@@ -174,12 +189,7 @@ func equip_weapon_by_id(weapon_id: String) -> bool:
 	var def := GameManager.get_weapon_def_by_id(weapon_id)
 	if def.is_empty():
 		return false
-	var weapon_type := str(def.get("type", ""))
-	var instance: Node = null
-	if weapon_type == "melee":
-		instance = WEAPON_MELEE_SCRIPT.new()
-	else:
-		instance = WEAPON_RANGED_SCRIPT.new()
+	var instance := _create_weapon_instance(def)
 	if instance == null:
 		return false
 	instance.configure_from_def(def)
@@ -208,18 +218,43 @@ func _refresh_weapon_visuals() -> void:
 	var count := _equipped_weapons.size()
 	if count <= 0:
 		return
-	var radius := 18.0
+	var radius := 26.0
 	for i in range(count):
 		var ratio := float(i) / float(count)
 		var angle := ratio * TAU - PI * 0.5
+		var slot_pos := Vector2(cos(angle), sin(angle)) * radius
+		var weapon_node := _equipped_weapons[i]
 		var icon := Sprite2D.new()
-		var weapon_id: String = str(_equipped_weapons[i].weapon_id)
-		var color_hint_any = _equipped_weapons[i].color_hint
+		var weapon_id: String = str(weapon_node.weapon_id)
+		var color_hint_any = weapon_node.color_hint
 		var color_hint: Color = color_hint_any if color_hint_any is Color else Color(0.8, 0.8, 0.8, 1.0)
 		var texture_key: String = "weapon.icon." + weapon_id
 		var fallback := func() -> Texture2D:
 			return VisualAssetRegistry.make_color_texture(texture_key, color_hint, Vector2i(10, 10))
 		icon.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
-		icon.position = Vector2(cos(angle), sin(angle)) * radius
-		weapon_slots.add_child(icon)
+		# 图标挂在武器节点下，近战挥击时图标随之移动
+		weapon_node.add_child(icon)
 		_weapon_visuals.append(icon)
+		# 武器自身参与空间布局，远程子弹从武器位置发射
+		if weapon_node.has_method("set_slot_pose"):
+			weapon_node.set_slot_pose(slot_pos, angle)
+		else:
+			weapon_node.position = slot_pos
+			weapon_node.rotation = angle
+
+
+func _create_weapon_instance(def: Dictionary) -> Node2D:
+	# 支持配置里声明具体武器脚本，未声明时走本地兜底映射。
+	var script_path := str(def.get("script_path", ""))
+	if script_path == "":
+		var weapon_id := str(def.get("id", ""))
+		script_path = str(WEAPON_FALLBACK_SCRIPTS.get(weapon_id, ""))
+	if script_path == "":
+		return null
+	var script_obj = load(script_path)
+	if script_obj == null or not (script_obj is GDScript):
+		return null
+	var instance = (script_obj as GDScript).new()
+	if not (instance is Node2D):
+		return null
+	return instance as Node2D

@@ -3,10 +3,10 @@
 [ext_resource type="Script" path="res://scripts/enemy_tank.gd" id="1"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
-radius = 10.0
+radius = 15.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_2"]
-radius = 14.0
+radius = 21.0
 
 [node name="EnemyTank" type="CharacterBody2D"]
 script = ExtResource("1")

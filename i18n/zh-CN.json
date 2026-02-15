@@ -45,6 +45,7 @@
   "settings.system.volume": "主音量",
   "settings.system.resolution": "分辨率",
   "settings.game.preset": "移动键预设",
+  "settings.game.move_inertia": "移动惯性",
   "settings.game.pause_key": "暂停键",
   "settings.game.toggle_hp_key": "血条切换键",
   "settings.game.enemy_hp": "显示敌人血条",

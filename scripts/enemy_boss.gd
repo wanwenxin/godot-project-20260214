@@ -9,6 +9,7 @@ var _shoot_cd := 0.0
 func _ready() -> void:
 	super._ready()
 	# Boss：高血量并拥有三连发扇形攻击。
+	add_to_group("boss")
 	set_enemy_texture(3)
 
 

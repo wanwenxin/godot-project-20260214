@@ -30,7 +30,8 @@ var default_data := {
 			"pause_key": "P",
 			"toggle_enemy_hp_key": "H",
 			"show_enemy_health_bar": true,
-			"show_key_hints_in_pause": true
+			"show_key_hints_in_pause": true,
+			"move_inertia": 0.0
 		}
 	},
 	"weapon_meta": {

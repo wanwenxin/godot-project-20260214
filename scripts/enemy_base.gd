@@ -119,8 +119,8 @@ func _create_health_bar() -> void:
 	_health_bar.max_value = float(max_health)
 	_health_bar.value = float(current_health)
 	_health_bar.show_percentage = false
-	_health_bar.custom_minimum_size = Vector2(28.0, 5.0)
-	_health_bar.position = Vector2(-14.0, -22.0)
+	_health_bar.custom_minimum_size = Vector2(36.0, 6.0)
+	_health_bar.position = Vector2(-18.0, -30.0)
 	_health_bar.z_index = 20
 	add_child(_health_bar)
 
