@@ -15,6 +15,9 @@ var current_health := 25
 var player_ref: Node2D
 # 接触伤害节流开关，避免同帧多次触发。
 var _can_contact_damage := true
+# 与玩家保持一致的地形减速逻辑。
+var _terrain_effects: Dictionary = {}
+var _terrain_speed_multiplier := 1.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var contact_timer: Timer = $ContactDamageTimer
@@ -24,7 +27,7 @@ var _can_contact_damage := true
 func _ready() -> void:
 	add_to_group("enemies")
 	collision_layer = 2
-	collision_mask = 1
+	collision_mask = 1 | 8
 	current_health = max_health
 	if hurt_area:
 		hurt_area.body_entered.connect(_on_hurt_area_body_entered)
@@ -55,7 +58,7 @@ func _move_towards_player(_delta: float, move_scale: float = 1.0) -> void:
 	if not is_instance_valid(player_ref):
 		return
 	var dir := (player_ref.global_position - global_position).normalized()
-	velocity = dir * speed * move_scale
+	velocity = dir * speed * move_scale * _terrain_speed_multiplier
 	move_and_slide()
 
 
@@ -71,3 +74,20 @@ func _on_hurt_area_body_entered(body: Node) -> void:
 
 func _on_contact_timer_timeout() -> void:
 	_can_contact_damage = true
+
+
+func set_terrain_effect(zone_id: int, speed_multiplier: float) -> void:
+	_terrain_effects[zone_id] = clampf(speed_multiplier, 0.2, 1.2)
+	_recompute_terrain_speed()
+
+
+func clear_terrain_effect(zone_id: int) -> void:
+	_terrain_effects.erase(zone_id)
+	_recompute_terrain_speed()
+
+
+func _recompute_terrain_speed() -> void:
+	# 多地形重叠时采用最小速度倍率。
+	_terrain_speed_multiplier = 1.0
+	for key in _terrain_effects.keys():
+		_terrain_speed_multiplier = minf(_terrain_speed_multiplier, float(_terrain_effects[key]))

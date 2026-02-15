@@ -14,6 +14,7 @@ var selected_character_id := 0
 
 
 func _ready() -> void:
+	AudioManager.play_menu_bgm()
 	card_a.pressed.connect(func() -> void: _select_character(0))
 	card_b.pressed.connect(func() -> void: _select_character(1))
 	start_button.pressed.connect(_on_start_pressed)
@@ -25,13 +26,20 @@ func _ready() -> void:
 func _select_character(character_id: int) -> void:
 	selected_character_id = character_id
 	var data := GameManager.get_character_data(character_id)
+	var save_data := SaveManager.load_game()
+	var best_map: Dictionary = save_data.get("best_wave_per_character", {})
+	var kill_map: Dictionary = save_data.get("total_kills_per_character", {})
+	var key := str(character_id)
 	# 属性文本与按钮选中态同步刷新。
-	var text := "Name: %s\nHP: %d\nSpeed: %.0f\nFireRate: %.2f\nDamage: %d" % [
+	# 角色页同步展示“该角色历史战绩”，便于 build 选择。
+	var text := "Name: %s\nHP: %d\nSpeed: %.0f\nFireRate: %.2f\nDamage: %d\nBestWave: %d  CharKills: %d" % [
 		String(data.get("name", "Unknown")),
 		int(data.get("max_health", 100)),
 		float(data.get("speed", 0.0)),
 		float(data.get("fire_rate", 0.3)),
-		int(data.get("bullet_damage", 0))
+		int(data.get("bullet_damage", 0)),
+		int(best_map.get(key, 0)),
+		int(kill_map.get(key, 0))
 	]
 	detail.text = text
 	card_a.text = "RapidShooter" + (" [Selected]" if selected_character_id == 0 else "")
@@ -39,8 +47,10 @@ func _select_character(character_id: int) -> void:
 
 
 func _on_start_pressed() -> void:
+	AudioManager.play_button()
 	GameManager.start_new_game(selected_character_id)
 
 
 func _on_back_pressed() -> void:
+	AudioManager.play_button()
 	GameManager.open_main_menu()

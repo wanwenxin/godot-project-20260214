@@ -19,6 +19,9 @@ var characters := [
 		"fire_rate": 0.18,
 		"bullet_damage": 8,
 		"bullet_speed": 520.0,
+		"pellet_count": 1,
+		"spread_degrees": 0.0,
+		"bullet_pierce": 0,
 		"color_scheme": 0
 	},
 	{
@@ -29,6 +32,9 @@ var characters := [
 		"fire_rate": 0.42,
 		"bullet_damage": 18,
 		"bullet_speed": 430.0,
+		"pellet_count": 2,
+		"spread_degrees": 16.0,
+		"bullet_pierce": 1,
 		"color_scheme": 1
 	}
 ]
@@ -40,12 +46,14 @@ var last_run_result := {
 	"kills": 0,
 	"survival_time": 0.0
 }
+var run_currency := 0
 
 
 func _ready() -> void:
 	# 启动时读取上次选择的角色，保证“继续游戏”体验一致。
 	var save_data := SaveManager.load_game()
 	selected_character_id = int(save_data.get("last_character_id", 0))
+	last_run_result = save_data.get("last_run", last_run_result)
 
 
 func get_character_data(character_id: int = -1) -> Dictionary:
@@ -65,10 +73,14 @@ func set_selected_character(character_id: int) -> void:
 func start_new_game(character_id: int) -> void:
 	# 新游戏前先落当前角色选择。
 	set_selected_character(character_id)
+	# 本局资源重置，避免跨局带入。
+	run_currency = 0
 	get_tree().change_scene_to_file(SCENE_GAME)
 
 
 func continue_game() -> void:
+	# continue_game 当前语义是“沿用角色重新开一局”。
+	run_currency = 0
 	get_tree().change_scene_to_file(SCENE_GAME)
 
 
@@ -88,3 +100,14 @@ func save_run_result(wave: int, kills: int, survival_time: float) -> void:
 		"survival_time": survival_time
 	}
 	SaveManager.update_run_result(wave, survival_time, kills, selected_character_id)
+
+
+func add_currency(amount: int) -> void:
+	run_currency = maxi(run_currency + amount, 0)
+
+
+func spend_currency(amount: int) -> bool:
+	if run_currency < amount:
+		return false
+	run_currency -= amount
+	return true

@@ -10,7 +10,15 @@ var default_data := {
 	"best_wave": 0,
 	"best_survival_time": 0.0,
 	"total_kills": 0,
-	"last_character_id": 0
+	"last_character_id": 0,
+	"last_run": {
+		"wave": 0,
+		"kills": 0,
+		"survival_time": 0.0
+	},
+	"best_wave_per_character": {},
+	"total_kills_per_character": {},
+	"achievements": []
 }
 
 
@@ -68,5 +76,35 @@ func update_run_result(wave: int, survival_time: float, kills: int, character_id
 	data["best_survival_time"] = max(float(data.get("best_survival_time", 0.0)), survival_time)
 	data["total_kills"] = int(data.get("total_kills", 0)) + kills
 	data["last_character_id"] = character_id
+	data["last_run"] = {
+		"wave": wave,
+		"kills": kills,
+		"survival_time": survival_time
+	}
+
+	var best_wave_map: Dictionary = data.get("best_wave_per_character", {})
+	var total_kills_map: Dictionary = data.get("total_kills_per_character", {})
+	var key := str(character_id)
+	best_wave_map[key] = max(int(best_wave_map.get(key, 0)), wave)
+	total_kills_map[key] = int(total_kills_map.get(key, 0)) + kills
+	data["best_wave_per_character"] = best_wave_map
+	data["total_kills_per_character"] = total_kills_map
+
+	var achievements: Array = data.get("achievements", [])
+	# 轻量成就：本地布尔解锁，不依赖服务端状态。
+	_try_unlock_achievement(achievements, "reach_wave_5", wave >= 5)
+	_try_unlock_achievement(achievements, "reach_wave_10", wave >= 10)
+	_try_unlock_achievement(achievements, "kill_100_one_run", kills >= 100)
+	_try_unlock_achievement(achievements, "survive_300s", survival_time >= 300.0)
+	data["achievements"] = achievements
+
 	save_game(data)
 	return data
+
+
+func _try_unlock_achievement(list_ref: Array, id: String, condition: bool) -> void:
+	if not condition:
+		return
+	if list_ref.has(id):
+		return
+	list_ref.append(id)
