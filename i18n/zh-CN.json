@@ -15,6 +15,7 @@
   "char_select.card_a": "速射手",
   "char_select.card_b": "重炮手",
   "char_select.selected_suffix": " [已选择]",
+  "char_select.preset": "关卡预设",
   "char_select.detail": "名称: {name}\n生命: {hp}\n速度: {speed}\n射速: {fire_rate}\n伤害: {damage}\n最佳波次: {best_wave}  角色击杀: {char_kills}",
   "hud.hp": "生命: {current}/{max}",
   "hud.wave": "波次: {value}",
@@ -118,5 +119,11 @@
   "upgrade.skip.desc": "不升级",
   "result.title_game_over": "游戏结束",
   "result.title_victory": "通关",
-  "result.score_summary": "波次: {wave} {wave_flag}\n击杀: {kills}\n时间: {time}s {time_flag}"
+  "result.score_summary": "波次: {wave} {wave_flag}\n击杀: {kills}\n时间: {time}s {time_flag}",
+  "preset.standard": "标准",
+  "preset.standard.desc": "5关标准顺序",
+  "preset.aquatic": "水域为主",
+  "preset.aquatic.desc": "水域关卡更多",
+  "preset.boss": "Boss挑战",
+  "preset.boss.desc": "更早遇到Boss"
 }

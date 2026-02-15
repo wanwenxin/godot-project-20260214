@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/level_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+melee_count_min = 6
+melee_count_max = 10
+ranged_count_min = 2
+ranged_count_max = 5
+tank_count_min = 1
+tank_count_max = 2
+dasher_count_min = 1
+dasher_count_max = 3
+zone_area_scale = 2.5
+wave_duration = 24.0
+difficulty = 1.2

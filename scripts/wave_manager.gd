@@ -108,44 +108,37 @@ func _start_next_wave() -> void:
 	intermission_timer.stop()
 	is_spawning = true
 	_wave_cleared_emitted = false
-	_wave_countdown_left = wave_duration
 	current_wave += 1
 	pending_spawn_count = 0
+
+	var cfg: LevelConfig = GameManager.get_current_level_config(current_wave)
+	if cfg == null:
+		cfg = _get_fallback_level_config()
+	wave_duration = cfg.wave_duration if cfg != null else 20.0
+	spawn_batch_count = int(cfg.spawn_batch_count) if cfg != null else 3
+	spawn_batch_interval = cfg.spawn_batch_interval if cfg != null else 6.0
+	_wave_countdown_left = wave_duration
 	emit_signal("wave_started", current_wave)
 	_current_intermission = 0.0
 
-	# 简单难度曲线：总量随波次上升，远程占比逐渐提高。
-	var total_to_spawn: int = 8 + current_wave * 3
-	var ranged_count: int = maxi(1, int(current_wave * 0.45))
-	var tank_count: int = 0
-	if current_wave >= 4:
-		tank_count = maxi(1, int(current_wave / 4.0))
-	var melee_count: int = maxi(total_to_spawn - ranged_count - tank_count, 1)
-
-	var orders: Array = []
-	for i in range(melee_count):
-		orders.append({"scene": melee_scene, "hp_scale": 0.9 + current_wave * 0.06, "speed_scale": 1.0 + current_wave * 0.08, "pos_override": null})
-	for i in range(ranged_count):
-		orders.append({"scene": ranged_scene, "hp_scale": 1.0 + current_wave * 0.08, "speed_scale": 1.0 + current_wave * 0.10, "pos_override": null})
-	for i in range(tank_count):
-		orders.append({"scene": tank_scene, "hp_scale": 1.0 + current_wave * 0.12, "speed_scale": 0.9 + current_wave * 0.05, "pos_override": null})
-
 	var game_node = get_parent()
-	var aquatic_count := 0
-	if game_node != null and game_node.has_method("has_water_spawn_positions") and game_node.has_water_spawn_positions():
-		aquatic_count = mini(maxi(1, int(current_wave * 0.5)), 2)
-	for i in range(aquatic_count):
-		var water_pos: Vector2 = game_node.get_random_water_spawn_position() if game_node != null else Vector2.ZERO
-		orders.append({"scene": aquatic_scene, "hp_scale": 0.9 + current_wave * 0.06, "speed_scale": 1.0 + current_wave * 0.06, "pos_override": water_pos})
-
-	var dasher_count := 0
-	if current_wave >= 2 and dasher_scene != null:
-		dasher_count = _rng.randi_range(1, 2)
-	for i in range(dasher_count):
-		orders.append({"scene": dasher_scene, "hp_scale": 0.9 + current_wave * 0.06, "speed_scale": 1.0 + current_wave * 0.06, "pos_override": null})
-
-	if current_wave % 5 == 0:
-		orders.append({"scene": boss_scene, "hp_scale": 1.0 + current_wave * 0.15, "speed_scale": 1.0, "pos_override": null})
+	var scenes := {
+		"melee": melee_scene,
+		"ranged": ranged_scene,
+		"tank": tank_scene,
+		"aquatic": aquatic_scene,
+		"dasher": dasher_scene,
+		"boss": boss_scene
+	}
+	var orders: Array = []
+	if cfg != null:
+		orders = cfg.get_enemy_spawn_orders(current_wave, game_node, scenes, _rng)
+		var diff: float = cfg.difficulty
+		for o in orders:
+			o["hp_scale"] = (o.get("hp_scale", 1.0) as float) * diff
+			o["speed_scale"] = (o.get("speed_scale", 1.0) as float) * diff
+	else:
+		orders = _get_fallback_orders(game_node)
 
 	# 拆分为多批。
 	_pending_spawn_batches.clear()
@@ -323,3 +316,36 @@ func _is_boss_enemy(enemy: Node) -> bool:
 	if not is_instance_valid(enemy):
 		return false
 	return enemy.is_in_group("boss") or str(enemy.name).to_lower().contains("boss")
+
+
+func _get_fallback_level_config() -> LevelConfig:
+	var preset: LevelPreset = load(GameManager.LEVEL_PRESET_PATHS[0]) as LevelPreset
+	if preset and preset.level_configs.size() > 0 and preset.level_configs[0] is LevelConfig:
+		return preset.level_configs[0] as LevelConfig
+	return null
+
+
+func _get_fallback_orders(game_node: Node) -> Array:
+	var total: int = 8 + current_wave * 3
+	var ranged_c: int = maxi(1, int(current_wave * 0.45))
+	var tank_c: int = maxi(0, int(current_wave / 4.0))
+	var melee_c: int = maxi(total - ranged_c - tank_c, 1)
+	var orders: Array = []
+	for i in range(melee_c):
+		orders.append({"scene": melee_scene, "hp_scale": 0.9 + current_wave * 0.06, "speed_scale": 1.0 + current_wave * 0.08, "pos_override": null})
+	for i in range(ranged_c):
+		orders.append({"scene": ranged_scene, "hp_scale": 1.0 + current_wave * 0.08, "speed_scale": 1.0 + current_wave * 0.10, "pos_override": null})
+	for i in range(tank_c):
+		orders.append({"scene": tank_scene, "hp_scale": 1.0 + current_wave * 0.12, "speed_scale": 0.9 + current_wave * 0.05, "pos_override": null})
+	var aquatic_c := 0
+	if game_node != null and game_node.has_method("has_water_spawn_positions") and game_node.has_water_spawn_positions():
+		aquatic_c = mini(maxi(1, int(current_wave * 0.5)), 2)
+	for i in range(aquatic_c):
+		var water_pos: Vector2 = game_node.get_random_water_spawn_position() if game_node != null else Vector2.ZERO
+		orders.append({"scene": aquatic_scene, "hp_scale": 0.9 + current_wave * 0.06, "speed_scale": 1.0 + current_wave * 0.06, "pos_override": water_pos})
+	var dasher_c := _rng.randi_range(1, 2) if current_wave >= 2 else 0
+	for i in range(dasher_c):
+		orders.append({"scene": dasher_scene, "hp_scale": 0.9 + current_wave * 0.06, "speed_scale": 1.0 + current_wave * 0.06, "pos_override": null})
+	if current_wave % 5 == 0:
+		orders.append({"scene": boss_scene, "hp_scale": 1.0 + current_wave * 0.15, "speed_scale": 1.0, "pos_override": null})
+	return orders

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/level_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+grass_count_min = 3
+grass_count_max = 5
+shallow_water_count_min = 2
+shallow_water_count_max = 4
+aquatic_count_min = 1
+aquatic_count_max = 3
+tank_count_min = 1
+tank_count_max = 2
+wave_duration = 22.0
+difficulty = 1.1

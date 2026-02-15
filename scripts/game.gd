@@ -221,6 +221,13 @@ func _clear_terrain() -> void:
 		c.queue_free()
 
 
+func _get_fallback_level_config() -> LevelConfig:
+	var preset: LevelPreset = load(GameManager.LEVEL_PRESET_PATHS[0]) as LevelPreset
+	if preset and preset.level_configs.size() > 0 and preset.level_configs[0] is LevelConfig:
+		return preset.level_configs[0] as LevelConfig
+	return null
+
+
 func _clear_remaining_enemies_and_bullets() -> void:
 	# 波次结束时清除未击败的敌人与所有飞行子弹。
 	for enemy in get_tree().get_nodes_in_group("enemies"):
@@ -236,8 +243,8 @@ func _on_wave_cleared(wave: int) -> void:
 	_clear_remaining_enemies_and_bullets()
 	if not is_instance_valid(player):
 		return
-	# 通关判定：达到 victory_wave 则显示通关界面，跳过升级/商店流程。
-	if wave >= victory_wave:
+	# 通关判定：达到预设关卡数则显示通关界面，跳过升级/商店流程。
+	if wave >= GameManager.get_victory_wave():
 		is_game_over = true
 		_set_ui_modal_active(false)
 		GameManager.save_run_result(wave_manager.current_wave, wave_manager.kill_count, survival_time)
@@ -457,21 +464,27 @@ func _set_ui_modal_active(value: bool) -> void:
 
 
 func _spawn_terrain_map() -> void:
+	var cfg: LevelConfig = GameManager.get_current_level_config(maxi(1, wave_manager.current_wave))
+	if cfg == null:
+		cfg = _get_fallback_level_config()
+	var params: Dictionary = cfg.get_terrain_params() if cfg != null else {}
 	# 簇团式分层生成：深水 -> 浅水 -> 障碍 -> 草丛。所有地形严格无重叠。
 	var viewport := get_viewport_rect().size
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	var linear_scale := sqrt(zone_area_scale)
+	var zone_scale: float = params.get("zone_area_scale", zone_area_scale)
+	var linear_scale := sqrt(zone_scale)
 	# 每关各地形数量在配置范围内随机。
-	var deep_water_count := rng.randi_range(deep_water_count_min, deep_water_count_max)
-	var shallow_water_count := rng.randi_range(shallow_water_count_min, shallow_water_count_max)
-	var obstacle_count := rng.randi_range(obstacle_count_min, obstacle_count_max)
-	var grass_count := rng.randi_range(grass_count_min, grass_count_max)
+	var deep_water_count := rng.randi_range(params.get("deep_water_count_min", deep_water_count_min), params.get("deep_water_count_max", deep_water_count_max))
+	var shallow_water_count := rng.randi_range(params.get("shallow_water_count_min", shallow_water_count_min), params.get("shallow_water_count_max", shallow_water_count_max))
+	var obstacle_count := rng.randi_range(params.get("obstacle_count_min", obstacle_count_min), params.get("obstacle_count_max", obstacle_count_max))
+	var grass_count := rng.randi_range(params.get("grass_count_min", grass_count_min), params.get("grass_count_max", grass_count_max))
+	var margin: float = params.get("terrain_margin", terrain_margin)
 	var region := Rect2(
-		Vector2(terrain_margin, terrain_margin),
+		Vector2(margin, margin),
 		Vector2(
-			maxf(64.0, viewport.x - terrain_margin * 2.0),
-			maxf(64.0, viewport.y - terrain_margin * 2.0)
+			maxf(64.0, viewport.x - margin * 2.0),
+			maxf(64.0, viewport.y - margin * 2.0)
 		)
 	)
 	var water_occupied: Array[Rect2] = []
@@ -480,19 +493,23 @@ func _spawn_terrain_map() -> void:
 	var shallow_water_color := VisualAssetRegistry.get_color("terrain.shallow_water", Color(0.24, 0.55, 0.80, 0.48))
 	_spawn_walkable_floor(region)
 
+	placement_attempts = int(params.get("placement_attempts", placement_attempts))
+	var water_pad: float = params.get("water_padding", water_padding)
+	var obstacle_pad: float = params.get("obstacle_padding", obstacle_padding)
+	var grass_pad: float = params.get("grass_padding", grass_padding)
 	# 簇团中心：在 region 内随机取点，后续围绕中心生成块。
-	var deep_centers := _make_cluster_centers(deep_water_cluster_count, region, rng)
-	var shallow_centers := _make_cluster_centers(shallow_water_cluster_count, region, rng)
-	var grass_centers := _make_cluster_centers(grass_cluster_count, region, rng)
+	var deep_centers := _make_cluster_centers(params.get("deep_water_cluster_count", deep_water_cluster_count), region, rng)
+	var shallow_centers := _make_cluster_centers(params.get("shallow_water_cluster_count", shallow_water_cluster_count), region, rng)
+	var grass_centers := _make_cluster_centers(params.get("grass_cluster_count", grass_cluster_count), region, rng)
 
 	# 深水：簇团式生成，写入 water_occupied 供浅水避让。
 	var placed_deep := _spawn_clustered_zones(
 		deep_water_count,
 		deep_centers,
-		deep_water_cluster_items,
+		params.get("deep_water_cluster_items", deep_water_cluster_items),
 		Vector2(78.0, 70.0) * linear_scale,
 		Vector2(128.0, 122.0) * linear_scale,
-		deep_water_cluster_radius * linear_scale,
+		params.get("deep_water_cluster_radius", deep_water_cluster_radius) * linear_scale,
 		region,
 		deep_water_color,
 		"deep_water",
@@ -500,7 +517,7 @@ func _spawn_terrain_map() -> void:
 		2,
 		1.2,
 		water_occupied,
-		water_padding,
+		water_pad,
 		true,
 		rng
 	)
@@ -508,10 +525,10 @@ func _spawn_terrain_map() -> void:
 	var placed_shallow := _spawn_clustered_zones(
 		shallow_water_count,
 		shallow_centers,
-		shallow_water_cluster_items,
+		params.get("shallow_water_cluster_items", shallow_water_cluster_items),
 		Vector2(76.0, 66.0) * linear_scale,
 		Vector2(148.0, 130.0) * linear_scale,
-		shallow_water_cluster_radius * linear_scale,
+		params.get("shallow_water_cluster_radius", shallow_water_cluster_radius) * linear_scale,
 		region,
 		shallow_water_color,
 		"shallow_water",
@@ -519,7 +536,7 @@ func _spawn_terrain_map() -> void:
 		0,
 		1.0,
 		water_occupied,
-		water_padding,
+		water_pad,
 		true,
 		rng
 	)
@@ -536,7 +553,7 @@ func _spawn_terrain_map() -> void:
 			2,
 			1.2,
 		water_occupied,
-		water_padding,
+		water_pad,
 		rng,
 		56.0 * linear_scale
 		)
@@ -552,7 +569,7 @@ func _spawn_terrain_map() -> void:
 			0,
 			1.0,
 		water_occupied,
-		water_padding,
+		water_pad,
 		rng,
 		56.0 * linear_scale
 		)
@@ -567,7 +584,7 @@ func _spawn_terrain_map() -> void:
 		region,
 		hard_occupied,
 		solid_occupied,
-		obstacle_padding,
+		obstacle_pad,
 		rng
 	)
 	# 草丛：严格无重叠，避让水域与障碍，簇团式生成。
@@ -577,13 +594,13 @@ func _spawn_terrain_map() -> void:
 	var placed_grass := _spawn_clustered_grass(
 		grass_count,
 		grass_centers,
-		grass_cluster_items,
+		params.get("grass_cluster_items", grass_cluster_items),
 		Vector2(70.0, 60.0) * linear_scale,
 		Vector2(130.0, 120.0) * linear_scale,
-		grass_cluster_radius * linear_scale,
+		params.get("grass_cluster_radius", grass_cluster_radius) * linear_scale,
 		region,
 		all_occupied,
-		grass_padding,
+		grass_pad,
 		rng
 	)
 	if placed_deep < deep_water_count or placed_shallow < shallow_water_count or placed_obstacles < obstacle_count or placed_grass < grass_count:

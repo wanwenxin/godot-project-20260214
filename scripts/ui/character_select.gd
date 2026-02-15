@@ -7,6 +7,8 @@ extends Control
 @onready var card_a: Button = $CenterContainer/VBoxContainer/Characters/CharacterA
 @onready var card_b: Button = $CenterContainer/VBoxContainer/Characters/CharacterB
 @onready var detail: Label = $CenterContainer/VBoxContainer/Detail
+@onready var preset_label: Label = $CenterContainer/VBoxContainer/PresetRow/PresetLabel
+@onready var preset_option: OptionButton = $CenterContainer/VBoxContainer/PresetRow/PresetOption
 @onready var start_button: Button = $CenterContainer/VBoxContainer/StartButton
 @onready var back_button: Button = $CenterContainer/VBoxContainer/BackButton
 @onready var title_label: Label = $CenterContainer/VBoxContainer/Title
@@ -20,9 +22,11 @@ func _ready() -> void:
 	card_b.pressed.connect(func() -> void: _select_character(1))
 	start_button.pressed.connect(_on_start_pressed)
 	back_button.pressed.connect(_on_back_pressed)
+	preset_option.item_selected.connect(_on_preset_selected)
 	LocalizationManager.language_changed.connect(_on_language_changed)
 
 	_apply_localized_static_text()
+	_populate_preset_options()
 	_select_character(GameManager.selected_character_id)
 
 
@@ -50,6 +54,21 @@ func _select_character(character_id: int) -> void:
 	card_b.text = LocalizationManager.tr_key("char_select.card_b") + (suffix if selected_character_id == 1 else "")
 
 
+func _populate_preset_options() -> void:
+	preset_option.clear()
+	var presets: Array = GameManager.get_level_presets()
+	for i in range(presets.size()):
+		var p = presets[i]
+		if p is LevelPreset:
+			var name_key: String = p.preset_name if p.preset_name != "" else "preset.standard"
+			preset_option.add_item(LocalizationManager.tr_key(name_key))
+	preset_option.select(clampi(GameManager.selected_preset_id, 0, maxi(0, presets.size() - 1)))
+
+
+func _on_preset_selected(index: int) -> void:
+	GameManager.set_selected_preset_id(index)
+
+
 func _on_start_pressed() -> void:
 	AudioManager.play_button()
 	GameManager.start_new_game(selected_character_id)
@@ -62,12 +81,14 @@ func _on_back_pressed() -> void:
 
 func _apply_localized_static_text() -> void:
 	title_label.text = LocalizationManager.tr_key("char_select.title")
+	preset_label.text = LocalizationManager.tr_key("char_select.preset")
 	start_button.text = LocalizationManager.tr_key("char_select.start")
 	back_button.text = LocalizationManager.tr_key("char_select.back")
 
 
 func _on_language_changed(_language_code: String) -> void:
 	_apply_localized_static_text()
+	_populate_preset_options()
 	_select_character(selected_character_id)
 
 

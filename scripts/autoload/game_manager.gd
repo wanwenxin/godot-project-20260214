@@ -6,6 +6,11 @@ const SCENE_CHARACTER_SELECT := "res://scenes/character_select.tscn"
 const SCENE_GAME := "res://scenes/game.tscn"
 const MAX_WEAPONS := 6
 const WEAPON_DEFS_RESOURCE = preload("res://resources/weapon_defs.gd")
+const LEVEL_PRESET_PATHS := [
+	"res://resources/presets/preset_standard.tres",
+	"res://resources/presets/preset_aquatic.tres",
+	"res://resources/presets/preset_boss.tres"
+]
 
 # 角色配置表。
 # 说明：
@@ -44,6 +49,9 @@ var characters := [
 var weapon_defs: Array[Dictionary] = []  # 从 weapon_defs.gd 载入的武器定义池
 
 var selected_character_id := 0
+var selected_preset_id := 0
+var current_level_sequence: Array = []  # 本局关卡配置数组，由预设加载
+
 # 最近一局战斗结果，当前主要用于运行期查看，持久化统计由 SaveManager 负责。
 var last_run_result := {
 	"wave": 0,
@@ -82,9 +90,46 @@ func set_selected_character(character_id: int) -> void:
 	selected_character_id = character_id
 
 
+func set_selected_preset_id(preset_id: int) -> void:
+	selected_preset_id = clampi(preset_id, 0, LEVEL_PRESET_PATHS.size() - 1)
+
+
+func get_level_presets() -> Array:
+	var result: Array = []
+	for path in LEVEL_PRESET_PATHS:
+		if ResourceLoader.exists(path):
+			result.append(load(path) as Resource)
+	return result
+
+
+func load_level_sequence_from_preset(preset_id: int) -> void:
+	set_selected_preset_id(preset_id)
+	current_level_sequence.clear()
+	if preset_id < 0 or preset_id >= LEVEL_PRESET_PATHS.size():
+		preset_id = 0
+	var preset: LevelPreset = load(LEVEL_PRESET_PATHS[preset_id]) as LevelPreset
+	if preset and preset.level_configs.size() > 0:
+		for cfg in preset.level_configs:
+			if cfg is LevelConfig:
+				current_level_sequence.append(cfg)
+
+
+func get_current_level_config(wave: int) -> LevelConfig:
+	if wave < 1 or wave > current_level_sequence.size():
+		return null
+	return current_level_sequence[wave - 1] as LevelConfig
+
+
+func get_victory_wave() -> int:
+	if current_level_sequence.is_empty():
+		return 5
+	return current_level_sequence.size()
+
+
 func start_new_game(character_id: int) -> void:
 	# 新游戏前先落当前角色选择。
 	set_selected_character(character_id)
+	load_level_sequence_from_preset(selected_preset_id)
 	# 本局资源重置，避免跨局带入。
 	run_currency = 0
 	reset_run_weapons()
@@ -93,6 +138,7 @@ func start_new_game(character_id: int) -> void:
 
 func continue_game() -> void:
 	# continue_game 当前语义是“沿用角色重新开一局”。
+	load_level_sequence_from_preset(selected_preset_id)
 	run_currency = 0
 	reset_run_weapons()
 	get_tree().change_scene_to_file(SCENE_GAME)
