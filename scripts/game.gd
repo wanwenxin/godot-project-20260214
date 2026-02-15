@@ -69,9 +69,9 @@ func _ready() -> void:
 	wave_manager.wave_started.connect(_on_wave_started)
 	wave_manager.kill_count_changed.connect(_on_kill_count_changed)
 	wave_manager.wave_cleared.connect(_on_wave_cleared)
+	wave_manager.wave_countdown_changed.connect(hud.set_wave_countdown)
 	wave_manager.intermission_started.connect(_on_intermission_started)
 	hud.upgrade_selected.connect(_on_upgrade_selected)
-	hud.start_weapon_selected.connect(_on_start_weapon_selected)
 	hud.weapon_shop_selected.connect(_on_weapon_shop_selected)
 	hud.mobile_move_changed.connect(_on_mobile_move_changed)
 	hud.pause_pressed.connect(_toggle_pause)
@@ -83,9 +83,11 @@ func _ready() -> void:
 	hud.set_health(int(player.current_health), int(player.max_health))
 	hud.set_currency(GameManager.run_currency)
 
-	# 进入游戏默认隐藏暂停菜单。
+	# 进入游戏默认隐藏暂停菜单。商店仅在波次完成后出现，开局装备默认武器后直接开始波次。
 	pause_menu.set_visible_menu(false)
-	_start_weapon_pick()
+	_equip_weapon_to_player("blade_short", false)
+	_waves_initialized = true
+	wave_manager.setup(player)
 
 
 func _process(delta: float) -> void:
@@ -134,11 +136,24 @@ func _on_player_damaged(_amount: int) -> void:
 func _on_wave_started(wave: int) -> void:
 	hud.set_wave(wave)
 	hud.show_wave_banner(wave)
+	if is_instance_valid(player):
+		player.global_position = get_viewport_rect().get_center()
 	AudioManager.play_wave_start()
 
 
+func _clear_remaining_enemies_and_bullets() -> void:
+	# 波次结束时清除未击败的敌人与所有飞行子弹。
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+	for node in get_tree().get_nodes_in_group("bullets"):
+		if is_instance_valid(node):
+			node.queue_free()
+
+
 func _on_wave_cleared(_wave: int) -> void:
-	# 波次清场后进行恢复与升级，再进入下一波倒计时。
+	# 波次清场：清除剩余敌人与所有子弹，再进行恢复与升级。
+	_clear_remaining_enemies_and_bullets()
 	if not is_instance_valid(player):
 		return
 	player.heal(int(maxf(8.0, player.max_health * 0.12)))
@@ -191,6 +206,11 @@ func _toggle_enemy_healthbar_visibility() -> void:
 	SaveManager.set_settings(settings)
 
 
+func get_player_for_pause() -> Node:
+	# 供暂停菜单获取玩家引用以展示数值与装备。
+	return player if is_instance_valid(player) else null
+
+
 func restart_game() -> void:
 	get_tree().paused = false
 	get_tree().reload_current_scene()
@@ -235,7 +255,7 @@ func _on_upgrade_selected(upgrade_id: String) -> void:
 		_finish_wave_settlement()
 		return
 	_set_ui_modal_active(true)
-	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left())
+	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave)
 
 
 func _on_intermission_started(duration: float) -> void:

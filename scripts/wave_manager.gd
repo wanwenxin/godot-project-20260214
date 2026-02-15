@@ -9,7 +9,10 @@ signal wave_cleared(wave: int)
 signal kill_count_changed(kills: int)
 # 交给 HUD 显示“下一波倒计时”。
 signal intermission_started(duration: float)
+# 当前波次剩余时间，供 HUD 正上方显示；倒计时归零时视为波次结束。
+signal wave_countdown_changed(seconds_left: float)
 
+@export var wave_duration := 20.0
 @export var melee_scene: PackedScene
 @export var ranged_scene: PackedScene
 @export var tank_scene: PackedScene = preload("res://scenes/enemies/enemy_tank.tscn")
@@ -38,6 +41,8 @@ var _current_intermission := 0.0
 var _rng := RandomNumberGenerator.new()
 var _player_ref: Node2D
 var _viewport_size := Vector2(1280, 720)
+var _wave_countdown_left := 0.0
+var _wave_cleared_emitted := false
 
 @onready var intermission_timer: Timer = $IntermissionTimer
 
@@ -72,18 +77,31 @@ func get_intermission_left() -> float:
 	return intermission_timer.time_left
 
 
+func _process(delta: float) -> void:
+	if _wave_countdown_left <= 0.0 or _wave_cleared_emitted:
+		return
+	# 限制单帧扣减，避免首帧/切回标签页时 delta 过大导致倒计时瞬间归零、波次提前结束
+	var capped_delta := minf(delta, 0.5)
+	_wave_countdown_left = maxf(0.0, _wave_countdown_left - capped_delta)
+	emit_signal("wave_countdown_changed", _wave_countdown_left)
+	if _wave_countdown_left <= 0.0:
+		_try_emit_wave_cleared()
+
+
 func _start_next_wave() -> void:
 	if is_spawning:
 		return
 	intermission_timer.stop()
 	is_spawning = true
+	_wave_cleared_emitted = false
+	_wave_countdown_left = wave_duration
 	current_wave += 1
 	pending_spawn_count = 0
 	emit_signal("wave_started", current_wave)
 	_current_intermission = 0.0
 
 	# 简单难度曲线：总量随波次上升，远程占比逐渐提高。
-	var total_to_spawn: int = 5 + current_wave * 2
+	var total_to_spawn: int = 8 + current_wave * 3
 	var ranged_count: int = maxi(1, int(current_wave * 0.45))
 	var tank_count: int = 0
 	if current_wave >= 4:
@@ -182,7 +200,16 @@ func _on_enemy_died(enemy: Node) -> void:
 	_try_spawn_drop(enemy)
 	_try_spawn_boss_bonus_drop(enemy)
 	if living_enemy_count <= 0 and pending_spawn_count <= 0:
-		emit_signal("wave_cleared", current_wave)
+		_try_emit_wave_cleared()
+
+
+func _try_emit_wave_cleared() -> void:
+	if _wave_cleared_emitted:
+		return
+	_wave_cleared_emitted = true
+	living_enemy_count = 0
+	pending_spawn_count = 0
+	emit_signal("wave_cleared", current_wave)
 
 
 func _try_spawn_drop(enemy: Node) -> void:
@@ -190,7 +217,7 @@ func _try_spawn_drop(enemy: Node) -> void:
 		return
 	var r := _rng.randf()
 	if r < coin_drop_chance and coin_pickup_scene != null:
-		var coin_value := 1 + int(current_wave / 4.0)
+		var coin_value := 2 + int(current_wave / 3.0)
 		_spawn_coin_drop(enemy.global_position, coin_value)
 	elif r < coin_drop_chance + heal_drop_chance and heal_pickup_scene != null:
 		var heal := heal_pickup_scene.instantiate()
@@ -206,7 +233,7 @@ func _try_spawn_boss_bonus_drop(enemy: Node) -> void:
 		return
 	var extra_count := _rng.randi_range(boss_bonus_coin_count.x, boss_bonus_coin_count.y)
 	for i in range(extra_count):
-		var bonus_value := 3 + int(current_wave / 5.0)
+		var bonus_value := 5 + int(current_wave / 4.0)
 		var offset := Vector2(_rng.randf_range(-20.0, 20.0), _rng.randf_range(-18.0, 18.0))
 		_spawn_coin_drop(enemy.global_position + offset, bonus_value)
 

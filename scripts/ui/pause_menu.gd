@@ -5,17 +5,20 @@ extends CanvasLayer
 # - MainMenu: 返回主菜单
 @onready var panel: Panel = $Root/Panel
 @onready var root: Control = $Root
+@onready var vbox: VBoxContainer = $Root/Panel/VBoxContainer
 @onready var resume_btn: Button = $Root/Panel/VBoxContainer/ResumeButton
 @onready var menu_btn: Button = $Root/Panel/VBoxContainer/MainMenuButton
 @onready var key_hints_label: Label = $Root/Panel/VBoxContainer/KeyHintsLabel
 
 var _fullscreen_backdrop: ColorRect
+var _stats_label: Label
 
 
 func _ready() -> void:
 	# Root 全屏容器默认不拦截输入，避免在面板隐藏时吞掉 HUD 点击。
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ensure_fullscreen_backdrop()
+	_build_stats_label()
 	# 仅可见的暂停面板负责接收点击。
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style()
@@ -32,6 +35,7 @@ func set_visible_menu(value: bool) -> void:
 		_fullscreen_backdrop.visible = value
 	if value:
 		_refresh_key_hints()
+		_refresh_stats_from_game()
 
 
 func _on_resume_pressed() -> void:
@@ -54,6 +58,46 @@ func _apply_localized_texts() -> void:
 
 func _on_language_changed(_language_code: String) -> void:
 	_apply_localized_texts()
+
+
+func set_player_stats(hp_current: int, hp_max: int, speed: float, weapon_ids: Array[String]) -> void:
+	# 供 Game 在打开暂停页时传入玩家数值与装备。
+	if _stats_label == null:
+		return
+	var weapon_names: Array[String] = []
+	for id in weapon_ids:
+		var name_key := "weapon.%s.name" % id
+		weapon_names.append(LocalizationManager.tr_key(name_key))
+	var weapons_text := ", ".join(weapon_names) if not weapon_names.is_empty() else LocalizationManager.tr_key("pause.no_weapons")
+	_stats_label.text = LocalizationManager.tr_key("pause.stats", {
+		"hp_current": hp_current,
+		"hp_max": hp_max,
+		"speed": int(speed),
+		"weapons": weapons_text
+	})
+
+
+func _build_stats_label() -> void:
+	_stats_label = Label.new()
+	_stats_label.name = "StatsLabel"
+	_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_stats_label.add_theme_font_size_override("font_size", 14)
+	vbox.add_child(_stats_label)
+	vbox.move_child(_stats_label, 0)
+
+
+func _refresh_stats_from_game() -> void:
+	var game := get_tree().current_scene
+	if game == null or not game.has_method("get_player_for_pause"):
+		if _stats_label:
+			_stats_label.text = ""
+		return
+	var p = game.get_player_for_pause()
+	if p == null or not is_instance_valid(p):
+		if _stats_label:
+			_stats_label.text = ""
+		return
+	set_player_stats(int(p.current_health), int(p.max_health), p.base_speed, p.get_equipped_weapon_ids())
 
 
 func _refresh_key_hints() -> void:

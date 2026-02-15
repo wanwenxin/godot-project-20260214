@@ -17,6 +17,7 @@ var _hit_targets: Dictionary = {}
 
 
 func _ready() -> void:
+	add_to_group("bullets")
 	# 子弹在 layer_3，仅与目标层发生重叠检测。
 	collision_layer = 1 << 2
 	collision_mask = 1 if hit_player else 2

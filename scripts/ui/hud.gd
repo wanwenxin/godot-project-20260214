@@ -20,6 +20,7 @@ signal pause_pressed
 @onready var menu_btn: Button = $Root/GameOverPanel/VBoxContainer/MenuButton
 
 var _intermission_label: Label
+var _wave_countdown_label: Label
 var _currency_label: Label
 var _wave_banner: Label
 var _upgrade_panel: Panel
@@ -116,6 +117,14 @@ func set_intermission_countdown(seconds_left: float) -> void:
 	_intermission_label.text = LocalizationManager.tr_key("hud.next_wave", {"value": "%.1f" % seconds_left})
 
 
+func set_wave_countdown(seconds_left: float) -> void:
+	if seconds_left <= 0.0:
+		_wave_countdown_label.visible = false
+		return
+	_wave_countdown_label.visible = true
+	_wave_countdown_label.text = LocalizationManager.tr_key("hud.wave_countdown", {"value": "%.0f" % seconds_left})
+
+
 func show_wave_banner(wave: int) -> void:
 	_wave_banner.visible = true
 	_wave_banner.text = LocalizationManager.tr_key("hud.wave_banner", {"wave": wave})
@@ -176,11 +185,14 @@ func show_start_weapon_pick(options: Array[Dictionary]) -> void:
 	_fill_weapon_buttons(options, false, 0, 0)
 
 
-func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_left: int) -> void:
+func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_left: int, completed_wave: int = 0) -> void:
 	_weapon_mode = "shop"
 	_show_modal_backdrop(true)
 	_weapon_panel.visible = true
-	_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title")
+	if completed_wave > 0:
+		_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title_wave", {"wave": completed_wave})
+	else:
+		_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title")
 	_weapon_tip_label.text = LocalizationManager.tr_key("weapon.shop_tip", {"gold": current_gold, "capacity": capacity_left})
 	_fill_weapon_buttons(options, true, current_gold, capacity_left)
 
@@ -235,6 +247,19 @@ func _build_runtime_ui() -> void:
 	_intermission_label.position = Vector2(12, 82)
 	_intermission_label.text = "Next Wave: 0.0s"
 	root.add_child(_intermission_label)
+
+	_wave_countdown_label = Label.new()
+	_wave_countdown_label.anchors_preset = Control.PRESET_TOP_WIDE
+	_wave_countdown_label.anchor_left = 0.5
+	_wave_countdown_label.anchor_right = 0.5
+	_wave_countdown_label.offset_left = -60
+	_wave_countdown_label.offset_right = 60
+	_wave_countdown_label.offset_top = 14
+	_wave_countdown_label.offset_bottom = 36
+	_wave_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_wave_countdown_label.text = ""
+	_wave_countdown_label.visible = false
+	root.add_child(_wave_countdown_label)
 
 	_wave_banner = Label.new()
 	_wave_banner.anchors_preset = Control.PRESET_CENTER_TOP
