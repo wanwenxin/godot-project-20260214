@@ -14,9 +14,13 @@ func _ready() -> void:
 	collision_layer = 1 << 2
 	collision_mask = 1
 	if pickup_type == "heal":
-		sprite.texture = PixelGenerator.generate_pickup_sprite(true)
+		var fallback_heal := func() -> Texture2D:
+			return PixelGenerator.generate_pickup_sprite(true)
+		sprite.texture = VisualAssetRegistry.get_texture("pickup.heal", fallback_heal)
 	else:
-		sprite.texture = PixelGenerator.generate_pickup_sprite(false)
+		var fallback_coin := func() -> Texture2D:
+			return PixelGenerator.generate_pickup_sprite(false)
+		sprite.texture = VisualAssetRegistry.get_texture("pickup.coin", fallback_coin)
 	body_entered.connect(_on_body_entered)
 	_velocity = Vector2(randf_range(-20.0, 20.0), randf_range(-30.0, -10.0))
 

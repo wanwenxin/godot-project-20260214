@@ -23,9 +23,13 @@ var _cached_nearest_enemy: Node2D
 # 多地形叠加时记录每个 zone 的速度系数，取最慢值。
 var _terrain_effects: Dictionary = {}
 var _terrain_speed_multiplier := 1.0
+var _equipped_weapons: Array[Node] = []
+var _weapon_visuals: Array[Sprite2D] = []
+const WEAPON_MELEE_SCRIPT = preload("res://scripts/weapons/weapon_melee.gd")
+const WEAPON_RANGED_SCRIPT = preload("res://scripts/weapons/weapon_ranged.gd")
 
 @onready var sprite: Sprite2D = $Sprite2D
-@onready var weapon = $Weapon
+@onready var weapon_slots: Node2D = $WeaponSlots
 
 
 func _ready() -> void:
@@ -45,14 +49,6 @@ func set_character_data(data: Dictionary) -> void:
 	base_speed = float(_character_data.get("speed", 160.0))
 	current_health = max_health
 	_update_sprite(int(_character_data.get("color_scheme", 0)))
-	if weapon:
-		# 武器参数由角色驱动，实现不同 build 风格。
-		weapon.set("fire_rate", float(_character_data.get("fire_rate", 0.3)))
-		weapon.set("bullet_damage", int(_character_data.get("bullet_damage", 10)))
-		weapon.set("bullet_speed", float(_character_data.get("bullet_speed", 500.0)))
-		weapon.set("pellet_count", int(_character_data.get("pellet_count", 1)))
-		weapon.set("spread_degrees", float(_character_data.get("spread_degrees", 0.0)))
-		weapon.set("bullet_pierce", int(_character_data.get("bullet_pierce", 0)))
 	emit_signal("health_changed", current_health, max_health)
 
 
@@ -80,9 +76,10 @@ func _physics_process(delta: float) -> void:
 		_nearest_enemy_refresh = 0.12
 		_cached_nearest_enemy = _get_nearest_enemy()
 	var nearest_enemy := _cached_nearest_enemy
-	if nearest_enemy != null and weapon:
-		# 自动朝最近敌人开火（Brotato 风格核心体验）。
-		weapon.try_shoot(nearest_enemy.global_position)
+	if nearest_enemy != null and not _equipped_weapons.is_empty():
+		for item in _equipped_weapons:
+			if item.has_method("tick_and_try_attack"):
+				item.tick_and_try_attack(self, nearest_enemy, delta)
 
 
 func take_damage(amount: int) -> void:
@@ -108,11 +105,9 @@ func heal(amount: int) -> void:
 func apply_upgrade(upgrade_id: String) -> void:
 	match upgrade_id:
 		"damage":
-			if weapon:
-				weapon.bullet_damage += 3
+			pass
 		"fire_rate":
-			if weapon:
-				weapon.fire_rate = maxf(0.08, weapon.fire_rate - 0.03)
+			pass
 		"max_health":
 			max_health += 20
 			current_health = mini(current_health + 20, max_health)
@@ -120,15 +115,14 @@ func apply_upgrade(upgrade_id: String) -> void:
 		"speed":
 			base_speed += 20.0
 		"bullet_speed":
-			if weapon:
-				weapon.bullet_speed += 60.0
+			pass
 		"multi_shot":
-			if weapon:
-				weapon.pellet_count = mini(weapon.pellet_count + 1, 5)
-				weapon.spread_degrees = maxf(weapon.spread_degrees, 20.0)
+			pass
 		"pierce":
-			if weapon:
-				weapon.bullet_pierce = mini(weapon.bullet_pierce + 1, 4)
+			pass
+	for weapon in _equipped_weapons:
+		if weapon.has_method("apply_upgrade"):
+			weapon.apply_upgrade(upgrade_id)
 
 
 func set_terrain_effect(zone_id: int, speed_multiplier: float) -> void:
@@ -159,7 +153,10 @@ func _get_nearest_enemy() -> Node2D:
 func _update_sprite(color_scheme: int) -> void:
 	# 角色贴图运行时生成，不依赖外部素材。
 	if sprite:
-		sprite.texture = PixelGenerator.generate_player_sprite(color_scheme)
+		var texture_key := "player.scheme_0" if color_scheme == 0 else "player.scheme_1"
+		var fallback := func() -> Texture2D:
+			return PixelGenerator.generate_player_sprite(color_scheme)
+		sprite.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
 
 
 func _recompute_terrain_speed() -> void:
@@ -167,3 +164,62 @@ func _recompute_terrain_speed() -> void:
 	_terrain_speed_multiplier = 1.0
 	for key in _terrain_effects.keys():
 		_terrain_speed_multiplier = minf(_terrain_speed_multiplier, float(_terrain_effects[key]))
+
+
+func equip_weapon_by_id(weapon_id: String) -> bool:
+	if _equipped_weapons.size() >= GameManager.MAX_WEAPONS:
+		return false
+	if get_equipped_weapon_ids().has(weapon_id):
+		return false
+	var def := GameManager.get_weapon_def_by_id(weapon_id)
+	if def.is_empty():
+		return false
+	var weapon_type := str(def.get("type", ""))
+	var instance: Node = null
+	if weapon_type == "melee":
+		instance = WEAPON_MELEE_SCRIPT.new()
+	else:
+		instance = WEAPON_RANGED_SCRIPT.new()
+	if instance == null:
+		return false
+	instance.configure_from_def(def)
+	weapon_slots.add_child(instance)
+	_equipped_weapons.append(instance)
+	_refresh_weapon_visuals()
+	return true
+
+
+func get_equipped_weapon_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for item in _equipped_weapons:
+		ids.append(str(item.weapon_id))
+	return ids
+
+
+func get_weapon_capacity_left() -> int:
+	return maxi(0, GameManager.MAX_WEAPONS - _equipped_weapons.size())
+
+
+func _refresh_weapon_visuals() -> void:
+	for node in _weapon_visuals:
+		if is_instance_valid(node):
+			node.queue_free()
+	_weapon_visuals.clear()
+	var count := _equipped_weapons.size()
+	if count <= 0:
+		return
+	var radius := 18.0
+	for i in range(count):
+		var ratio := float(i) / float(count)
+		var angle := ratio * TAU - PI * 0.5
+		var icon := Sprite2D.new()
+		var weapon_id: String = str(_equipped_weapons[i].weapon_id)
+		var color_hint_any = _equipped_weapons[i].color_hint
+		var color_hint: Color = color_hint_any if color_hint_any is Color else Color(0.8, 0.8, 0.8, 1.0)
+		var texture_key: String = "weapon.icon." + weapon_id
+		var fallback := func() -> Texture2D:
+			return VisualAssetRegistry.make_color_texture(texture_key, color_hint, Vector2i(10, 10))
+		icon.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
+		icon.position = Vector2(cos(angle), sin(angle)) * radius
+		weapon_slots.add_child(icon)
+		_weapon_visuals.append(icon)

@@ -24,6 +24,8 @@
   - 场景切换（主菜单/角色选择/战斗）
   - 角色模板数据
   - 本局金币 `run_currency`
+  - 本局武器库存 `run_weapons`（最多 6 把）
+  - 武器定义池 `weapon_defs`（近战/远程）
   - 最近战绩缓存 `last_run_result`
   - 设置应用入口（分辨率/按键映射/敌人血条显隐）
 
@@ -125,7 +127,21 @@
   - 战斗信息（血量/波次/击杀/时间/金币）
   - 波次倒计时与波次横幅
   - 升级三选一面板（运行时构建）
+  - 开局免费武器选择与波次武器商店
   - 触控按钮（移动 + 暂停）
+
+### 2.6 武器系统
+
+- 角色默认不带攻击，必须装备武器才能输出
+- 武器分为：
+  - 近战：`scripts/weapons/weapon_melee.gd`
+  - 远程：`scripts/weapons/weapon_ranged.gd`
+  - 统一基类：`scripts/weapons/weapon_base.gd`
+- 每把武器独立冷却与独立伤害结算
+- 玩家默认最多持有 6 把武器，并在玩家周围显示色块
+- 流程：
+  1. 开局免费三选一
+  2. 每波结算先属性升级，再进入武器商店（金币购买或跳过）
 
 - `scripts/ui/main_menu.gd`
   - 显示总统计、最近战绩、成就数量
@@ -231,7 +247,13 @@ flowchart TD
 - `damage_per_tick`
 - `damage_interval`
 
-### 4.5 多语言配置
+### 4.5 武器配置
+
+- `game_manager.gd::weapon_defs` 字段说明：
+  - `id`, `type`, `name_key`, `desc_key`, `cost`, `color`
+  - `stats`（示例：`damage`, `cooldown`, `range`, `bullet_speed`, `pellet_count`, `spread_degrees`, `bullet_pierce`）
+
+### 4.6 多语言配置
 
 - 语言文件：
   - `i18n/zh-CN.json`
@@ -243,7 +265,7 @@ flowchart TD
 - 运行时刷新：
   - 各 UI 监听 `LocalizationManager.language_changed` 并重绘文本
 
-### 4.6 设置结构（SaveManager）
+### 4.7 设置结构（SaveManager）
 
 `save.json.settings` 当前结构：
 
@@ -310,6 +332,13 @@ flowchart TD
 2. 在 `settings_menu.gd` 新增控件并在 `_reload_from_save()` 绑定值
 3. 在 `_save_and_apply()` 之后由 `game_manager.gd::apply_saved_settings()` 统一应用
 4. 若涉及战斗运行时行为，在 `game.gd` 或对应模块监听输入并回写设置
+
+### 5.8 新增武器
+
+1. 在 `game_manager.gd::weapon_defs` 增加武器定义
+2. 若是新攻击模式，新增 `scripts/weapons/weapon_*.gd` 并继承 `weapon_base.gd`
+3. 在 `player.gd::equip_weapon_by_id()` 中接入新类型实例化逻辑
+4. 在 i18n 文件补齐 `weapon.*` 文案 key
 
 ## 6. 常见问题与排障
 

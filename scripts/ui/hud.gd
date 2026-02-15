@@ -4,6 +4,8 @@ extends CanvasLayer
 # - 战斗中显示 HP/波次/击杀/时间
 # - 死亡后展示结算面板并提供重开/回主菜单入口
 signal upgrade_selected(upgrade_id: String)
+signal start_weapon_selected(weapon_id: String)
+signal weapon_shop_selected(weapon_id: String)
 signal mobile_move_changed(direction: Vector2)
 signal pause_pressed
 
@@ -22,7 +24,16 @@ var _currency_label: Label
 var _wave_banner: Label
 var _upgrade_panel: Panel
 var _upgrade_title_label: Label
+var _upgrade_tip_label: Label
 var _upgrade_buttons: Array[Button] = []
+var _upgrade_icons: Array[TextureRect] = []
+var _weapon_panel: Panel
+var _weapon_title_label: Label
+var _weapon_tip_label: Label
+var _weapon_buttons: Array[Button] = []
+var _weapon_icons: Array[TextureRect] = []
+var _modal_backdrop: ColorRect
+var _weapon_mode := ""
 var _touch_panel: Control
 var _pause_touch_btn: Button
 # 触控方向状态字典，组合成归一化向量后回传给 Player。
@@ -43,6 +54,12 @@ var _last_currency := 0
 func _ready() -> void:
 	# 启动时默认不显示结算面板。
 	game_over_panel.visible = false
+	game_over_panel.anchors_preset = Control.PRESET_FULL_RECT
+	game_over_panel.offset_left = 0
+	game_over_panel.offset_top = 0
+	game_over_panel.offset_right = 0
+	game_over_panel.offset_bottom = 0
+	game_over_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	retry_btn.pressed.connect(_on_retry_pressed)
 	menu_btn.pressed.connect(_on_menu_pressed)
 	LocalizationManager.language_changed.connect(_on_language_changed)
@@ -57,6 +74,8 @@ func _ready() -> void:
 	_intermission_label.visible = false
 	_wave_banner.visible = false
 	_upgrade_panel.visible = false
+	_weapon_panel.visible = false
+	_modal_backdrop.visible = false
 
 
 func set_health(current: int, max_value: int) -> void:
@@ -107,15 +126,20 @@ func show_wave_banner(wave: int) -> void:
 
 
 func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void:
+	_show_modal_backdrop(true)
 	_upgrade_panel.visible = true
 	_currency_label.text = LocalizationManager.tr_key("hud.gold", {"value": current_gold})
 	_upgrade_title_label.text = LocalizationManager.tr_key("hud.upgrade_title")
+	_upgrade_tip_label.text = LocalizationManager.tr_key("hud.upgrade_tip", {"gold": current_gold})
 	for i in range(_upgrade_buttons.size()):
 		var btn := _upgrade_buttons[i]
 		if i >= options.size():
 			btn.visible = false
+			_upgrade_icons[i].visible = false
 			continue
 		btn.visible = true
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.custom_minimum_size = Vector2(0, 58)
 		var option: Dictionary = options[i]
 		var cost := int(option.get("cost", 0))
 		var affordable := current_gold >= cost
@@ -123,6 +147,11 @@ func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void
 		btn.disabled = not affordable
 		var title_text := LocalizationManager.tr_key(str(option.get("title_key", "upgrade.skip.title")))
 		var desc_text := LocalizationManager.tr_key(str(option.get("desc_key", "upgrade.skip.desc")))
+		var icon_key := "upgrade.icon." + str(option.get("id", ""))
+		var fallback_upgrade_icon := func() -> Texture2D:
+			return VisualAssetRegistry.make_color_texture(icon_key, Color(0.68, 0.68, 0.74, 1.0), Vector2i(96, 96))
+		_upgrade_icons[i].texture = VisualAssetRegistry.get_texture(icon_key, fallback_upgrade_icon)
+		_upgrade_icons[i].visible = true
 		btn.text = LocalizationManager.tr_key("hud.upgrade_button", {
 			"title": title_text,
 			"desc": desc_text,
@@ -135,6 +164,31 @@ func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void
 
 func hide_upgrade_options() -> void:
 	_upgrade_panel.visible = false
+	_show_modal_backdrop(false)
+
+
+func show_start_weapon_pick(options: Array[Dictionary]) -> void:
+	_weapon_mode = "start"
+	_show_modal_backdrop(true)
+	_weapon_panel.visible = true
+	_weapon_title_label.text = LocalizationManager.tr_key("weapon.pick_start_title")
+	_weapon_tip_label.text = LocalizationManager.tr_key("weapon.pick_start_tip")
+	_fill_weapon_buttons(options, false, 0, 0)
+
+
+func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_left: int) -> void:
+	_weapon_mode = "shop"
+	_show_modal_backdrop(true)
+	_weapon_panel.visible = true
+	_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title")
+	_weapon_tip_label.text = LocalizationManager.tr_key("weapon.shop_tip", {"gold": current_gold, "capacity": capacity_left})
+	_fill_weapon_buttons(options, true, current_gold, capacity_left)
+
+
+func hide_weapon_panel() -> void:
+	_weapon_mode = ""
+	_weapon_panel.visible = false
+	_show_modal_backdrop(false)
 
 
 func show_game_over(wave: int, kills: int, survival_time: float) -> void:
@@ -151,6 +205,7 @@ func show_game_over(wave: int, kills: int, survival_time: float) -> void:
 		"time": "%.1f" % survival_time,
 		"time_flag": time_flag
 	})
+	_show_modal_backdrop(true)
 	game_over_panel.visible = true
 
 
@@ -167,6 +222,11 @@ func _on_menu_pressed() -> void:
 func _build_runtime_ui() -> void:
 	# HUD 运行时扩展层：避免频繁改动 tscn 布局文件。
 	var root := $Root
+	_modal_backdrop = ColorRect.new()
+	_modal_backdrop.anchors_preset = Control.PRESET_FULL_RECT
+	_modal_backdrop.color = VisualAssetRegistry.get_color("ui.modal_backdrop", Color(0.08, 0.09, 0.11, 1.0))
+	_modal_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.add_child(_modal_backdrop)
 	_currency_label = Label.new()
 	_currency_label.position = Vector2(900, 12)
 	root.add_child(_currency_label)
@@ -189,38 +249,123 @@ func _build_runtime_ui() -> void:
 	root.add_child(_wave_banner)
 
 	_upgrade_panel = Panel.new()
-	_upgrade_panel.anchors_preset = Control.PRESET_CENTER
-	_upgrade_panel.anchor_left = 0.5
-	_upgrade_panel.anchor_top = 0.5
-	_upgrade_panel.anchor_right = 0.5
-	_upgrade_panel.anchor_bottom = 0.5
-	_upgrade_panel.offset_left = -220
-	_upgrade_panel.offset_top = -130
-	_upgrade_panel.offset_right = 220
-	_upgrade_panel.offset_bottom = 130
+	_upgrade_panel.anchors_preset = Control.PRESET_FULL_RECT
+	_upgrade_panel.offset_left = 0
+	_upgrade_panel.offset_top = 0
+	_upgrade_panel.offset_right = 0
+	_upgrade_panel.offset_bottom = 0
+	_upgrade_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_modal_panel_style(_upgrade_panel)
 	root.add_child(_upgrade_panel)
 
 	var box := VBoxContainer.new()
 	box.anchors_preset = Control.PRESET_FULL_RECT
 	box.offset_left = 14
-	box.offset_top = 14
+	box.offset_top = 24
 	box.offset_right = -14
-	box.offset_bottom = -14
-	box.add_theme_constant_override("separation", 8)
+	box.offset_bottom = -24
+	box.add_theme_constant_override("separation", 14)
 	_upgrade_panel.add_child(box)
 
 	var title := Label.new()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.text = "Choose Upgrade"
+	title.add_theme_font_size_override("font_size", 20)
 	box.add_child(title)
 	_upgrade_title_label = title
+	var tip := Label.new()
+	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.text = ""
+	box.add_child(tip)
+	_upgrade_tip_label = tip
+
+	var upgrade_row := HBoxContainer.new()
+	upgrade_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	upgrade_row.add_theme_constant_override("separation", 16)
+	box.add_child(upgrade_row)
 
 	for i in range(3):
+		var card := VBoxContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.custom_minimum_size = Vector2(280, 260)
+		card.add_theme_constant_override("separation", 8)
+		upgrade_row.add_child(card)
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(96, 96)
+		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		card.add_child(icon)
+		_upgrade_icons.append(icon)
 		var btn := Button.new()
 		btn.text = "Upgrade"
+		btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, 140)
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		btn.pressed.connect(_on_upgrade_button_pressed.bind(btn))
-		box.add_child(btn)
+		card.add_child(btn)
 		_upgrade_buttons.append(btn)
+
+	_weapon_panel = Panel.new()
+	_weapon_panel.anchors_preset = Control.PRESET_FULL_RECT
+	_weapon_panel.offset_left = 0
+	_weapon_panel.offset_top = 0
+	_weapon_panel.offset_right = 0
+	_weapon_panel.offset_bottom = 0
+	_weapon_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_modal_panel_style(_weapon_panel)
+	root.add_child(_weapon_panel)
+
+	var weapon_box := VBoxContainer.new()
+	weapon_box.anchors_preset = Control.PRESET_FULL_RECT
+	weapon_box.offset_left = 14
+	weapon_box.offset_top = 24
+	weapon_box.offset_right = -14
+	weapon_box.offset_bottom = -24
+	weapon_box.add_theme_constant_override("separation", 14)
+	_weapon_panel.add_child(weapon_box)
+
+	var weapon_title := Label.new()
+	weapon_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	weapon_title.text = "Weapon"
+	weapon_title.add_theme_font_size_override("font_size", 20)
+	weapon_box.add_child(weapon_title)
+	_weapon_title_label = weapon_title
+
+	var weapon_tip := Label.new()
+	weapon_tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	weapon_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	weapon_tip.text = ""
+	weapon_box.add_child(weapon_tip)
+	_weapon_tip_label = weapon_tip
+
+	var weapon_row := HBoxContainer.new()
+	weapon_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	weapon_row.add_theme_constant_override("separation", 16)
+	weapon_box.add_child(weapon_row)
+
+	for i in range(4):
+		var weapon_card := VBoxContainer.new()
+		weapon_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		weapon_card.custom_minimum_size = Vector2(280, 280)
+		weapon_card.add_theme_constant_override("separation", 8)
+		weapon_row.add_child(weapon_card)
+		var weapon_icon := TextureRect.new()
+		weapon_icon.custom_minimum_size = Vector2(96, 96)
+		weapon_icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		weapon_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		weapon_card.add_child(weapon_icon)
+		_weapon_icons.append(weapon_icon)
+		var weapon_btn := Button.new()
+		weapon_btn.text = "WeaponOption"
+		weapon_btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		weapon_btn.custom_minimum_size = Vector2(0, 160)
+		weapon_btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		weapon_btn.pressed.connect(_on_weapon_button_pressed.bind(weapon_btn))
+		weapon_card.add_child(weapon_btn)
+		_weapon_buttons.append(weapon_btn)
+
+	_apply_modal_panel_style(game_over_panel)
 
 
 func _setup_touch_controls() -> void:
@@ -277,12 +422,28 @@ func _on_upgrade_button_pressed(btn: Button) -> void:
 	emit_signal("upgrade_selected", upgrade_id)
 
 
+func _on_weapon_button_pressed(btn: Button) -> void:
+	if not btn.has_meta("weapon_id"):
+		return
+	if btn.disabled:
+		return
+	var weapon_id := str(btn.get_meta("weapon_id"))
+	if _weapon_mode == "start":
+		emit_signal("start_weapon_selected", weapon_id)
+	elif _weapon_mode == "shop":
+		emit_signal("weapon_shop_selected", weapon_id)
+
+
 func _apply_localized_static_texts() -> void:
 	pause_hint.text = LocalizationManager.tr_key("hud.pause_hint")
 	retry_btn.text = LocalizationManager.tr_key("hud.retry")
 	menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
 	if _upgrade_title_label:
 		_upgrade_title_label.text = LocalizationManager.tr_key("hud.upgrade_title")
+	if _upgrade_tip_label:
+		_upgrade_tip_label.text = LocalizationManager.tr_key("hud.upgrade_tip", {"gold": _last_currency})
+	if _weapon_title_label and _weapon_mode == "":
+		_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title")
 	if _pause_touch_btn:
 		_pause_touch_btn.text = LocalizationManager.tr_key("hud.pause_button")
 
@@ -294,3 +455,89 @@ func _on_language_changed(_language_code: String) -> void:
 	set_kills(_last_kills)
 	set_survival_time(_last_time)
 	set_currency(_last_currency)
+
+
+func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gold: int, capacity_left: int) -> void:
+	var button_index := 0
+	for option in options:
+		if button_index >= _weapon_buttons.size():
+			break
+		var btn := _weapon_buttons[button_index]
+		btn.visible = true
+		var weapon_id := str(option.get("id", ""))
+		var icon_key := "weapon.icon." + weapon_id
+		var fallback_icon := func() -> Texture2D:
+			return VisualAssetRegistry.make_color_texture(icon_key, option.get("color", Color(0.8, 0.8, 0.8, 1.0)), Vector2i(96, 96))
+		_weapon_icons[button_index].texture = VisualAssetRegistry.get_texture(icon_key, fallback_icon)
+		_weapon_icons[button_index].visible = true
+		var cost := int(option.get("cost", 0))
+		var can_buy := true
+		if is_shop:
+			can_buy = current_gold >= cost and capacity_left > 0
+		btn.disabled = not can_buy
+		var title_text := LocalizationManager.tr_key(str(option.get("name_key", "weapon.unknown.name")))
+		var stats_text := _build_weapon_stats_text(option)
+		if is_shop:
+			btn.text = LocalizationManager.tr_key("weapon.shop_button", {
+				"name": title_text,
+				"stats": stats_text,
+				"cost": cost,
+				"status": "" if can_buy else LocalizationManager.tr_key("weapon.shop_not_affordable")
+			})
+		else:
+			btn.text = LocalizationManager.tr_key("weapon.start_button", {
+				"name": title_text,
+				"stats": stats_text
+			})
+		btn.set_meta("weapon_id", weapon_id)
+		button_index += 1
+
+	if is_shop and button_index < _weapon_buttons.size():
+		var skip_btn := _weapon_buttons[button_index]
+		skip_btn.visible = true
+		skip_btn.disabled = false
+		skip_btn.text = LocalizationManager.tr_key("weapon.shop_skip")
+		skip_btn.set_meta("weapon_id", "skip")
+		_weapon_icons[button_index].texture = VisualAssetRegistry.make_color_texture("weapon.icon.skip", Color(0.45, 0.45, 0.45, 1.0), Vector2i(96, 96))
+		_weapon_icons[button_index].visible = true
+		button_index += 1
+
+	for i in range(button_index, _weapon_buttons.size()):
+		_weapon_buttons[i].visible = false
+		_weapon_icons[i].visible = false
+
+
+func _apply_modal_panel_style(panel: Panel) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = VisualAssetRegistry.get_color("ui.modal_panel_bg", Color(0.16, 0.17, 0.20, 1.0))
+	style.border_color = VisualAssetRegistry.get_color("ui.modal_panel_border", Color(0.82, 0.84, 0.90, 1.0))
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	panel.add_theme_stylebox_override("panel", style)
+
+
+func _show_modal_backdrop(backdrop_visible: bool) -> void:
+	if not _modal_backdrop:
+		return
+	_modal_backdrop.visible = backdrop_visible
+
+
+func _build_weapon_stats_text(option: Dictionary) -> String:
+	var stats: Dictionary = option.get("stats", {})
+	var lines: Array[String] = []
+	lines.append(LocalizationManager.tr_key("weapon.stat.damage", {"value": int(stats.get("damage", 0))}))
+	lines.append(LocalizationManager.tr_key("weapon.stat.cooldown", {"value": "%.2f" % float(stats.get("cooldown", 0.0))}))
+	if str(option.get("type", "")) == "melee":
+		lines.append(LocalizationManager.tr_key("weapon.stat.range", {"value": "%.0f" % float(stats.get("range", 0.0))}))
+	else:
+		lines.append(LocalizationManager.tr_key("weapon.stat.bullet_speed", {"value": "%.0f" % float(stats.get("bullet_speed", 0.0))}))
+		lines.append(LocalizationManager.tr_key("weapon.stat.pellet_count", {"value": int(stats.get("pellet_count", 1))}))
+		lines.append(LocalizationManager.tr_key("weapon.stat.spread", {"value": "%.1f" % float(stats.get("spread_degrees", 0.0))}))
+		lines.append(LocalizationManager.tr_key("weapon.stat.pierce", {"value": int(stats.get("bullet_pierce", 0))}))
+	return "\n".join(lines)

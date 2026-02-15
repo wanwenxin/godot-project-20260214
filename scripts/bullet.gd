@@ -20,7 +20,10 @@ func _ready() -> void:
 	# 子弹在 layer_3，仅与目标层发生重叠检测。
 	collision_layer = 1 << 2
 	collision_mask = 1 if hit_player else 2
-	sprite.texture = PixelGenerator.generate_bullet_sprite(hit_player)
+	var texture_key := "bullet.enemy" if hit_player else "bullet.player"
+	var fallback := func() -> Texture2D:
+		return PixelGenerator.generate_bullet_sprite(hit_player)
+	sprite.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
 	body_entered.connect(_on_body_entered)
 
 

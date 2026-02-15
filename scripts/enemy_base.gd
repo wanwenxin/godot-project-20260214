@@ -49,7 +49,16 @@ func set_player(node: Node2D) -> void:
 func set_enemy_texture(enemy_type: int) -> void:
 	# 子类通过 enemy_type 指定外观。
 	if sprite:
-		sprite.texture = PixelGenerator.generate_enemy_sprite(enemy_type)
+		var key := "enemy.melee"
+		if enemy_type == 1:
+			key = "enemy.ranged"
+		elif enemy_type == 2:
+			key = "enemy.tank"
+		elif enemy_type >= 3:
+			key = "enemy.boss"
+		var fallback := func() -> Texture2D:
+			return PixelGenerator.generate_enemy_sprite(enemy_type)
+		sprite.texture = VisualAssetRegistry.get_texture(key, fallback)
 
 
 func take_damage(amount: int) -> void:

@@ -48,6 +48,10 @@ var _upgrade_pool := [
 ]
 var _pending_upgrade_options: Array[Dictionary] = []
 var _upgrade_selected := false
+var _pending_start_weapon_options: Array[Dictionary] = []
+var _pending_shop_weapon_options: Array[Dictionary] = []
+var _waves_initialized := false
+var _ui_modal_active := false
 # 触控方向缓存（由 HUD 虚拟按键驱动）。
 var _mobile_move := Vector2.ZERO
 
@@ -62,12 +66,13 @@ func _ready() -> void:
 	_spawn_player()
 	_spawn_terrain_map()
 
-	wave_manager.setup(player)
 	wave_manager.wave_started.connect(_on_wave_started)
 	wave_manager.kill_count_changed.connect(_on_kill_count_changed)
 	wave_manager.wave_cleared.connect(_on_wave_cleared)
 	wave_manager.intermission_started.connect(_on_intermission_started)
 	hud.upgrade_selected.connect(_on_upgrade_selected)
+	hud.start_weapon_selected.connect(_on_start_weapon_selected)
+	hud.weapon_shop_selected.connect(_on_weapon_shop_selected)
 	hud.mobile_move_changed.connect(_on_mobile_move_changed)
 	hud.pause_pressed.connect(_toggle_pause)
 
@@ -80,6 +85,7 @@ func _ready() -> void:
 
 	# 进入游戏默认隐藏暂停菜单。
 	pause_menu.set_visible_menu(false)
+	_start_weapon_pick()
 
 
 func _process(delta: float) -> void:
@@ -98,7 +104,7 @@ func _process(delta: float) -> void:
 	else:
 		hud.set_intermission_countdown(0.0)
 
-	if Input.is_action_just_pressed("pause"):
+	if not _ui_modal_active and Input.is_action_just_pressed("pause"):
 		_toggle_pause()
 	if Input.is_action_just_pressed("toggle_enemy_hp"):
 		_toggle_enemy_healthbar_visibility()
@@ -137,7 +143,9 @@ func _on_wave_cleared(_wave: int) -> void:
 	player.heal(int(maxf(8.0, player.max_health * 0.12)))
 	player.input_enabled = false
 	_upgrade_selected = false
+	_pending_shop_weapon_options.clear()
 	_pending_upgrade_options = _roll_upgrade_options(3)
+	_set_ui_modal_active(true)
 	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency)
 
 
@@ -149,16 +157,20 @@ func _on_player_died() -> void:
 	if is_game_over:
 		return
 	is_game_over = true
+	_set_ui_modal_active(false)
 	get_tree().paused = false
 	player.input_enabled = false
 	# 结算时保存本局成绩（当前波次、击杀、生存时长）。
 	GameManager.save_run_result(wave_manager.current_wave, wave_manager.kill_count, survival_time)
 	hud.hide_upgrade_options()
+	hud.hide_weapon_panel()
 	hud.show_game_over(wave_manager.current_wave, wave_manager.kill_count, survival_time)
 
 
 func _toggle_pause() -> void:
 	if is_game_over:
+		return
+	if _ui_modal_active:
 		return
 	var new_paused := not get_tree().paused
 	get_tree().paused = new_paused
@@ -216,10 +228,13 @@ func _on_upgrade_selected(upgrade_id: String) -> void:
 		return
 	_upgrade_selected = true
 	player.apply_upgrade(upgrade_id)
-	player.input_enabled = true
 	hud.hide_upgrade_options()
-	# 选完升级后才开始下一波倒计时。
-	wave_manager.begin_intermission()
+	_pending_shop_weapon_options = _roll_weapon_shop_options(3)
+	if _pending_shop_weapon_options.is_empty():
+		_finish_wave_settlement()
+		return
+	_set_ui_modal_active(true)
+	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left())
 
 
 func _on_intermission_started(duration: float) -> void:
@@ -230,6 +245,103 @@ func _on_mobile_move_changed(direction: Vector2) -> void:
 	_mobile_move = direction
 	if is_instance_valid(player):
 		player.external_move_input = _mobile_move
+
+
+func _start_weapon_pick() -> void:
+	player.input_enabled = false
+	_pending_start_weapon_options = _roll_weapon_shop_options(3)
+	if _pending_start_weapon_options.is_empty():
+		# 理论上不会为空，兜底保证流程继续。
+		_waves_initialized = true
+		player.input_enabled = true
+		wave_manager.setup(player)
+		return
+	_set_ui_modal_active(true)
+	hud.show_start_weapon_pick(_pending_start_weapon_options)
+
+
+func _on_start_weapon_selected(weapon_id: String) -> void:
+	if _pending_start_weapon_options.is_empty():
+		return
+	var selected := weapon_id
+	if selected == "" or selected == "skip":
+		selected = str(_pending_start_weapon_options[0].get("id", ""))
+	if not _equip_weapon_to_player(selected, false):
+		return
+	_set_ui_modal_active(false)
+	hud.hide_weapon_panel()
+	player.input_enabled = true
+	if not _waves_initialized:
+		_waves_initialized = true
+		wave_manager.setup(player)
+
+
+func _on_weapon_shop_selected(weapon_id: String) -> void:
+	if weapon_id == "skip":
+		_set_ui_modal_active(false)
+		hud.hide_weapon_panel()
+		_finish_wave_settlement()
+		return
+	if _pending_shop_weapon_options.is_empty():
+		return
+	var picked: Dictionary = {}
+	for option in _pending_shop_weapon_options:
+		if str(option.get("id", "")) == weapon_id:
+			picked = option
+			break
+	if picked.is_empty():
+		return
+	var cost := int(picked.get("cost", 0))
+	if not GameManager.spend_currency(cost):
+		return
+	if not _equip_weapon_to_player(weapon_id, true):
+		GameManager.add_currency(cost)
+		return
+	_set_ui_modal_active(false)
+	hud.hide_weapon_panel()
+	hud.set_currency(GameManager.run_currency)
+	_finish_wave_settlement()
+
+
+func _roll_weapon_shop_options(count: int) -> Array[Dictionary]:
+	var defs := GameManager.get_weapon_defs()
+	var owned: Array[String] = player.get_equipped_weapon_ids()
+	var filtered: Array[Dictionary] = []
+	for item in defs:
+		var id := str(item.get("id", ""))
+		if owned.has(id):
+			continue
+		filtered.append(item)
+	filtered.shuffle()
+	var result: Array[Dictionary] = []
+	for i in range(mini(count, filtered.size())):
+		result.append(filtered[i])
+	return result
+
+
+func _equip_weapon_to_player(weapon_id: String, need_capacity: bool) -> bool:
+	if need_capacity and player.get_weapon_capacity_left() <= 0:
+		return false
+	if not GameManager.can_add_run_weapon(weapon_id):
+		return false
+	if not player.equip_weapon_by_id(weapon_id):
+		return false
+	return GameManager.add_run_weapon(weapon_id)
+
+
+func _finish_wave_settlement() -> void:
+	_set_ui_modal_active(false)
+	player.input_enabled = true
+	wave_manager.begin_intermission()
+
+
+func _set_ui_modal_active(value: bool) -> void:
+	_ui_modal_active = value
+	if _ui_modal_active:
+		get_tree().paused = true
+		pause_menu.set_visible_menu(false)
+	else:
+		get_tree().paused = false
 
 
 func _spawn_terrain_map() -> void:
@@ -250,6 +362,8 @@ func _spawn_terrain_map() -> void:
 	)
 	var water_occupied: Array[Rect2] = []
 	var solid_occupied: Array[Rect2] = []
+	var deep_water_color := VisualAssetRegistry.get_color("terrain.deep_water", Color(0.08, 0.20, 0.42, 0.56))
+	var shallow_water_color := VisualAssetRegistry.get_color("terrain.shallow_water", Color(0.24, 0.55, 0.80, 0.48))
 	_spawn_walkable_floor(region)
 
 	var deep_centers := _make_cluster_centers(deep_water_cluster_count, region, rng)
@@ -264,7 +378,7 @@ func _spawn_terrain_map() -> void:
 		Vector2(128.0, 122.0),
 		deep_water_cluster_radius,
 		region,
-		Color(0.08, 0.20, 0.42, 0.56),
+		deep_water_color,
 		"deep_water",
 		0.52,
 		2,
@@ -282,7 +396,7 @@ func _spawn_terrain_map() -> void:
 		Vector2(148.0, 130.0),
 		shallow_water_cluster_radius,
 		region,
-		Color(0.24, 0.55, 0.80, 0.48),
+		shallow_water_color,
 		"shallow_water",
 		0.72,
 		0,
@@ -299,7 +413,7 @@ func _spawn_terrain_map() -> void:
 			Vector2(78.0, 70.0),
 			Vector2(128.0, 122.0),
 			region,
-			Color(0.08, 0.20, 0.42, 0.56),
+			deep_water_color,
 			"deep_water",
 			0.52,
 			2,
@@ -314,7 +428,7 @@ func _spawn_terrain_map() -> void:
 			Vector2(76.0, 66.0),
 			Vector2(148.0, 130.0),
 			region,
-			Color(0.24, 0.55, 0.80, 0.48),
+			shallow_water_color,
 			"shallow_water",
 			0.72,
 			0,
@@ -513,6 +627,7 @@ func _spawn_clustered_grass(
 	rng: RandomNumberGenerator
 ) -> int:
 	var placed := 0
+	var grass_color := VisualAssetRegistry.get_color("terrain.grass", Color(0.20, 0.45, 0.18, 0.45))
 	var local_grass_occupied: Array[Rect2] = []
 	for center in centers:
 		if placed >= total_count:
@@ -530,7 +645,7 @@ func _spawn_clustered_grass(
 			_spawn_terrain_zone(
 				item["position"],
 				item["size"],
-				Color(0.20, 0.45, 0.18, 0.45),
+				grass_color,
 				"grass",
 				0.88,
 				0,
@@ -551,7 +666,7 @@ func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
 	col.shape = shape
 	body.collision_layer = 8
 	body.collision_mask = 0
-	rect.color = Color(0.16, 0.16, 0.20, 1.0)
+	rect.color = VisualAssetRegistry.get_color("terrain.obstacle", Color(0.16, 0.16, 0.20, 1.0))
 	rect.size = size
 	rect.position = -size * 0.5
 	body.position = spawn_pos
@@ -567,6 +682,8 @@ func _spawn_walkable_floor(region: Rect2) -> void:
 	floor_root.z_index = -100
 	add_child(floor_root)
 	var tile := maxf(12.0, floor_tile_size)
+	var color_a := VisualAssetRegistry.get_color("terrain.floor_a", floor_color_a)
+	var color_b := VisualAssetRegistry.get_color("terrain.floor_b", floor_color_b)
 	var x := region.position.x
 	var row := 0
 	while x < region.end.x:
@@ -578,7 +695,7 @@ func _spawn_walkable_floor(region: Rect2) -> void:
 			var h := minf(tile - 1.0, region.end.y - y)
 			block.size = Vector2(maxf(4.0, w), maxf(4.0, h))
 			block.position = Vector2(x, y)
-			block.color = floor_color_a if ((row + col) % 2 == 0) else floor_color_b
+			block.color = color_a if ((row + col) % 2 == 0) else color_b
 			block.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			floor_root.add_child(block)
 			y += tile
@@ -609,7 +726,7 @@ func _spawn_boundary_body(rect: Rect2) -> void:
 	var col := CollisionShape2D.new()
 	col.shape = shape
 	var vis := ColorRect.new()
-	vis.color = boundary_color
+	vis.color = VisualAssetRegistry.get_color("terrain.boundary", boundary_color)
 	vis.size = rect.size
 	vis.position = -rect.size * 0.5
 	body.position = rect.position + rect.size * 0.5

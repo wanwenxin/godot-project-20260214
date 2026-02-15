@@ -32,6 +32,10 @@ var default_data := {
 			"show_enemy_health_bar": true,
 			"show_key_hints_in_pause": true
 		}
+	},
+	"weapon_meta": {
+		"unlocked": [],
+		"favorites": []
 	}
 }
 
@@ -131,6 +135,18 @@ func get_settings() -> Dictionary:
 func set_settings(settings: Dictionary) -> Dictionary:
 	var data := load_game()
 	data["settings"] = settings.duplicate(true)
+	save_game(data)
+	return data
+
+
+func get_weapon_meta() -> Dictionary:
+	var data := load_game()
+	return data.get("weapon_meta", default_data["weapon_meta"]).duplicate(true)
+
+
+func set_weapon_meta(meta: Dictionary) -> Dictionary:
+	var data := load_game()
+	data["weapon_meta"] = meta.duplicate(true)
 	save_game(data)
 	return data
 

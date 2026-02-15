@@ -21,6 +21,7 @@ GameManager="*res://scripts/autoload/game_manager.gd"
 SaveManager="*res://scripts/autoload/save_manager.gd"
 LocalizationManager="*res://scripts/autoload/localization_manager.gd"
 AudioManager="*res://scripts/autoload/audio_manager.gd"
+VisualAssetRegistry="*res://scripts/autoload/visual_asset_registry.gd"
 
 [display]
 

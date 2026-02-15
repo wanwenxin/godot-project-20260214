@@ -4,6 +4,7 @@ extends Node
 const SCENE_MAIN_MENU := "res://scenes/main_menu.tscn"
 const SCENE_CHARACTER_SELECT := "res://scenes/character_select.tscn"
 const SCENE_GAME := "res://scenes/game.tscn"
+const MAX_WEAPONS := 6
 
 # 角色配置表。
 # 说明：
@@ -39,6 +40,63 @@ var characters := [
 	}
 ]
 
+var weapon_defs := [
+	{
+		"id": "blade_short",
+		"type": "melee",
+		"name_key": "weapon.blade_short.name",
+		"desc_key": "weapon.blade_short.desc",
+		"cost": 5,
+		"color": Color(0.95, 0.30, 0.30, 1.0),
+		"stats": {"damage": 14, "cooldown": 0.40, "range": 58.0}
+	},
+	{
+		"id": "hammer_heavy",
+		"type": "melee",
+		"name_key": "weapon.hammer_heavy.name",
+		"desc_key": "weapon.hammer_heavy.desc",
+		"cost": 8,
+		"color": Color(0.90, 0.58, 0.24, 1.0),
+		"stats": {"damage": 24, "cooldown": 0.72, "range": 68.0}
+	},
+	{
+		"id": "pistol_basic",
+		"type": "ranged",
+		"name_key": "weapon.pistol_basic.name",
+		"desc_key": "weapon.pistol_basic.desc",
+		"cost": 6,
+		"color": Color(0.25, 0.80, 0.95, 1.0),
+		"stats": {"damage": 8, "cooldown": 0.28, "range": 1200.0, "bullet_speed": 520.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 0}
+	},
+	{
+		"id": "shotgun_wide",
+		"type": "ranged",
+		"name_key": "weapon.shotgun_wide.name",
+		"desc_key": "weapon.shotgun_wide.desc",
+		"cost": 9,
+		"color": Color(0.50, 0.88, 0.30, 1.0),
+		"stats": {"damage": 6, "cooldown": 0.46, "range": 980.0, "bullet_speed": 460.0, "pellet_count": 3, "spread_degrees": 20.0, "bullet_pierce": 0}
+	},
+	{
+		"id": "rifle_long",
+		"type": "ranged",
+		"name_key": "weapon.rifle_long.name",
+		"desc_key": "weapon.rifle_long.desc",
+		"cost": 10,
+		"color": Color(0.65, 0.66, 0.95, 1.0),
+		"stats": {"damage": 12, "cooldown": 0.52, "range": 1400.0, "bullet_speed": 700.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 1}
+	},
+	{
+		"id": "wand_focus",
+		"type": "ranged",
+		"name_key": "weapon.wand_focus.name",
+		"desc_key": "weapon.wand_focus.desc",
+		"cost": 7,
+		"color": Color(0.88, 0.46, 0.95, 1.0),
+		"stats": {"damage": 9, "cooldown": 0.34, "range": 1180.0, "bullet_speed": 560.0, "pellet_count": 2, "spread_degrees": 10.0, "bullet_pierce": 0}
+	}
+]
+
 var selected_character_id := 0
 # 最近一局战斗结果，当前主要用于运行期查看，持久化统计由 SaveManager 负责。
 var last_run_result := {
@@ -48,6 +106,7 @@ var last_run_result := {
 }
 var run_currency := 0
 var enemy_healthbar_visible := true
+var run_weapons: Array[String] = []
 
 
 func _ready() -> void:
@@ -77,12 +136,14 @@ func start_new_game(character_id: int) -> void:
 	set_selected_character(character_id)
 	# 本局资源重置，避免跨局带入。
 	run_currency = 0
+	reset_run_weapons()
 	get_tree().change_scene_to_file(SCENE_GAME)
 
 
 func continue_game() -> void:
 	# continue_game 当前语义是“沿用角色重新开一局”。
 	run_currency = 0
+	reset_run_weapons()
 	get_tree().change_scene_to_file(SCENE_GAME)
 
 
@@ -162,3 +223,42 @@ func _set_action_single_key(action: StringName, key_name: String) -> void:
 	var event_key := InputEventKey.new()
 	event_key.keycode = keycode
 	InputMap.action_add_event(action, event_key)
+
+
+func get_weapon_defs() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for item in weapon_defs:
+		result.append(item.duplicate(true))
+	return result
+
+
+func get_weapon_def_by_id(weapon_id: String) -> Dictionary:
+	for item in weapon_defs:
+		if str(item.get("id", "")) == weapon_id:
+			return item.duplicate(true)
+	return {}
+
+
+func reset_run_weapons() -> void:
+	run_weapons.clear()
+
+
+func get_run_weapons() -> Array[String]:
+	return run_weapons.duplicate()
+
+
+func add_run_weapon(weapon_id: String) -> bool:
+	if not can_add_run_weapon(weapon_id):
+		return false
+	run_weapons.append(weapon_id)
+	return true
+
+
+func can_add_run_weapon(weapon_id: String) -> bool:
+	if run_weapons.size() >= MAX_WEAPONS:
+		return false
+	if run_weapons.has(weapon_id):
+		return false
+	if get_weapon_def_by_id(weapon_id).is_empty():
+		return false
+	return true
