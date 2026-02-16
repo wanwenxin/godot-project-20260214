@@ -355,9 +355,10 @@ flowchart TD
 
 ### 4.7 默认地形与像素图
 
-- `resources/default_terrain_colors.gd`：默认地形 3 种配色（flat/seaside/mountain），供 ColorRect 回退使用
+- `resources/default_terrain_colors.gd`：默认地形 3 种配色（flat/seaside/mountain），供 Polygon2D 回退使用
 - `terrain_atlas.png`：3 行 x 7 列，第 0/1/2 行分别为 flat、seaside、mountain 地板瓦片
-- `_spawn_walkable_floor` 优先使用 TileMap 像素图，按 `default_terrain_type` 选择 atlas 行；无 TileMap 时回退 ColorRect
+- 使用单层 TileMapLayer（Godot 4.6）：`_terrain_layer` 先铺满默认地形，再覆盖草/水/障碍
+- `_spawn_walkable_floor` 优先使用 TileMapLayer 像素图，按 `default_terrain_type` 选择 atlas 行；无 TileMapLayer 时回退 Polygon2D
 
 ### 4.8 武器配置
 

@@ -64,7 +64,8 @@ var _upgrade_selected := false  # 防重入：本轮是否已选择升级
 var _water_spawn_rects: Array[Rect2] = []  # 水域矩形，供水中敌人生成
 var _playable_region: Rect2 = Rect2()  # 可玩区域，供冲刺怪等边界检测
 var _terrain_container: Node2D  # 地形容器，波次重载时整体清除
-var _terrain_tilemap: TileMap  # 地形 TileMap，用于像素图绘制
+var _terrain_layer: TileMapLayer  # 唯一地形层：先铺满默认地形，再覆盖草/水/障碍
+var _terrain_atlas_rows: int = 1  # atlas 行数，用于限制 floor_row（1=仅 flat，3=flat/seaside/mountain）
 const TERRAIN_TILE_SIZE := 32
 const TERRAIN_TILE_FLOOR_A := 0
 const TERRAIN_TILE_FLOOR_B := 1
@@ -877,7 +878,7 @@ func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
 	body.collision_mask = 0
 	body.position = spawn_pos
 	body.add_child(col)
-	if _terrain_tilemap != null:
+	if _terrain_layer != null:
 		_paint_terrain_rect(Rect2(spawn_pos - size * 0.5, size), TERRAIN_TILE_OBSTACLE)
 	else:
 		var rect := ColorRect.new()
@@ -889,7 +890,8 @@ func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
 
 
 func _setup_terrain_tilemap() -> void:
-	# 创建 TileSet 与 TileMap，使用地形像素图。纹理尺寸不足时回退 ColorRect。
+	# 创建 TileSet 与单层 TileMapLayer，先铺满默认地形，再覆盖草/水/障碍。
+	_terrain_layer = null
 	var atlas := TileSetAtlasSource.new()
 	var tex_path := "res://assets/terrain/terrain_atlas.png"
 	if not ResourceLoader.exists(tex_path):
@@ -897,63 +899,63 @@ func _setup_terrain_tilemap() -> void:
 	var tex: Texture2D = load(tex_path) as Texture2D
 	if tex == null:
 		return
-	# 至少需要 7x3 个 32x32 瓦片（224x96），否则瓦片不可见，回退 ColorRect。
+	# 至少需要 7 个 32x32 瓦片（224x32）；224x96 支持 flat/seaside/mountain 三行地板。
 	const MIN_ATLAS_W := 224
-	const MIN_ATLAS_H := 96
+	const MIN_ATLAS_H := 32
 	if tex.get_width() < MIN_ATLAS_W or tex.get_height() < MIN_ATLAS_H:
 		return
 	atlas.texture = tex
 	atlas.texture_region_size = Vector2i(TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE)
-	for i in range(7):
-		atlas.create_tile(Vector2i(i, 0))
-	# 第 1、2 行：seaside、mountain 地板瓦片
-	atlas.create_tile(Vector2i(0, 1))
-	atlas.create_tile(Vector2i(1, 1))
-	atlas.create_tile(Vector2i(0, 2))
-	atlas.create_tile(Vector2i(1, 2))
+	var rows := ceili(tex.get_height() / float(TERRAIN_TILE_SIZE))
+	_terrain_atlas_rows = maxi(1, mini(rows, 3))
+	for y in range(rows):
+		for x in range(7):
+			atlas.create_tile(Vector2i(x, y))
 	var tileset := TileSet.new()
 	tileset.tile_size = Vector2i(TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE)
 	tileset.add_source(atlas, 0)
-	_terrain_tilemap = TileMap.new()
-	_terrain_tilemap.name = "TerrainTileMap"
-	_terrain_tilemap.tile_set = tileset
-	_terrain_tilemap.z_index = -100
-	_terrain_container.add_child(_terrain_tilemap)
+	var terrain_root := Node2D.new()
+	terrain_root.name = "TerrainTileMap"
+	_terrain_layer = TileMapLayer.new()
+	_terrain_layer.name = "TerrainLayer"
+	_terrain_layer.tile_set = tileset
+	_terrain_layer.z_index = -100
+	terrain_root.add_child(_terrain_layer)
+	_terrain_container.add_child(terrain_root)
 
 
 func _paint_terrain_rect(rect: Rect2, tile_type: int) -> void:
-	# 将世界坐标 rect 覆盖的 TileMap 格子涂为指定 tile。
-	if _terrain_tilemap == null:
+	# 将世界坐标 rect 覆盖的 TileMapLayer 格子涂为指定 tile（覆盖已有地板）。
+	if _terrain_layer == null:
 		return
-	var layer := 0
 	var source_id := 0
 	var atlas_coords := Vector2i(tile_type, 0)
 	var cell_start := Vector2i(floori(rect.position.x / float(TERRAIN_TILE_SIZE)), floori(rect.position.y / float(TERRAIN_TILE_SIZE)))
 	var cell_end := Vector2i(ceili(rect.end.x / float(TERRAIN_TILE_SIZE)), ceili(rect.end.y / float(TERRAIN_TILE_SIZE)))
 	for cx in range(cell_start.x, cell_end.x):
 		for cy in range(cell_start.y, cell_end.y):
-			_terrain_tilemap.set_cell(layer, Vector2i(cx, cy), source_id, atlas_coords)
+			_terrain_layer.set_cell(Vector2i(cx, cy), source_id, atlas_coords)
 
 
 func _spawn_walkable_floor(region: Rect2, default_terrain_type: String = "flat", use_default_terrain: bool = false) -> void:
-	# 可移动地面：优先用 TileMap 铺满可玩区域，按 default_terrain_type 选择地板瓦片（flat/seaside/mountain）；无 TileMap 时回退 ColorRect。
+	# 可移动地面：优先用 TileMapLayer 铺满，支持风格化像素图；无 TileMapLayer 时回退 Polygon2D。
 	var floor_row := TERRAIN_FLOOR_ROW_FLAT
 	var t := default_terrain_type.to_lower()
-	if t == "seaside":
+	if t == "seaside" and _terrain_atlas_rows > 1:
 		floor_row = TERRAIN_FLOOR_ROW_SEASIDE
-	elif t == "mountain":
+	elif t == "mountain" and _terrain_atlas_rows > 2:
 		floor_row = TERRAIN_FLOOR_ROW_MOUNTAIN
-	if _terrain_tilemap != null:
-		var layer := 0
+	floor_row = mini(floor_row, _terrain_atlas_rows - 1)
+	if _terrain_layer != null:
 		var source_id := 0
 		var cell_start := Vector2i(floori(region.position.x / float(TERRAIN_TILE_SIZE)), floori(region.position.y / float(TERRAIN_TILE_SIZE)))
 		var cell_end := Vector2i(ceili(region.end.x / float(TERRAIN_TILE_SIZE)), ceili(region.end.y / float(TERRAIN_TILE_SIZE)))
 		for cx in range(cell_start.x, cell_end.x):
 			for cy in range(cell_start.y, cell_end.y):
 				var tile_x := TERRAIN_TILE_FLOOR_A if ((cx + cy) % 2 == 0) else TERRAIN_TILE_FLOOR_B
-				_terrain_tilemap.set_cell(layer, Vector2i(cx, cy), source_id, Vector2i(tile_x, floor_row))
+				_terrain_layer.set_cell(Vector2i(cx, cy), source_id, Vector2i(tile_x, floor_row))
 		return
-	# 回退：无 TileMap 时用 ColorRect
+	# 回退：无 TileMapLayer 时用 Polygon2D
 	var color_a: Color
 	var color_b: Color
 	if use_default_terrain:
@@ -974,14 +976,13 @@ func _spawn_walkable_floor(region: Rect2, default_terrain_type: String = "flat",
 		var y := region.position.y
 		var col := 0
 		while y < region.end.y:
-			var block := ColorRect.new()
 			var w := minf(tile - 1.0, region.end.x - x)
 			var h := minf(tile - 1.0, region.end.y - y)
-			block.size = Vector2(maxf(4.0, w), maxf(4.0, h))
-			block.position = Vector2(x, y)
-			block.color = color_a if ((row + col) % 2 == 0) else color_b
-			block.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			floor_root.add_child(block)
+			var poly := Polygon2D.new()
+			poly.color = color_a if ((row + col) % 2 == 0) else color_b
+			poly.polygon = PackedVector2Array([Vector2.ZERO, Vector2(w, 0), Vector2(w, h), Vector2(0, h)])
+			poly.position = Vector2(x, y)
+			floor_root.add_child(poly)
 			y += tile
 			col += 1
 		x += tile
@@ -1137,7 +1138,7 @@ func _spawn_terrain_zone(
 	damage_per_tick: int,
 	damage_interval: float
 ) -> void:
-	# 用同一个 terrain_zone.gd 统一草地/水面的行为；视觉由 TileMap 绘制。
+	# 用同一个 terrain_zone.gd 统一草地/水面的行为；视觉由 TileMapLayer 绘制。
 	var zone := Area2D.new()
 	zone.set_script(load("res://scripts/terrain_zone.gd"))
 	zone.position = spawn_pos
@@ -1152,7 +1153,7 @@ func _spawn_terrain_zone(
 	col.shape = shape
 	zone.add_child(col)
 
-	if _terrain_tilemap != null:
+	if _terrain_layer != null:
 		var tile_type := TERRAIN_TILE_GRASS
 		if terrain_type == "shallow_water":
 			tile_type = TERRAIN_TILE_SHALLOW_WATER

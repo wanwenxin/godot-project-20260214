@@ -6,7 +6,7 @@ extends Resource
 
 @export_group("Terrain")
 @export var map_size_scale: float = 1.0  # 地图大小系数：0.8=小，1.0=中，1.2=大
-@export var default_terrain_type: String = "flat"  # 默认地形类型：flat=平地，seaside=海边，mountain=山地
+@export var default_terrain_type: String = "mountain"  # 默认地形类型：flat=平地，seaside=海边，mountain=山地
 @export var grass_count_min := 2 # 草地数量最小值
 @export var grass_count_max := 4 # 草地数量最大值
 @export var shallow_water_count_min := 1 # 浅水数量最小值
