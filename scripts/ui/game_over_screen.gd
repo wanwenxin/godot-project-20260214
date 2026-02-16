@@ -63,7 +63,7 @@ func _build_ui() -> void:
 	_backdrop.offset_right = 0
 	_backdrop.offset_bottom = 0
 	_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	_backdrop.color = VisualAssetRegistry.get_color("ui.modal_backdrop", Color(0.08, 0.09, 0.11, 1.0))
+	_backdrop.color = UiThemeConfig.load_theme().modal_backdrop
 	root.add_child(_backdrop)
 	_panel = Panel.new()
 	_panel.name = "Panel"
@@ -99,8 +99,9 @@ func _build_ui() -> void:
 
 func _apply_panel_style() -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color = VisualAssetRegistry.get_color("ui.modal_panel_bg", Color(0.16, 0.17, 0.20, 1.0))
-	style.border_color = VisualAssetRegistry.get_color("ui.modal_panel_border", Color(0.82, 0.84, 0.90, 1.0))
+	var theme := UiThemeConfig.load_theme()
+	style.bg_color = theme.modal_panel_bg
+	style.border_color = theme.modal_panel_border
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2

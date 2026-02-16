@@ -11,6 +11,8 @@ radius = 30.0
 
 [node name="EnemyBoss" type="CharacterBody2D"]
 script = ExtResource("1")
+texture_sheet = "res://assets/enemies/enemy_boss_sheet.png"
+texture_single = "res://assets/enemies/enemy_boss.png"
 bullet_scene = ExtResource("2")
 max_health = 320
 speed = 58.0

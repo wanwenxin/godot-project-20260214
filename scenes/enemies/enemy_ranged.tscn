@@ -11,6 +11,8 @@ radius = 18.0
 
 [node name="EnemyRanged" type="CharacterBody2D"]
 script = ExtResource("1")
+texture_sheet = "res://assets/enemies/enemy_ranged_sheet.png"
+texture_single = "res://assets/enemies/enemy_ranged.png"
 bullet_scene = ExtResource("2")
 max_health = 40
 speed = 75.0

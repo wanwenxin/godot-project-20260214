@@ -143,10 +143,13 @@ func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void
 		btn.disabled = not affordable
 		var title_text := LocalizationManager.tr_key(str(option.get("title_key", "upgrade.skip.title")))
 		var desc_text := LocalizationManager.tr_key(str(option.get("desc_key", "upgrade.skip.desc")))
-		var icon_key := "upgrade.icon." + str(option.get("id", ""))
-		var fallback_upgrade_icon := func() -> Texture2D:
-			return VisualAssetRegistry.make_color_texture(icon_key, Color(0.68, 0.68, 0.74, 1.0), Vector2i(96, 96))
-		_upgrade_icons[i].texture = VisualAssetRegistry.get_texture(icon_key, fallback_upgrade_icon)
+		var icon_path := str(option.get("icon_path", ""))
+		var tex: Texture2D = null
+		if icon_path != "" and ResourceLoader.exists(icon_path):
+			tex = load(icon_path) as Texture2D
+		if tex == null:
+			tex = VisualAssetRegistry.make_color_texture(Color(0.68, 0.68, 0.74, 1.0), Vector2i(96, 96))
+		_upgrade_icons[i].texture = tex
 		_upgrade_icons[i].visible = true
 		btn.text = LocalizationManager.tr_key("hud.upgrade_button", {
 			"title": title_text,
@@ -195,7 +198,7 @@ func _build_runtime_ui() -> void:
 	var root := $Root
 	_modal_backdrop = ColorRect.new()
 	_modal_backdrop.anchors_preset = Control.PRESET_FULL_RECT
-	_modal_backdrop.color = VisualAssetRegistry.get_color("ui.modal_backdrop", Color(0.08, 0.09, 0.11, 1.0))
+	_modal_backdrop.color = _get_ui_theme().modal_backdrop
 	_modal_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(_modal_backdrop)
 	# 置于最底层，避免遮挡结算/升级/商店等面板的按钮
@@ -466,10 +469,13 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 		var btn := _weapon_buttons[button_index]
 		btn.visible = true
 		var weapon_id := str(option.get("id", ""))
-		var icon_key := "weapon.icon." + weapon_id
-		var fallback_icon := func() -> Texture2D:
-			return VisualAssetRegistry.make_color_texture(icon_key, option.get("color", Color(0.8, 0.8, 0.8, 1.0)), Vector2i(96, 96))
-		_weapon_icons[button_index].texture = VisualAssetRegistry.get_texture(icon_key, fallback_icon)
+		var icon_path := str(option.get("icon_path", ""))
+		var tex: Texture2D = null
+		if icon_path != "" and ResourceLoader.exists(icon_path):
+			tex = load(icon_path) as Texture2D
+		if tex == null:
+			tex = VisualAssetRegistry.make_color_texture(option.get("color", Color(0.8, 0.8, 0.8, 1.0)), Vector2i(96, 96))
+		_weapon_icons[button_index].texture = tex
 		_weapon_icons[button_index].visible = true
 		var cost := int(option.get("cost", 0))
 		var can_buy := true
@@ -499,7 +505,7 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 		skip_btn.disabled = false
 		skip_btn.text = LocalizationManager.tr_key("weapon.shop_skip")
 		skip_btn.set_meta("weapon_id", "skip")
-		_weapon_icons[button_index].texture = VisualAssetRegistry.make_color_texture("weapon.icon.skip", Color(0.45, 0.45, 0.45, 1.0), Vector2i(96, 96))
+		_weapon_icons[button_index].texture = VisualAssetRegistry.make_color_texture(Color(0.45, 0.45, 0.45, 1.0), Vector2i(96, 96))
 		_weapon_icons[button_index].visible = true
 		button_index += 1
 
@@ -509,9 +515,10 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 
 
 func _apply_modal_panel_style(panel: Panel) -> void:
+	var theme := _get_ui_theme()
 	var style := StyleBoxFlat.new()
-	style.bg_color = VisualAssetRegistry.get_color("ui.modal_panel_bg", Color(0.16, 0.17, 0.20, 1.0))
-	style.border_color = VisualAssetRegistry.get_color("ui.modal_panel_border", Color(0.82, 0.84, 0.90, 1.0))
+	style.bg_color = theme.modal_panel_bg
+	style.border_color = theme.modal_panel_border
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2
@@ -533,7 +540,7 @@ func _add_opaque_backdrop_to_panel(panel: Control, pass_input := false) -> void:
 	backdrop.offset_top = 0
 	backdrop.offset_right = 0
 	backdrop.offset_bottom = 0
-	backdrop.color = VisualAssetRegistry.get_color("ui.modal_backdrop", Color(0.08, 0.09, 0.11, 1.0))
+	backdrop.color = _get_ui_theme().modal_backdrop
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE if pass_input else Control.MOUSE_FILTER_STOP
 	panel.add_child(backdrop)
 	panel.move_child(backdrop, 0)
@@ -543,6 +550,10 @@ func _show_modal_backdrop(backdrop_visible: bool) -> void:
 	if not _modal_backdrop:
 		return
 	_modal_backdrop.visible = backdrop_visible
+
+
+func _get_ui_theme() -> UiThemeConfig:
+	return UiThemeConfig.load_theme()
 
 
 func _build_weapon_stats_text(option: Dictionary) -> String:

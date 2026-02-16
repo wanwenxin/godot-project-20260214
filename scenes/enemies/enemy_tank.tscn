@@ -10,6 +10,8 @@ radius = 21.0
 
 [node name="EnemyTank" type="CharacterBody2D"]
 script = ExtResource("1")
+texture_sheet = "res://assets/enemies/enemy_tank_sheet.png"
+texture_single = "res://assets/enemies/enemy_tank.png"
 max_health = 80
 speed = 62.0
 contact_damage = 14

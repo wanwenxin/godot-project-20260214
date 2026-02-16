@@ -10,6 +10,7 @@ var cooldown := 0.35
 var damage := 8
 var attack_range := 120.0
 var color_hint := Color(0.9, 0.9, 0.9, 1.0)
+var icon_path: String  # 武器图标路径，从 def 注入；空则用色块
 
 var _cooldown_left := 0.0
 var _slot_base_position := Vector2.ZERO
@@ -22,6 +23,7 @@ func configure_from_def(def: Dictionary) -> void:
 	weapon_id = str(def.get("id", ""))
 	weapon_type = str(def.get("type", ""))
 	color_hint = def.get("color", color_hint)
+	icon_path = str(def.get("icon_path", ""))
 	var stats: Dictionary = def.get("stats", {})
 	damage = int(stats.get("damage", damage))
 	cooldown = float(stats.get("cooldown", cooldown))

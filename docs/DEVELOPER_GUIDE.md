@@ -127,7 +127,7 @@
 
 - 每关各地形数量在 `*_count_min` ~ `*_count_max` 范围内随机
 
-- 地形色块统一配置入口：`resources/terrain_colors.tres`，由 `VisualAssetRegistry` 加载
+- 地形色块统一配置入口：`resources/terrain_colors.tres`，由 `game.gd` 直接引用（`@export var terrain_colors`）
 
 地形冲突规则（严格无重叠）：
 
@@ -325,21 +325,28 @@ flowchart TD
 
 - `resources/terrain_colors.tres`：地形色块统一入口，含 `floor_a`、`floor_b`、`boundary`、`obstacle`、`grass`、`shallow_water`、`deep_water`
 - `resources/terrain_color_config.gd`：Resource 脚本，定义上述颜色字段
-- `VisualAssetRegistry` 启动时加载该资源，`get_color("terrain.*", fallback)` 优先从该配置读取
+- `game.gd` 通过 `@export var terrain_colors` 直接引用，`_get_terrain_color(key, fallback)` 优先从该配置读取
 
-### 4.6 纹理路径统一配置（人物/敌人/武器美术）
+### 4.6 美术资源解耦与独立配置
 
-- `resources/texture_paths.tres`：纹理路径统一入口，含人物、敌人、武器图标、子弹、掉落等
-- `resources/texture_path_config.gd`：Resource 脚本，`@export_file` 定义各纹理路径
-- 分类：Player（`player_scheme_0/1`、`player_scheme_0_sheet/1_sheet` 8 方向）、Enemies（`enemy_melee` 等及 `*_sheet` 8 方向）、Weapon Icons、Melee Swing（`melee_swing_*`）、Bullets（`bullet_firearm/laser/orb`）、Other
-- `VisualAssetRegistry` 启动时加载，`get_texture(asset_key)` 优先从该配置读取
-- 新增武器时：在 `texture_path_config.gd` 增加 `weapon_{id}` 属性，并在 `texture_paths.tres` 配置路径
+- 各实现类自行绑定所需美术，不再通过 `VisualAssetRegistry` 集中管理纹理路径
+- **Player**：`player.gd` 的 `@export_file texture_sheet`、`texture_single`、`frame_size`、`sheet_columns`、`sheet_rows`
+- **Enemies**：`enemy_base.gd` 的 `@export_file texture_sheet`、`texture_single`，各敌人场景在 Inspector 配置
+- **Bullet**：`bullet.gd` 的 `@export_file texture_path`、`@export collision_radius`，武器 def 的 `bullet_texture_path`、`bullet_collision_radius`
+- **近战挥击**：`weapon_melee_base.gd` 的 `@export_file swing_texture_path`、`@export swing_frame_size`，weapon_defs 的 `swing_texture_path`
+- **武器图标**：weapon_defs 的 `icon_path`，HUD/player 从 option 或 weapon 节点读取
+- **掉落物**：`pickup.gd` 的 `@export_file texture_coin`、`texture_heal`
+- **升级图标**：`_upgrade_pool` 的 `icon_path`，HUD 从 option 读取
+- **VisualAssetRegistry**：仅保留 `make_color_texture(color, size)` 作为纯色贴图工具
 
 ### 4.7 武器配置
 
 - `resources/weapon_defs.gd::WEAPON_DEFS` 字段说明：
   - `id`, `type`, `name_key`, `desc_key`, `cost`, `color`
   - `script_path`（具体武器脚本路径）
+  - `icon_path`（武器图标路径，HUD/武器环使用）
+  - `swing_texture_path`（近战挥击纹理，仅近战）
+  - `bullet_texture_path`、`bullet_collision_radius`（远程子弹，仅远程）
   - `stats`（示例：`damage`, `cooldown`, `range`, `touch_interval`, `swing_duration`, `swing_degrees`, `swing_reach`, `hitbox_radius`, `bullet_speed`, `pellet_count`, `spread_degrees`, `bullet_pierce`）
 
 ### 4.8 多语言配置

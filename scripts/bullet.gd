@@ -9,6 +9,8 @@ extends Area2D
 @export var hit_player := false
 # 穿透次数：>0 时命中后不销毁，递减至 0 后销毁。
 @export var remaining_pierce := 0
+@export_file("*.png") var texture_path: String  # 子弹纹理，空则按 bullet_type 或 PixelGenerator
+@export var collision_radius: float = 3.0  # 碰撞圆半径，_ready 时设置一次
 # 玩家子弹按类型区分外观：pistol/shotgun/rifle/laser
 var bullet_type := ""
 var bullet_color := Color(1.0, 1.0, 0.4, 1.0)
@@ -27,37 +29,35 @@ func _ready() -> void:
 	# 子弹在 layer_3，仅与目标层发生重叠检测。
 	collision_layer = 1 << 2
 	collision_mask = 1 if hit_player else 2
+	_apply_collision_radius()
 	_apply_bullet_appearance()
 	body_entered.connect(_on_body_entered)
 
 
+## 按 collision_radius 设置碰撞形状，仅 _ready 时执行一次。
+func _apply_collision_radius() -> void:
+	if collision_shape != null and collision_shape.shape is CircleShape2D:
+		(collision_shape.shape as CircleShape2D).radius = collision_radius
+
+
 func _apply_bullet_appearance() -> void:
-	if not hit_player and bullet_type != "":
-		# 映射到 3 类子弹：firearm(pistol/shotgun/rifle)、laser、orb
-		var visual_type := bullet_type
-		if bullet_type in ["pistol", "shotgun", "rifle"]:
-			visual_type = "firearm"
-		# 优先从纹理加载，失败时用 PixelGenerator
-		var tex_key := "bullet." + visual_type
-		var fallback := func() -> Texture2D:
-			return PixelGenerator.generate_bullet_sprite_by_type(bullet_type, bullet_color)
-		sprite.texture = VisualAssetRegistry.get_texture(tex_key, fallback)
-		sprite.modulate = bullet_color  # 按武器颜色着色
-		# 细长型子弹（rifle/laser）旋转以对准飞行方向
+	# 优先 texture_path，空则按 bullet_type/hit_player 回退 PixelGenerator。
+	var tex: Texture2D = null
+	if texture_path != "" and ResourceLoader.exists(texture_path):
+		tex = load(texture_path) as Texture2D
+	if tex != null:
+		sprite.texture = tex
+		sprite.modulate = bullet_color if bullet_type != "" else Color.WHITE
 		if bullet_type == "rifle" or bullet_type == "laser":
 			sprite.rotation = direction.angle()
-		# 按类型调整碰撞体积
-		if bullet_type == "shotgun" and collision_shape and collision_shape.shape is CircleShape2D:
-			(collision_shape.shape as CircleShape2D).radius = 4.0
-		elif (bullet_type == "rifle" or bullet_type == "laser") and collision_shape and collision_shape.shape is CircleShape2D:
-			(collision_shape.shape as CircleShape2D).radius = 2.0
-		elif bullet_type == "orb" and collision_shape and collision_shape.shape is CircleShape2D:
-			(collision_shape.shape as CircleShape2D).radius = 4.0
+		return
+	if not hit_player and bullet_type != "":
+		sprite.texture = PixelGenerator.generate_bullet_sprite_by_type(bullet_type, bullet_color)
+		sprite.modulate = bullet_color
+		if bullet_type == "rifle" or bullet_type == "laser":
+			sprite.rotation = direction.angle()
 	else:
-		var texture_key := "bullet.enemy" if hit_player else "bullet.player"
-		var fallback := func() -> Texture2D:
-			return PixelGenerator.generate_bullet_sprite(hit_player)
-		sprite.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
+		sprite.texture = PixelGenerator.generate_bullet_sprite(hit_player)
 
 
 func _process(delta: float) -> void:

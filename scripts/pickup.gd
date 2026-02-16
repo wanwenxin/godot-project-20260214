@@ -4,6 +4,8 @@ extends Area2D
 @export var pickup_type := "coin"  # "coin" 或 "heal"
 @export var value := 1  # 金币数量或治疗量
 @export var life_time := 10.0  # 超时未拾取则销毁（秒）
+@export_file("*.png") var texture_coin: String = "res://assets/pickups/coin.png"  # 金币纹理
+@export_file("*.png") var texture_heal: String = "res://assets/pickups/heal.png"  # 治疗纹理
 
 var _velocity := Vector2.ZERO  # 飘动速度，每帧衰减
 
@@ -14,15 +16,19 @@ func _ready() -> void:
 	# 沿用 bullet 层做重叠检测，不参与实体碰撞。
 	collision_layer = 1 << 2
 	collision_mask = 1
+	var tex: Texture2D = null
 	if pickup_type == "heal":
-		var fallback_heal := func() -> Texture2D:
-			return PixelGenerator.generate_pickup_sprite(true)
-		sprite.texture = VisualAssetRegistry.get_texture("pickup.heal", fallback_heal)
+		if texture_heal != "" and ResourceLoader.exists(texture_heal):
+			tex = load(texture_heal) as Texture2D
+		if tex == null:
+			tex = PixelGenerator.generate_pickup_sprite(true)
 	else:
-		var fallback_coin := func() -> Texture2D:
-			return PixelGenerator.generate_pickup_sprite(false)
-		sprite.texture = VisualAssetRegistry.get_texture("pickup.coin", fallback_coin)
+		if texture_coin != "" and ResourceLoader.exists(texture_coin):
+			tex = load(texture_coin) as Texture2D
+		if tex == null:
+			tex = PixelGenerator.generate_pickup_sprite(false)
 		_apply_coin_visual_by_value()
+	sprite.texture = tex
 	body_entered.connect(_on_body_entered)
 	_velocity = Vector2(randf_range(-20.0, 20.0), randf_range(-30.0, -10.0))
 

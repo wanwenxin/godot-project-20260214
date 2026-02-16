@@ -13,6 +13,8 @@ const WEAPON_DEFS := [
 		"desc_key": "weapon.blade_short.desc",
 		"cost": 5,
 		"color": Color(0.95, 0.30, 0.30, 1.0),
+		"swing_texture_path": "res://assets/weapons/swing_blade_short.png",
+		"icon_path": "res://assets/weapons/blade_short.png",
 		"stats": {
 			"damage": 14,
 			"cooldown": 0.40,
@@ -32,6 +34,8 @@ const WEAPON_DEFS := [
 		"desc_key": "weapon.dagger.desc",
 		"cost": 4,
 		"color": Color(0.60, 0.65, 0.75, 1.0),
+		"swing_texture_path": "res://assets/weapons/swing_dagger.png",
+		"icon_path": "res://assets/weapons/dagger.png",
 		"stats": {
 			"damage": 10,
 			"cooldown": 0.28,
@@ -51,6 +55,8 @@ const WEAPON_DEFS := [
 		"desc_key": "weapon.spear.desc",
 		"cost": 7,
 		"color": Color(0.55, 0.60, 0.70, 1.0),
+		"swing_texture_path": "res://assets/weapons/swing_spear.png",
+		"icon_path": "res://assets/weapons/spear.png",
 		"stats": {
 			"damage": 18,
 			"cooldown": 0.55,
@@ -70,6 +76,8 @@ const WEAPON_DEFS := [
 		"desc_key": "weapon.chainsaw.desc",
 		"cost": 12,
 		"color": Color(0.35, 0.38, 0.40, 1.0),
+		"swing_texture_path": "res://assets/weapons/swing_chainsaw.png",
+		"icon_path": "res://assets/weapons/chainsaw.png",
 		"stats": {
 			"damage": 6,
 			"cooldown": 0.85,
@@ -90,6 +98,8 @@ const WEAPON_DEFS := [
 		"desc_key": "weapon.hammer_heavy.desc",
 		"cost": 8,
 		"color": Color(0.90, 0.58, 0.24, 1.0),
+		"swing_texture_path": "res://assets/weapons/swing_hammer_heavy.png",
+		"icon_path": "res://assets/weapons/hammer_heavy.png",
 		"stats": {
 			"damage": 24,
 			"cooldown": 0.72,
@@ -110,6 +120,9 @@ const WEAPON_DEFS := [
 		"cost": 6,
 		"color": Color(0.25, 0.80, 0.95, 1.0),
 		"bullet_type": "pistol",
+		"icon_path": "res://assets/weapons/pistol_basic.png",
+		"bullet_texture_path": "res://assets/bullets/bullet_firearm.png",
+		"bullet_collision_radius": 3.0,
 		"stats": {"damage": 8, "cooldown": 0.28, "range": 1200.0, "bullet_speed": 520.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 0}
 	},
 	{
@@ -121,6 +134,9 @@ const WEAPON_DEFS := [
 		"cost": 9,
 		"color": Color(0.50, 0.88, 0.30, 1.0),
 		"bullet_type": "shotgun",
+		"icon_path": "res://assets/weapons/shotgun_wide.png",
+		"bullet_texture_path": "res://assets/bullets/bullet_firearm.png",
+		"bullet_collision_radius": 4.0,
 		"stats": {"damage": 6, "cooldown": 0.46, "range": 980.0, "bullet_speed": 460.0, "pellet_count": 3, "spread_degrees": 20.0, "bullet_pierce": 0}
 	},
 	{
@@ -132,6 +148,9 @@ const WEAPON_DEFS := [
 		"cost": 10,
 		"color": Color(0.65, 0.66, 0.95, 1.0),
 		"bullet_type": "rifle",
+		"icon_path": "res://assets/weapons/rifle_long.png",
+		"bullet_texture_path": "res://assets/bullets/bullet_firearm.png",
+		"bullet_collision_radius": 2.0,
 		"stats": {"damage": 12, "cooldown": 0.52, "range": 1400.0, "bullet_speed": 700.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 1}
 	},
 	{
@@ -143,6 +162,9 @@ const WEAPON_DEFS := [
 		"cost": 7,
 		"color": Color(0.88, 0.46, 0.95, 1.0),
 		"bullet_type": "laser",
+		"icon_path": "res://assets/weapons/wand_focus.png",
+		"bullet_texture_path": "res://assets/bullets/bullet_laser.png",
+		"bullet_collision_radius": 2.0,
 		"stats": {"damage": 9, "cooldown": 0.34, "range": 1180.0, "bullet_speed": 560.0, "pellet_count": 2, "spread_degrees": 10.0, "bullet_pierce": 0}
 	},
 	{
@@ -154,6 +176,9 @@ const WEAPON_DEFS := [
 		"cost": 14,
 		"color": Color(0.45, 0.50, 0.55, 1.0),
 		"bullet_type": "rifle",
+		"icon_path": "res://assets/weapons/sniper.png",
+		"bullet_texture_path": "res://assets/bullets/bullet_firearm.png",
+		"bullet_collision_radius": 2.0,
 		"stats": {"damage": 28, "cooldown": 0.95, "range": 2200.0, "bullet_speed": 900.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 2}
 	},
 	{
@@ -165,6 +190,9 @@ const WEAPON_DEFS := [
 		"cost": 8,
 		"color": Color(0.95, 0.70, 0.35, 1.0),
 		"bullet_type": "orb",
+		"icon_path": "res://assets/weapons/orb_wand.png",
+		"bullet_texture_path": "res://assets/bullets/bullet_orb.png",
+		"bullet_collision_radius": 4.0,
 		"stats": {"damage": 11, "cooldown": 0.38, "range": 800.0, "bullet_speed": 420.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 0}
 	}
 ]

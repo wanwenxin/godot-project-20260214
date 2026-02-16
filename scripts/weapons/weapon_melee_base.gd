@@ -10,6 +10,8 @@ var swing_duration := 0.20
 var swing_degrees := 110.0
 var swing_reach := 22.0
 var hitbox_radius := 14.0
+@export_file("*.png") var swing_texture_path: String  # 挥击刀刃/锤头纹理，空则色块
+@export var swing_frame_size: Vector2i = Vector2i(24, 8)  # 挥击图尺寸（色块回退时用）
 
 var _enemy_last_hit: Dictionary = {}
 var _is_swinging := false
@@ -27,6 +29,12 @@ func _ready() -> void:
 
 func configure_from_def(def: Dictionary) -> void:
 	super.configure_from_def(def)
+	swing_texture_path = str(def.get("swing_texture_path", swing_texture_path))
+	var frame: Variant = def.get("swing_frame_size")
+	if frame is Vector2i:
+		swing_frame_size = frame
+	elif frame is Array and frame.size() >= 2:
+		swing_frame_size = Vector2i(int(frame[0]), int(frame[1]))
 	var stats: Dictionary = def.get("stats", {})
 	touch_interval = float(stats.get("touch_interval", touch_interval))
 	swing_duration = float(stats.get("swing_duration", swing_duration))
@@ -122,16 +130,17 @@ func _build_hit_area() -> void:
 
 
 func _build_swing_visual() -> void:
-	# 近战武器挥击时可见的刀刃/锤头，位于武器前方；优先加载纹理，失败时回退色块。
+	# 近战武器挥击时可见的刀刃/锤头，位于武器前方；优先 swing_texture_path，失败则色块。
 	var spr := Sprite2D.new()
 	spr.name = "SwingVisual"
-	var tex_key := "melee.swing." + weapon_id
-	var fallback := func() -> Texture2D:
-		return VisualAssetRegistry.make_color_texture(tex_key, color_hint, Vector2i(24, 8))
-	var tex := VisualAssetRegistry.get_texture(tex_key, fallback)
+	var tex: Texture2D = null
+	if swing_texture_path != "" and ResourceLoader.exists(swing_texture_path):
+		tex = load(swing_texture_path) as Texture2D
+	if tex == null:
+		tex = VisualAssetRegistry.make_color_texture(color_hint, swing_frame_size)
 	spr.texture = tex
 	spr.centered = false
-	spr.offset = Vector2(12, 4)
+	spr.offset = Vector2(swing_frame_size.x * 0.5, swing_frame_size.y * 0.5)
 	add_child(spr)
 
 

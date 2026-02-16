@@ -13,6 +13,14 @@ signal damaged(amount: int)
 @export var invulnerable_duration := 0.35
 @export var inertia_factor := 0.0  # 移动惯性系数：0=无惯性，越大越“滑”。
 
+@export_file("*.png") var texture_sheet: String = "res://assets/characters/player_scheme_0_sheet.png"  # 精灵图（scheme 0）
+@export_file("*.png") var texture_sheet_1: String = "res://assets/characters/player_scheme_1_sheet.png"  # 精灵图（scheme 1）
+@export_file("*.png") var texture_single: String = "res://assets/characters/player_scheme_0.png"  # 单帧回退（scheme 0）
+@export_file("*.png") var texture_single_1: String = "res://assets/characters/player_scheme_1.png"  # 单帧回退（scheme 1）
+@export var frame_size: Vector2i = Vector2i(24, 24)  # 每帧像素尺寸
+@export var sheet_columns: int = 8  # 精灵图列数（8 方向）
+@export var sheet_rows: int = 3  # 精灵图行数（站立、行走1、行走2）
+
 var current_health := 100
 var move_input := Vector2.ZERO
 var _invulnerable_timer := 0.0
@@ -203,8 +211,8 @@ func _update_direction_sprite() -> void:
 	# 8 方向 x 3 行（站立、行走帧1、行走帧2）：根据 velocity 与时间切换，实现肉眼可见的行走动画。
 	if not sprite or not sprite.region_enabled:
 		return
-	var frame_w := 24
-	var frame_h := 24
+	var frame_w := frame_size.x
+	var frame_h := frame_size.y
 	if velocity.length_squared() > 16.0:
 		var angle := velocity.angle()
 		_last_direction_index = wrapi(roundi((angle + PI) / (PI / 4.0)), 0, 8)
@@ -216,22 +224,27 @@ func _update_direction_sprite() -> void:
 
 
 func _update_sprite(color_scheme: int) -> void:
-	# 角色贴图：优先 8 方向精灵图，失败时回退单帧。
-	if sprite:
-		var sheet_key := "player.scheme_0_sheet" if color_scheme == 0 else "player.scheme_1_sheet"
-		var tex: Texture2D = null
-		if VisualAssetRegistry.has_asset(sheet_key):
-			tex = VisualAssetRegistry.get_texture(sheet_key, Callable())
-		if tex != null:
-			sprite.texture = tex
-			sprite.region_enabled = true
-			sprite.region_rect = Rect2(0, 0, 24, 24)
-		else:
-			var texture_key := "player.scheme_0" if color_scheme == 0 else "player.scheme_1"
-			var fallback := func() -> Texture2D:
-				return PixelGenerator.generate_player_sprite(color_scheme)
-			sprite.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
-			sprite.region_enabled = false
+	# 角色贴图：优先 texture_sheet，失败则 texture_single，再回退 PixelGenerator。
+	if not sprite:
+		return
+	var sheet_path := texture_sheet if color_scheme == 0 else texture_sheet_1
+	var single_path := texture_single if color_scheme == 0 else texture_single_1
+	var tex: Texture2D = null
+	if sheet_path != "" and ResourceLoader.exists(sheet_path):
+		tex = load(sheet_path) as Texture2D
+	if tex != null:
+		sprite.texture = tex
+		sprite.region_enabled = true
+		sprite.region_rect = Rect2(0, 0, frame_size.x, frame_size.y)
+		return
+	if single_path != "" and ResourceLoader.exists(single_path):
+		tex = load(single_path) as Texture2D
+	if tex != null:
+		sprite.texture = tex
+		sprite.region_enabled = false
+		return
+	sprite.texture = PixelGenerator.generate_player_sprite(color_scheme)
+	sprite.region_enabled = false
 
 
 func _recompute_terrain_speed() -> void:
@@ -318,13 +331,14 @@ func _refresh_weapon_visuals() -> void:
 		var slot_pos := Vector2(cos(angle), sin(angle)) * radius
 		var weapon_node := _equipped_weapons[i]
 		var icon := Sprite2D.new()
-		var weapon_id: String = str(weapon_node.weapon_id)
 		var color_hint_any = weapon_node.color_hint
 		var color_hint: Color = color_hint_any if color_hint_any is Color else Color(0.8, 0.8, 0.8, 1.0)
-		var texture_key: String = "weapon.icon." + weapon_id
-		var fallback := func() -> Texture2D:
-			return VisualAssetRegistry.make_color_texture(texture_key, color_hint, Vector2i(10, 10))
-		icon.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
+		var tex: Texture2D = null
+		if weapon_node.icon_path != "" and ResourceLoader.exists(weapon_node.icon_path):
+			tex = load(weapon_node.icon_path) as Texture2D
+		if tex == null:
+			tex = VisualAssetRegistry.make_color_texture(color_hint, Vector2i(10, 10))
+		icon.texture = tex
 		# 图标挂在武器节点下，近战挥击时图标随之移动
 		weapon_node.add_child(icon)
 		_weapon_visuals.append(icon)

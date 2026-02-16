@@ -7,6 +7,8 @@ class_name WeaponRangedBase
 # - 按 bullet_type 区分子弹颜色与外形
 var bullet_scene: PackedScene = preload("res://scenes/bullet.tscn")
 var bullet_type := ""
+var bullet_texture_path: String  # 子弹纹理路径，从 def 注入
+var bullet_collision_radius: float = 3.0  # 子弹碰撞半径，从 def 注入
 var bullet_speed := 500.0
 var pellet_count := 1
 var spread_degrees := 0.0
@@ -16,6 +18,8 @@ var bullet_pierce := 0
 func configure_from_def(def: Dictionary) -> void:
 	super.configure_from_def(def)
 	bullet_type = str(def.get("bullet_type", ""))
+	bullet_texture_path = str(def.get("bullet_texture_path", ""))
+	bullet_collision_radius = float(def.get("bullet_collision_radius", 3.0))
 	var stats: Dictionary = def.get("stats", {})
 	bullet_speed = float(stats.get("bullet_speed", bullet_speed))
 	pellet_count = int(stats.get("pellet_count", pellet_count))
@@ -53,6 +57,9 @@ func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 		if bullet_type != "":
 			bullet.set("bullet_type", bullet_type)
 			bullet.set("bullet_color", color_hint)
+		if bullet_texture_path != "":
+			bullet.set("texture_path", bullet_texture_path)
+		bullet.set("collision_radius", bullet_collision_radius)
 		get_tree().current_scene.add_child(bullet)
 		did_shoot = true
 	if did_shoot:

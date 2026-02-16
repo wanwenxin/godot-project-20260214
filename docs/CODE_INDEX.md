@@ -60,7 +60,7 @@
 | [scripts/autoload/save_manager.gd](scripts/autoload/save_manager.gd) | 存档读写、设置持久化、统计聚合 | `load_game`、`set_settings`、`has_save` |
 | [scripts/autoload/audio_manager.gd](scripts/autoload/audio_manager.gd) | 合成音效与 BGM | `play_shoot_by_type`、`play_menu_bgm`、`play_game_bgm` |
 | [scripts/autoload/localization_manager.gd](scripts/autoload/localization_manager.gd) | 多语言、文案 key | `tr_key`、`language_changed` |
-| [scripts/autoload/visual_asset_registry.gd](scripts/autoload/visual_asset_registry.gd) | 纹理/颜色注册与回退，从 texture_paths/terrain_colors 读取 | `get_texture`、`get_color` |
+| [scripts/autoload/visual_asset_registry.gd](scripts/autoload/visual_asset_registry.gd) | 纯色贴图工具 | `make_color_texture` |
 
 ### 2.2 战斗核心
 
@@ -91,7 +91,7 @@
 |------|------|---------------|
 | [scripts/terrain_zone.gd](scripts/terrain_zone.gd) | 草丛/浅水/深水逻辑、速度倍率、深水 DOT | `terrain_type`、`speed_multiplier` |
 | [scripts/game.gd](scripts/game.gd) | `_spawn_terrain_map` 簇团式分层生成、TileMap 像素图、严格无重叠 | 深水→浅水→障碍→草丛→边界 |
-| [resources/terrain_colors.tres](resources/terrain_colors.tres) | 地形色块统一配置入口 | floor_a/b、grass、shallow_water、deep_water、obstacle、boundary |
+| [resources/terrain_colors.tres](resources/terrain_colors.tres) | 地形色块统一配置入口，供 game.gd 引用 | floor_a/b、grass、shallow_water、deep_water、obstacle、boundary |
 
 ### 2.5 角色特质
 
@@ -136,8 +136,8 @@
 |------|------|---------------|
 | [scripts/pixel_generator.gd](scripts/pixel_generator.gd) | 运行时生成像素图 | `generate_bullet_sprite_by_type`、`generate_pickup_sprite` |
 | [resources/terrain_color_config.gd](resources/terrain_color_config.gd) | 地形色块 Resource 脚本 | 供 terrain_colors.tres 使用 |
-| [resources/texture_path_config.gd](resources/texture_path_config.gd) | 纹理路径 Resource 脚本 | 人物/敌人/武器等美术路径 |
-| [resources/texture_paths.tres](resources/texture_paths.tres) | 纹理路径统一配置入口 | 供 VisualAssetRegistry 加载 |
+| [resources/texture_path_config.gd](resources/texture_path_config.gd) | 纹理路径 Resource 脚本（可选，部分场景仍可参考） | 人物/敌人/武器等美术路径 |
+| [resources/texture_paths.tres](resources/texture_paths.tres) | 纹理路径配置（可选） | 美术已解耦至各实现类/weapon_defs |
 | [resources/character_data.gd](resources/character_data.gd) | 角色数据（若存在） | - |
 
 ---

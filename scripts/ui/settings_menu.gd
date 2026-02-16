@@ -243,7 +243,7 @@ func _ensure_fullscreen_backdrop() -> void:
 	_fullscreen_backdrop.offset_right = 0
 	_fullscreen_backdrop.offset_bottom = 0
 	_fullscreen_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	_fullscreen_backdrop.color = VisualAssetRegistry.get_color("ui.modal_backdrop", Color(0.08, 0.09, 0.11, 1.0))
+	_fullscreen_backdrop.color = UiThemeConfig.load_theme().modal_backdrop
 	add_child(_fullscreen_backdrop)
 	move_child(_fullscreen_backdrop, 0)
 
@@ -251,8 +251,9 @@ func _ensure_fullscreen_backdrop() -> void:
 func _apply_panel_style() -> void:
 	# 设置菜单固定使用不透明背景，避免底层场景干扰阅读。
 	var style := StyleBoxFlat.new()
-	style.bg_color = VisualAssetRegistry.get_color("ui.modal_panel_bg", Color(0.16, 0.17, 0.20, 1.0))
-	style.border_color = VisualAssetRegistry.get_color("ui.modal_panel_border", Color(0.82, 0.84, 0.90, 1.0))
+	var theme := UiThemeConfig.load_theme()
+	style.bg_color = theme.modal_panel_bg
+	style.border_color = theme.modal_panel_border
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2

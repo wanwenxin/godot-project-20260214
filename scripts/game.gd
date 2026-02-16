@@ -38,20 +38,21 @@ extends Node2D
 @export var floor_color_b := Color(0.72, 0.72, 0.74, 1.0) # 地板颜色B
 @export var boundary_thickness := 28.0 # 边界厚度
 @export var boundary_color := Color(0.33, 0.33, 0.35, 1.0) # 边界颜色
+@export var terrain_colors: Resource  # 地形色块配置，优先从此读取；空则用上方 @export 默认色
 
 var player  # 玩家节点引用
 var survival_time := 0.0  # 本局生存时长（秒）
 var is_game_over := false  # 死亡或通关后为 true，停止运行时统计
 var intermission_left := 0.0  # 波次间隔剩余秒数
-# 升级候选池：每项含 id、title_key、desc_key、cost
+# 升级候选池：每项含 id、title_key、desc_key、cost、icon_path（空则色块）
 var _upgrade_pool := [
-	{"id": "damage", "title_key": "upgrade.damage.title", "desc_key": "upgrade.damage.desc", "cost": 2},
-	{"id": "fire_rate", "title_key": "upgrade.fire_rate.title", "desc_key": "upgrade.fire_rate.desc", "cost": 2},
-	{"id": "max_health", "title_key": "upgrade.max_health.title", "desc_key": "upgrade.max_health.desc", "cost": 3},
-	{"id": "speed", "title_key": "upgrade.speed.title", "desc_key": "upgrade.speed.desc", "cost": 2},
-	{"id": "bullet_speed", "title_key": "upgrade.bullet_speed.title", "desc_key": "upgrade.bullet_speed.desc", "cost": 1},
-	{"id": "multi_shot", "title_key": "upgrade.multi_shot.title", "desc_key": "upgrade.multi_shot.desc", "cost": 4},
-	{"id": "pierce", "title_key": "upgrade.pierce.title", "desc_key": "upgrade.pierce.desc", "cost": 4}
+	{"id": "damage", "title_key": "upgrade.damage.title", "desc_key": "upgrade.damage.desc", "cost": 2, "icon_path": ""},
+	{"id": "fire_rate", "title_key": "upgrade.fire_rate.title", "desc_key": "upgrade.fire_rate.desc", "cost": 2, "icon_path": ""},
+	{"id": "max_health", "title_key": "upgrade.max_health.title", "desc_key": "upgrade.max_health.desc", "cost": 3, "icon_path": ""},
+	{"id": "speed", "title_key": "upgrade.speed.title", "desc_key": "upgrade.speed.desc", "cost": 2, "icon_path": ""},
+	{"id": "bullet_speed", "title_key": "upgrade.bullet_speed.title", "desc_key": "upgrade.bullet_speed.desc", "cost": 1, "icon_path": ""},
+	{"id": "multi_shot", "title_key": "upgrade.multi_shot.title", "desc_key": "upgrade.multi_shot.desc", "cost": 4, "icon_path": ""},
+	{"id": "pierce", "title_key": "upgrade.pierce.title", "desc_key": "upgrade.pierce.desc", "cost": 4, "icon_path": ""}
 ]
 var _pending_upgrade_options: Array[Dictionary] = []  # 当前波次三选一升级项
 var _upgrade_selected := false  # 防重入：本轮是否已选择升级
@@ -473,6 +474,15 @@ func _set_ui_modal_active(value: bool) -> void:
 		get_tree().paused = false
 
 
+## 从 terrain_colors 资源或 @export 默认值获取地形颜色；key 为 terrain_color_config 属性名。
+func _get_terrain_color(key: String, fallback: Color) -> Color:
+	if terrain_colors != null:
+		var c = terrain_colors.get(key)
+		if c is Color:
+			return c
+	return fallback
+
+
 func _spawn_terrain_map() -> void:
 	var cfg: LevelConfig = GameManager.get_current_level_config(maxi(1, wave_manager.current_wave))
 	if cfg == null:
@@ -499,8 +509,8 @@ func _spawn_terrain_map() -> void:
 	)
 	var water_occupied: Array[Rect2] = []
 	var solid_occupied: Array[Rect2] = []
-	var deep_water_color := VisualAssetRegistry.get_color("terrain.deep_water", Color(0.08, 0.20, 0.42, 0.56))
-	var shallow_water_color := VisualAssetRegistry.get_color("terrain.shallow_water", Color(0.24, 0.55, 0.80, 0.48))
+	var deep_water_color := _get_terrain_color("deep_water", Color(0.08, 0.20, 0.42, 0.56))
+	var shallow_water_color := _get_terrain_color("shallow_water", Color(0.24, 0.55, 0.80, 0.48))
 	_setup_terrain_tilemap()
 	_spawn_walkable_floor(region)
 
@@ -781,7 +791,7 @@ func _spawn_clustered_grass(
 ) -> int:
 	# 草丛严格无重叠，与水域、障碍、其他草丛均保持 padding 间距。
 	var placed := 0
-	var grass_color := VisualAssetRegistry.get_color("terrain.grass", Color(0.20, 0.45, 0.18, 0.45))
+	var grass_color := _get_terrain_color("grass", Color(0.20, 0.45, 0.18, 0.45))
 	for center in centers:
 		if placed >= total_count:
 			break
@@ -821,7 +831,7 @@ func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
 		_paint_terrain_rect(Rect2(spawn_pos - size * 0.5, size), TERRAIN_TILE_OBSTACLE)
 	else:
 		var rect := ColorRect.new()
-		rect.color = VisualAssetRegistry.get_color("terrain.obstacle", Color(0.16, 0.16, 0.20, 1.0))
+		rect.color = _get_terrain_color("obstacle", Color(0.16, 0.16, 0.20, 1.0))
 		rect.size = size
 		rect.position = -size * 0.5
 		body.add_child(rect)
@@ -888,8 +898,8 @@ func _spawn_walkable_floor(region: Rect2) -> void:
 	floor_root.z_index = -100
 	_terrain_container.add_child(floor_root)
 	var tile := maxf(12.0, floor_tile_size)
-	var color_a := VisualAssetRegistry.get_color("terrain.floor_a", floor_color_a)
-	var color_b := VisualAssetRegistry.get_color("terrain.floor_b", floor_color_b)
+	var color_a := _get_terrain_color("floor_a", floor_color_a)
+	var color_b := _get_terrain_color("floor_b", floor_color_b)
 	var x := region.position.x
 	var row := 0
 	while x < region.end.x:
@@ -938,7 +948,7 @@ func _spawn_boundary_body(rect: Rect2) -> void:
 		_paint_terrain_rect(rect, TERRAIN_TILE_BOUNDARY)
 	else:
 		var vis := ColorRect.new()
-		vis.color = VisualAssetRegistry.get_color("terrain.boundary", boundary_color)
+		vis.color = _get_terrain_color("boundary", boundary_color)
 		vis.size = rect.size
 		vis.position = -rect.size * 0.5
 		body.add_child(vis)

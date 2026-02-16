@@ -14,6 +14,11 @@ signal died(enemy: Node)
 # 水中专属敌人离水伤害（子类 is_water_only 返回 true 时生效）。
 @export var out_of_water_damage_per_tick := 5
 @export var out_of_water_damage_interval := 0.2
+@export_file("*.png") var texture_sheet: String  # 8 方向精灵图，空则尝试 texture_single
+@export_file("*.png") var texture_single: String  # 单帧回退，空则 PixelGenerator
+@export var frame_size: Vector2i = Vector2i(18, 18)  # 每帧像素尺寸
+@export var sheet_columns: int = 8  # 精灵图列数（8 方向）
+@export var sheet_rows: int = 3  # 精灵图行数（站立、行走1、行走2）
 
 var current_health := 25
 var player_ref: Node2D
@@ -77,42 +82,33 @@ func set_player(node: Node2D) -> void:
 
 
 func set_enemy_texture(enemy_type: int) -> void:
-	# 子类通过 enemy_type 指定外观；优先 8 方向精灵图。
-	if sprite:
-		var sheet_keys: Array[String] = ["enemy.melee_sheet", "enemy.ranged_sheet", "enemy.tank_sheet", "enemy.boss_sheet", "enemy.aquatic_sheet", "enemy.dasher_sheet"]
-		var type_idx := enemy_type if enemy_type < 6 else 5
-		var sheet_key: String = sheet_keys[type_idx]
-		var frame_w := 18
-		if VisualAssetRegistry.has_asset(sheet_key):
-			var tex := VisualAssetRegistry.get_texture(sheet_key, Callable())
-			if tex != null:
-				sprite.texture = tex
-				sprite.region_enabled = true
-				sprite.region_rect = Rect2(0, 0, frame_w, 18)
-				return
-		var key := "enemy.melee"
-		if enemy_type == 1:
-			key = "enemy.ranged"
-		elif enemy_type == 2:
-			key = "enemy.tank"
-		elif enemy_type == 3:
-			key = "enemy.boss"
-		elif enemy_type == 4:
-			key = "enemy.aquatic"
-		elif enemy_type >= 5:
-			key = "enemy.dasher"
-		var fallback := func() -> Texture2D:
-			return PixelGenerator.generate_enemy_sprite(enemy_type)
-		sprite.texture = VisualAssetRegistry.get_texture(key, fallback)
+	# 优先 texture_sheet，失败则 texture_single，再回退 PixelGenerator；enemy_type 仅用于 PixelGenerator。
+	if not sprite:
+		return
+	var tex: Texture2D = null
+	if texture_sheet != "" and ResourceLoader.exists(texture_sheet):
+		tex = load(texture_sheet) as Texture2D
+	if tex != null:
+		sprite.texture = tex
+		sprite.region_enabled = true
+		sprite.region_rect = Rect2(0, 0, frame_size.x, frame_size.y)
+		return
+	if texture_single != "" and ResourceLoader.exists(texture_single):
+		tex = load(texture_single) as Texture2D
+	if tex != null:
+		sprite.texture = tex
 		sprite.region_enabled = false
+		return
+	sprite.texture = PixelGenerator.generate_enemy_sprite(enemy_type)
+	sprite.region_enabled = false
 
 
 func _update_direction_sprite() -> void:
 	# 8 方向 x 3 行（站立、行走帧1、行走帧2）：根据 velocity 与时间切换，实现肉眼可见的行走动画。
 	if not sprite or not sprite.region_enabled:
 		return
-	var frame_w := 18
-	var frame_h := 18
+	var frame_w := frame_size.x
+	var frame_h := frame_size.y
 	if velocity.length_squared() > 16.0:
 		var angle := velocity.angle()
 		_last_direction_index = wrapi(roundi((angle + PI) / (PI / 4.0)), 0, 8)
