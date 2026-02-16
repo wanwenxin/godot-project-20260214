@@ -97,7 +97,8 @@ func apply_knockback(dir: Vector2, force: float) -> void:
 	_knockback_velocity += dir.normalized() * force
 
 
-func take_damage(amount: int) -> void:
+## 受到伤害；elemental 为元素类型（如 "fire"），预留抗性/DOT 扩展。
+func take_damage(amount: int, elemental: String = "") -> void:
 	current_health -= amount
 	_refresh_health_bar()
 	if current_health <= 0:

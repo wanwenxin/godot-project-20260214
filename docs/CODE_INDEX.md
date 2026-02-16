@@ -93,7 +93,15 @@
 | [scripts/game.gd](scripts/game.gd) | `_spawn_terrain_map` 簇团式分层生成、严格无重叠、每关随机数量 | 深水→浅水→障碍→草丛→边界 |
 | [resources/terrain_colors.tres](resources/terrain_colors.tres) | 地形色块统一配置入口 | floor_a/b、grass、shallow_water、deep_water、obstacle、boundary |
 
-### 2.5 武器系统
+### 2.5 角色特质
+
+| 文件 | 职责 | 关键导出/信号 |
+|------|------|---------------|
+| [scripts/characters/character_traits_base.gd](scripts/characters/character_traits_base.gd) | 角色特质基类，默认属性与数值计算虚方法 | `get_final_damage`、`get_damage_multiplier`、`get_elemental_enchantment` |
+| [scripts/characters/rapid_shooter_traits.gd](scripts/characters/rapid_shooter_traits.gd) | RapidShooter 特质（伤害系数、火附魔） | 继承 character_traits_base |
+| [scripts/characters/heavy_gunner_traits.gd](scripts/characters/heavy_gunner_traits.gd) | HeavyGunner 特质（伤害系数、重锤加成） | 继承 character_traits_base |
+
+### 2.6 武器系统
 
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
@@ -109,7 +117,7 @@
 | [scripts/weapon.gd](scripts/weapon.gd) | 旧版武器基类（部分兼容） | - |
 | [resources/weapon_defs.gd](resources/weapon_defs.gd) | 武器定义池 | `WEAPON_DEFS` |
 
-### 2.6 UI 层
+### 2.7 UI 层
 
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
@@ -122,7 +130,7 @@
 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 通关结算 | `show_result` |
 | [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | 结算面板共享 UI | `build_score_block`、`build_player_stats_block` |
 
-### 2.7 资源与工具
+### 2.8 资源与工具
 
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
@@ -163,6 +171,9 @@
 | scripts/weapons/melee/*.gd | 武器 | 具体近战武器 |
 | scripts/weapons/ranged/*.gd | 武器 | 具体远程武器 |
 | scripts/weapon.gd | 武器 | 旧版武器基类 |
+| scripts/characters/character_traits_base.gd | 角色特质 | 特质基类 |
+| scripts/characters/rapid_shooter_traits.gd | 角色特质 | RapidShooter |
+| scripts/characters/heavy_gunner_traits.gd | 角色特质 | HeavyGunner |
 | scripts/ui/hud.gd | UI | 战斗 HUD、升级/商店 |
 | scripts/ui/main_menu.gd | UI | 主菜单 |
 | scripts/ui/character_select.gd | UI | 角色选择 |

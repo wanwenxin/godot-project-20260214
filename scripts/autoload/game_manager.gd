@@ -17,6 +17,7 @@ const LEVEL_PRESET_PATHS := [
 # - id: 角色唯一标识
 # - fire_rate: 数值越小射速越快（每发间隔秒数）
 # - color_scheme: 像素生成器的配色索引
+# traits_path: 角色特质脚本路径，供 Player 加载并参与数值计算
 var characters := [
 	{
 		"id": 0,
@@ -29,7 +30,8 @@ var characters := [
 		"pellet_count": 1,
 		"spread_degrees": 0.0,
 		"bullet_pierce": 0,
-		"color_scheme": 0
+		"color_scheme": 0,
+		"traits_path": "res://scripts/characters/rapid_shooter_traits.gd"
 	},
 	{
 		"id": 1,
@@ -42,7 +44,8 @@ var characters := [
 		"pellet_count": 2,
 		"spread_degrees": 16.0,
 		"bullet_pierce": 1,
-		"color_scheme": 1
+		"color_scheme": 1,
+		"traits_path": "res://scripts/characters/heavy_gunner_traits.gd"
 	}
 ]
 

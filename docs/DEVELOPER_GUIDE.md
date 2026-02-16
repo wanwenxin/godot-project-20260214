@@ -64,6 +64,12 @@
   - 无敌帧/受伤/死亡
   - 升级应用（伤害、射速、穿透、多弹等）
   - 地形减速效果合并
+  - 持有 `CharacterTraitsBase`，通过 `get_final_damage`、`get_elemental_enchantment` 供武器参与数值计算
+
+- `scripts/characters/character_traits_base.gd` 及子类
+  - 角色特质基类（Resource），供 Player 持有
+  - 子类可重写 `get_damage_multiplier`、`get_elemental_enchantment`、`get_weapon_damage_bonus`、`get_speed_multiplier`、`get_max_health_multiplier`
+  - 武器/子弹通过 Player 调用 `get_final_damage` 获取经角色修正后的伤害
 
 - `scripts/weapon.gd`
   - 冷却射击
@@ -249,6 +255,14 @@ flowchart TD
     gameScene -->|"playSfxBgm"| audioManager
 ```
 
+### 3.5 数值计算流程
+
+伤害计算由武器发起，经 Player 委托给 CharacterTraits 参与修正：
+
+1. **近战**：`weapon_melee_base._apply_touch_hits()` 若 owner 有 `get_final_damage`，则用其替代武器 `damage`，并获取 `get_elemental_enchantment` 传入 `enemy.take_damage(amount, elemental)`
+2. **远程**：`weapon_ranged_base._start_attack()` 若 owner 有 `get_final_damage`，则计算最终伤害并设置到 bullet，同时设置 `elemental_type`
+3. **敌人**：`enemy_base.take_damage(amount, elemental)` 的 `elemental` 参数预留抗性/DOT 扩展
+
 ## 4. 关键配置项
 
 ### 4.1 `game.gd`
@@ -296,6 +310,7 @@ flowchart TD
 ### 4.3 `game_manager.gd`
 
 - `characters`：角色模板（含多弹/穿透字段）
+- `characters[].traits_path`：角色特质脚本路径，供 Player 加载并参与数值计算
 - `weapon_defs`：启动时从 `resources/weapon_defs.gd::WEAPON_DEFS` 载入
 
 ### 4.4 `terrain_zone.gd`
@@ -420,6 +435,12 @@ flowchart TD
 4. 在 `player.gd::equip_weapon_by_id()` 中验证该脚本可实例化
 5. 在 `texture_path_config.gd` 增加 `weapon_{id}` 属性，并在 `texture_paths.tres` 配置图标路径
 5. 在 i18n 文件补齐 `weapon.*` 文案 key
+
+### 5.9 新增角色特质
+
+1. 在 `scripts/characters/` 下新增特质脚本，继承 `character_traits_base.gd`
+2. 按需重写 `get_damage_multiplier`、`get_elemental_enchantment`、`get_weapon_damage_bonus`、`get_speed_multiplier`、`get_max_health_multiplier`
+3. 在 `game_manager.gd::characters` 中为对应角色增加 `traits_path` 字段，指向新脚本路径
 
 ## 6. 常见问题与排障
 

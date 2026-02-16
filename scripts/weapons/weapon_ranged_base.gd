@@ -26,6 +26,12 @@ func configure_from_def(def: Dictionary) -> void:
 func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 	if bullet_scene == null:
 		return false
+	var final_damage := damage
+	var elemental := ""
+	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_final_damage"):
+		final_damage = _owner_ref.get_final_damage(damage, weapon_id, {"is_melee": false})
+	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_elemental_enchantment"):
+		elemental = _owner_ref.get_elemental_enchantment()
 	var base_direction: Vector2 = (target.global_position - global_position).normalized()
 	var bullets := maxi(1, pellet_count)
 	var did_shoot := false
@@ -40,9 +46,10 @@ func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 		bullet.global_position = global_position
 		bullet.set("direction", direction)
 		bullet.set("speed", bullet_speed)
-		bullet.set("damage", damage)
+		bullet.set("damage", final_damage)
 		bullet.set("hit_player", false)
 		bullet.set("remaining_pierce", bullet_pierce)
+		bullet.set("elemental_type", elemental)
 		if bullet_type != "":
 			bullet.set("bullet_type", bullet_type)
 			bullet.set("bullet_color", color_hint)

@@ -76,6 +76,12 @@ func _tick_attack(_owner: Node2D, _target: Node2D, delta: float) -> void:
 func _apply_touch_hits() -> void:
 	if _hit_area == null:
 		return
+	var final_damage := damage
+	var elemental := ""
+	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_final_damage"):
+		final_damage = _owner_ref.get_final_damage(damage, weapon_id, {"is_melee": true})
+		if _owner_ref.has_method("get_elemental_enchantment"):
+			elemental = _owner_ref.get_elemental_enchantment()
 	for body in _hit_area.get_overlapping_bodies():
 		if not is_instance_valid(body):
 			continue
@@ -85,7 +91,7 @@ func _apply_touch_hits() -> void:
 			continue
 		if not _can_hit_enemy(body):
 			continue
-		body.take_damage(damage)
+		body.take_damage(final_damage, elemental)
 		_enemy_last_hit[body.get_instance_id()] = float(Time.get_ticks_msec()) / 1000.0
 		AudioManager.play_hit()
 

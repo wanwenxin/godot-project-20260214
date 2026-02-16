@@ -14,6 +14,7 @@ var color_hint := Color(0.9, 0.9, 0.9, 1.0)
 var _cooldown_left := 0.0
 var _slot_base_position := Vector2.ZERO
 var _slot_base_rotation := 0.0
+var _owner_ref: Node2D  # 持有者（Player），供子类调用 get_final_damage 等
 
 
 # 从武器定义字典初始化 id、type、color、damage、cooldown、range。
@@ -29,6 +30,7 @@ func configure_from_def(def: Dictionary) -> void:
 
 # 每帧调用：扣减冷却，冷却归零且距离足够时尝试 _start_attack，成功则重置冷却。
 func tick_and_try_attack(owner_node: Node2D, target: Node2D, delta: float) -> void:
+	_owner_ref = owner_node
 	_tick_attack(owner_node, target, delta)
 	_cooldown_left = maxf(_cooldown_left - delta, 0.0)
 	if _cooldown_left > 0.0:

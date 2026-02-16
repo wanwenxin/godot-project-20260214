@@ -17,6 +17,7 @@ var current_health := 100
 var move_input := Vector2.ZERO
 var _invulnerable_timer := 0.0
 var _character_data := {}
+var _character_traits: CharacterTraitsBase  # 角色特质，参与伤害等数值计算
 var external_move_input := Vector2.ZERO
 var input_enabled := true
 var _nearest_enemy_refresh := 0.0
@@ -26,6 +27,7 @@ var _terrain_effects: Dictionary = {}
 var _terrain_speed_multiplier := 1.0
 var _equipped_weapons: Array[Node2D] = []  # 已装备武器节点，最多 MAX_WEAPONS 把
 var _weapon_visuals: Array[Sprite2D] = []  # 武器环上的色块图标，随装备刷新
+const DEFAULT_TRAITS = preload("res://scripts/characters/character_traits_base.gd")
 const WEAPON_FALLBACK_SCRIPTS := {
 	"blade_short": "res://scripts/weapons/melee/weapon_blade_short.gd",
 	"hammer_heavy": "res://scripts/weapons/melee/weapon_hammer_heavy.gd",
@@ -50,10 +52,19 @@ func _ready() -> void:
 
 
 func set_character_data(data: Dictionary) -> void:
-	# 把角色模板参数应用到当前实体。
+	# 把角色模板参数应用到当前实体；加载特质并参与移速/生命系数计算。
 	_character_data = data.duplicate(true)
-	max_health = int(_character_data.get("max_health", 100))
-	base_speed = float(_character_data.get("speed", 160.0))
+	var traits_path := str(_character_data.get("traits_path", ""))
+	if traits_path != "" and ResourceLoader.exists(traits_path):
+		var script_obj = load(traits_path)
+		if script_obj and script_obj is GDScript:
+			_character_traits = (script_obj as GDScript).new() as CharacterTraitsBase
+	else:
+		_character_traits = DEFAULT_TRAITS.new()
+	var base_hp := int(_character_data.get("max_health", 100))
+	var base_spd := float(_character_data.get("speed", 160.0))
+	max_health = int(float(base_hp) * _character_traits.get_max_health_multiplier())
+	base_speed = base_spd * _character_traits.get_speed_multiplier()
 	current_health = max_health
 	_update_sprite(int(_character_data.get("color_scheme", 0)))
 	emit_signal("health_changed", current_health, max_health)
@@ -150,6 +161,20 @@ func clear_terrain_effect(zone_id: int) -> void:
 func set_move_inertia(value: float) -> void:
 	# 统一入口，便于从设置菜单或其他系统动态调整惯性。
 	inertia_factor = clampf(value, 0.0, 0.9)
+
+
+## 供武器调用：获取经角色特质修正后的最终伤害。
+func get_final_damage(base_damage: int, weapon_id: String, context: Dictionary = {}) -> int:
+	if _character_traits == null:
+		return base_damage
+	return _character_traits.get_final_damage(base_damage, weapon_id, context)
+
+
+## 供武器调用：获取角色元素附魔类型。
+func get_elemental_enchantment() -> String:
+	if _character_traits == null:
+		return ""
+	return _character_traits.get_elemental_enchantment()
 
 
 func _get_nearest_enemy() -> Node2D:
