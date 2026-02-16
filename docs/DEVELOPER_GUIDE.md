@@ -52,6 +52,7 @@
   - 生成玩家与地形
   - 挂接波次信号与 HUD 信号
   - 处理升级选择、回合间隔、暂停、结算
+  - 处理摄像机缩放按键（`camera_zoom_in`/`camera_zoom_out`）
   - 触控输入转发到 Player
   - 波次开始：玩家传送到地图中心
   - 波次结束：清除剩余敌人（`enemies` 组）与子弹（`bullets` 组）
@@ -279,12 +280,25 @@ flowchart TD
 - `grass_padding`：草丛与其它地形最小间距（默认 4）
 - `floor_tile_size`：可移动地面块尺寸
 - `floor_color_a` / `floor_color_b`：可移动地面块配色（fallback，优先用 terrain_colors.tres）
-- `boundary_thickness`：地图边界厚度
-- `boundary_color`：地图边界颜色（fallback）
+- `boundary_thickness`：地图边界厚度（边界碰撞体不可见，仅保留碰撞）
+- `boundary_color`：地图边界颜色（fallback，当前边界无视觉）
+- `camera_zoom_scale`：摄像机缩放系数（0.7 更远、1.3 更近，默认 0.6 会在初始化时 clamp 到 0.7～1.3）
+- `camera_zoom_min` / `camera_zoom_max`：缩放范围（默认 0.7～1.3）
+- `camera_zoom_step`：每次按键变化量（默认 0.05）
+- `camera_dead_zone_ratio`：玩家偏离中心超过此比例时摄像机开始跟随（默认 0.30）
 - `*_cluster_count`：每类地形簇数量
 - `*_cluster_radius`：每类簇半径
 - `*_cluster_items`：每簇生成块数量范围
 - `_upgrade_pool`：升级候选池
+
+**LevelConfig 地形扩展**（`resources/level_config.gd`）：
+- `map_size_scale`：地图大小系数，0.8=小、1.0=中、1.2=大
+- `default_terrain_type`：默认地形类型，`flat`=平地、`seaside`=海边、`mountain`=山地；地板瓦片按此选择像素图（terrain_atlas 第 0/1/2 行），默认 `flat`
+
+**摄像机**（`GameCamera2D`）：
+- 缩放由 `camera_zoom_scale` 控制，可通过按键 `=`/`-`（`camera_zoom_in`/`camera_zoom_out`）调节
+- 当地图大于可视区域时跟随玩家，保持玩家在 `camera_dead_zone_ratio` 死区内
+- 敌人生成区域与 `get_playable_bounds()` 对齐
 
 ### 4.2 `wave_manager.gd`
 
@@ -339,7 +353,13 @@ flowchart TD
 - **升级图标**：`_upgrade_pool` 的 `icon_path`，HUD 从 option 读取
 - **VisualAssetRegistry**：仅保留 `make_color_texture(color, size)` 作为纯色贴图工具
 
-### 4.7 武器配置
+### 4.7 默认地形与像素图
+
+- `resources/default_terrain_colors.gd`：默认地形 3 种配色（flat/seaside/mountain），供 ColorRect 回退使用
+- `terrain_atlas.png`：3 行 x 7 列，第 0/1/2 行分别为 flat、seaside、mountain 地板瓦片
+- `_spawn_walkable_floor` 优先使用 TileMap 像素图，按 `default_terrain_type` 选择 atlas 行；无 TileMap 时回退 ColorRect
+
+### 4.8 武器配置
 
 - `resources/weapon_defs.gd::WEAPON_DEFS` 字段说明：
   - `id`, `type`, `name_key`, `desc_key`, `cost`, `color`
@@ -349,7 +369,7 @@ flowchart TD
   - `bullet_texture_path`、`bullet_collision_radius`（远程子弹，仅远程）
   - `stats`（示例：`damage`, `cooldown`, `range`, `touch_interval`, `swing_duration`, `swing_degrees`, `swing_reach`, `hitbox_radius`, `bullet_speed`, `pellet_count`, `spread_degrees`, `bullet_pierce`）
 
-### 4.8 多语言配置
+### 4.9 多语言配置
 
 - 语言文件：
   - `i18n/zh-CN.json`
@@ -361,7 +381,7 @@ flowchart TD
 - 运行时刷新：
   - 各 UI 监听 `LocalizationManager.language_changed` 并重绘文本
 
-### 4.9 设置结构（SaveManager）
+### 4.10 设置结构（SaveManager）
 
 `save.json.settings` 当前结构：
 

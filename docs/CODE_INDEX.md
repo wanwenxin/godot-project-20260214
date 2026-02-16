@@ -26,7 +26,7 @@
 
 | 流程 | 文件 | 说明 |
 |------|------|------|
-| 主控 | [scripts/game.gd](scripts/game.gd) | 生成玩家与地形、挂接波次/HUD 信号、暂停与结算 |
+| 主控 | [scripts/game.gd](scripts/game.gd) | 生成玩家与地形、挂接波次/HUD 信号、暂停与结算、摄像机缩放按键 |
 | 波次 | [scripts/wave_manager.gd](scripts/wave_manager.gd) | 敌人生成、击杀统计、掉落、倒计时、清场信号 |
 | 玩家 | [scripts/player.gd](scripts/player.gd) | 移动、索敌、开火、受伤、死亡、升级应用 |
 | 提示 | [scripts/spawn_telegraph.gd](scripts/spawn_telegraph.gd) | 敌人生成前警示圈与倒计时 |
@@ -66,7 +66,7 @@
 
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
-| [scripts/game.gd](scripts/game.gd) | 主游戏控制器、地形生成、升级/商店流程 | `victory_wave`、`get_player_for_pause` |
+| [scripts/game.gd](scripts/game.gd) | 主游戏控制器、地形生成、升级/商店流程、摄像机缩放 | `victory_wave`、`get_player_for_pause` |
 | [scripts/player.gd](scripts/player.gd) | 玩家移动、索敌、开火、受伤、死亡 | `died`、`health_changed`、`get_equipped_weapon_details` |
 | [scripts/bullet.gd](scripts/bullet.gd) | 子弹飞行、命中、穿透、去重 | `hit_player`、`remaining_pierce` |
 | [scripts/pickup.gd](scripts/pickup.gd) | 金币/治疗掉落、拾取、飘动 | `pickup_type`、`value` |
@@ -90,7 +90,7 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/terrain_zone.gd](scripts/terrain_zone.gd) | 草丛/浅水/深水逻辑、速度倍率、深水 DOT | `terrain_type`、`speed_multiplier` |
-| [scripts/game.gd](scripts/game.gd) | `_spawn_terrain_map` 簇团式分层生成、TileMap 像素图、严格无重叠 | 深水→浅水→障碍→草丛→边界 |
+| [scripts/game.gd](scripts/game.gd) | `_spawn_terrain_map` 簇团式分层生成、TileMap 像素图（含 flat/seaside/mountain 地板）、严格无重叠 | 深水→浅水→障碍→草丛→边界 |
 | [resources/terrain_colors.tres](resources/terrain_colors.tres) | 地形色块统一配置入口，供 game.gd 引用 | floor_a/b、grass、shallow_water、deep_water、obstacle、boundary |
 
 ### 2.5 角色特质
@@ -136,6 +136,7 @@
 |------|------|---------------|
 | [scripts/pixel_generator.gd](scripts/pixel_generator.gd) | 运行时生成像素图 | `generate_bullet_sprite_by_type`、`generate_pickup_sprite` |
 | [resources/terrain_color_config.gd](resources/terrain_color_config.gd) | 地形色块 Resource 脚本 | 供 terrain_colors.tres 使用 |
+| [resources/default_terrain_colors.gd](resources/default_terrain_colors.gd) | 默认地形配色（flat/seaside/mountain），供 ColorRect 回退 | `get_floor_colors` |
 | [resources/texture_path_config.gd](resources/texture_path_config.gd) | 纹理路径 Resource 脚本（可选，部分场景仍可参考） | 人物/敌人/武器等美术路径 |
 | [resources/texture_paths.tres](resources/texture_paths.tres) | 纹理路径配置（可选） | 美术已解耦至各实现类/weapon_defs |
 | [resources/character_data.gd](resources/character_data.gd) | 角色数据（若存在） | - |
@@ -185,6 +186,7 @@
 | scripts/pixel_generator.gd | 工具 | 像素图生成 |
 | resources/weapon_defs.gd | 资源 | 武器定义 |
 | resources/terrain_color_config.gd | 资源 | 地形色块配置脚本 |
+| resources/default_terrain_colors.gd | 资源 | 默认地形配色（flat/seaside/mountain） |
 | resources/terrain_colors.tres | 资源 | 地形色块统一入口 |
 | resources/texture_path_config.gd | 资源 | 纹理路径配置脚本 |
 | resources/texture_paths.tres | 资源 | 人物/敌人/武器纹理统一入口 |

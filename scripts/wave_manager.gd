@@ -230,16 +230,27 @@ func _spawn_enemy_at(scene: PackedScene, spawn_position: Vector2, hp_scale: floa
 
 
 func _random_spawn_position() -> Vector2:
-	# 在边界内采样，且尽量远离玩家；若反复失败则用“最远候选点”兜底。
-	var region := Rect2(
-		Vector2(spawn_region_margin, spawn_region_margin),
-		Vector2(
-			maxf(16.0, _viewport_size.x - spawn_region_margin * 2.0),
-			maxf(16.0, _viewport_size.y - spawn_region_margin * 2.0)
+	# 在可玩区域内采样，且尽量远离玩家；若反复失败则用“最远候选点”兜底。
+	var region: Rect2
+	var game_node := get_parent()
+	if game_node != null and game_node.has_method("get_playable_bounds"):
+		region = game_node.get_playable_bounds()
+		# 内缩 margin 避免贴边
+		region = Rect2(
+			region.position + Vector2(spawn_region_margin, spawn_region_margin),
+			region.size - Vector2(spawn_region_margin * 2.0, spawn_region_margin * 2.0)
 		)
-	)
-	var player_pos := _player_ref.global_position if is_instance_valid(_player_ref) else _viewport_size * 0.5
-	var best_pos := region.position + region.size * 0.5
+	else:
+		region = Rect2(
+			Vector2(spawn_region_margin, spawn_region_margin),
+			Vector2(
+				maxf(16.0, _viewport_size.x - spawn_region_margin * 2.0),
+				maxf(16.0, _viewport_size.y - spawn_region_margin * 2.0)
+			)
+		)
+	var region_center := region.position + region.size * 0.5
+	var player_pos := _player_ref.global_position if is_instance_valid(_player_ref) else region_center
+	var best_pos := region_center
 	var best_dist := -1.0
 	for i in range(maxi(1, spawn_attempts)):
 		var candidate := Vector2(

@@ -1,0 +1,34 @@
+---
+description: 新增实体或纹理时自动创建像素图并完成绑定
+globs: "**/scenes/enemies/**","**/assets/**","**/terrain/**","**/*enemy*.gd","**/*terrain*.gd"
+alwaysApply: false
+---
+
+# Godot 资源与像素图规范
+
+## 1. 新增实体或纹理时的流程
+
+当添加**新敌人、新角色、新道具**或**新纹理资源**时，必须：
+
+1. **自动新建像素图**：在 `assets/` 对应子目录下创建或引用像素风格纹理
+   - 敌人：`assets/enemies/` 或 `assets/characters/`
+   - 地形：`assets/terrain/`
+   - 武器/子弹：`assets/weapons/`、`assets/bullets/`
+2. **完成绑定**：在场景或脚本中将纹理正确绑定到 Sprite2D/TextureRect 等节点
+3. **注册到配置**：若项目有 `TexturePaths`、`VisualAssetRegistry` 等配置，需同步添加条目
+
+## 2. 像素图要求
+
+- 风格与项目现有资源一致（像素风）
+- 尺寸符合使用场景（如 16x16、32x32、64x64）
+- 使用 PNG 格式，支持透明通道
+
+## 3. 示例流程
+
+```
+新增敌人 enemy_xxx：
+1. 创建 assets/enemies/enemy_xxx.png（或引用已有像素图）
+2. 创建 scenes/enemies/enemy_xxx.tscn，Sprite2D 绑定该纹理
+3. 在 enemy_xxx.gd 中引用纹理路径
+4. 若存在 texture_paths.tres，添加对应条目
+```

@@ -1,0 +1,43 @@
+---
+description: 自动生成逻辑的参数可配置；基类默认值，子类可覆盖
+globs: "**/*.gd"
+alwaysApply: false
+---
+
+# Godot 参数与配置规范
+
+## 1. 便于参数修改
+
+涉及**自动生成、算法、数值逻辑**的代码，参数必须便于修改：
+
+- 使用 `@export` 暴露到 Inspector，或
+- 集中在 Resource/配置类中，避免硬编码
+
+## 2. 多类共享参数：基类默认值 + 子类覆盖
+
+当参数作用于**多个类**（如多个敌人、多个关卡）时：
+
+1. **基类定义默认值**：在基类中用 `@export` 或成员变量提供默认值
+2. **子类可覆盖**：子类通过 override 或 `@export` 覆盖，实现各自参数
+
+```gdscript
+# 基类：默认值
+class_name EnemyBase
+extends CharacterBody2D
+
+@export var max_health := 25      # 默认生命
+@export var move_speed := 80.0   # 默认移速
+@export var damage_on_touch := 5  # 默认碰触伤害
+
+# 子类：覆盖默认值
+extends EnemyBase
+@export var max_health := 50      # 覆盖：坦克型更肉
+@export var move_speed := 40.0   # 覆盖：移速更慢
+```
+
+## 3. Resource 配置模式
+
+使用 `Resource` 或 `LevelConfig` 等配置类时：
+
+- 基类 Resource 定义 `@export` 默认值
+- 子类 `.tres` 或子类脚本仅 override 需要变更的字段

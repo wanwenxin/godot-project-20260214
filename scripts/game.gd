@@ -39,6 +39,11 @@ extends Node2D
 @export var boundary_thickness := 28.0 # 边界厚度
 @export var boundary_color := Color(0.33, 0.33, 0.35, 1.0) # 边界颜色
 @export var terrain_colors: Resource  # 地形色块配置，优先从此读取；空则用上方 @export 默认色
+@export var camera_zoom_scale: float = 0.8  # 摄像机缩放系数（<1时为靠近地面）
+@export var camera_zoom_min: float = 0.7  # 缩放下限（更近）
+@export var camera_zoom_max: float = 1.3  # 缩放上限（更远）
+@export var camera_zoom_step: float = 0.05  # 每次按键变化量
+@export var camera_dead_zone_ratio: float = 0.30  # 玩家偏离中心超过此比例时开始跟随
 
 var player  # 玩家节点引用
 var survival_time := 0.0  # 本局生存时长（秒）
@@ -63,6 +68,10 @@ var _terrain_tilemap: TileMap  # 地形 TileMap，用于像素图绘制
 const TERRAIN_TILE_SIZE := 32
 const TERRAIN_TILE_FLOOR_A := 0
 const TERRAIN_TILE_FLOOR_B := 1
+# default_terrain_type 对应 atlas 行号：flat=0, seaside=1, mountain=2
+const TERRAIN_FLOOR_ROW_FLAT := 0
+const TERRAIN_FLOOR_ROW_SEASIDE := 1
+const TERRAIN_FLOOR_ROW_MOUNTAIN := 2
 const TERRAIN_TILE_GRASS := 2
 const TERRAIN_TILE_SHALLOW_WATER := 3
 const TERRAIN_TILE_DEEP_WATER := 4
@@ -76,6 +85,7 @@ var _ui_modal_active := false  # 升级/商店等模态面板是否打开
 var _mobile_move := Vector2.ZERO
 
 @onready var wave_manager = $WaveManager
+@onready var game_camera: Camera2D = $GameCamera2D
 @onready var hud = $HUD
 @onready var pause_menu = $PauseMenu
 @onready var game_over_screen = $GameOverScreen
@@ -118,6 +128,8 @@ func _ready() -> void:
 	world_background.z_index = -200
 	call_deferred("_resize_world_background")
 	get_viewport().size_changed.connect(_resize_world_background)
+	# 初始化时限制缩放系数在有效范围内
+	camera_zoom_scale = clampf(camera_zoom_scale, camera_zoom_min, camera_zoom_max)
 
 
 func _resize_world_background() -> void:
@@ -135,6 +147,8 @@ func _process(delta: float) -> void:
 	if is_game_over:
 		return
 
+	_update_camera()
+
 	# 生存计时每帧刷新到 HUD。
 	survival_time += delta
 	hud.set_survival_time(survival_time)
@@ -150,6 +164,12 @@ func _process(delta: float) -> void:
 		_toggle_pause()
 	if Input.is_action_just_pressed("toggle_enemy_hp"):
 		_toggle_enemy_healthbar_visibility()
+	# 非模态时响应摄像机缩放按键
+	if not _ui_modal_active:
+		if Input.is_action_just_pressed("camera_zoom_in"):
+			camera_zoom_scale = minf(camera_zoom_scale + camera_zoom_step, camera_zoom_max)
+		if Input.is_action_just_pressed("camera_zoom_out"):
+			camera_zoom_scale = maxf(camera_zoom_scale - camera_zoom_step, camera_zoom_min)
 
 
 func _spawn_player() -> void:
@@ -220,7 +240,7 @@ func _on_wave_started(wave: int) -> void:
 	hud.set_wave(wave)
 	hud.show_wave_banner(wave)
 	if is_instance_valid(player):
-		player.global_position = get_viewport_rect().get_center()
+		player.global_position = _playable_region.get_center()
 	if wave > 1:
 		_clear_terrain()
 		call_deferred("_spawn_terrain_map")
@@ -483,6 +503,35 @@ func _get_terrain_color(key: String, fallback: Color) -> Color:
 	return fallback
 
 
+## 更新摄像机：缩放、跟随；当地图大于可视区域时，保持玩家偏离中心不超过 camera_dead_zone_ratio。
+func _update_camera() -> void:
+	if game_camera == null or not is_instance_valid(player):
+		return
+	var viewport_size := get_viewport_rect().size
+	var zoom_val := 1.0 / camera_zoom_scale
+	game_camera.zoom = Vector2(zoom_val, zoom_val)
+	var visible_size := viewport_size / zoom_val
+	if _playable_region.size.x <= visible_size.x and _playable_region.size.y <= visible_size.y:
+		# 地图可完全覆盖，摄像机固定于 region 中心
+		game_camera.position = _playable_region.get_center()
+		return
+	# 地图大于可视区域，跟随玩家，保持玩家在 30% 死区内
+	var dead_half := visible_size * camera_dead_zone_ratio * 0.5
+	var cam_pos: Vector2 = game_camera.position
+	var player_pos: Vector2 = player.global_position
+	var dx: float = player_pos.x - cam_pos.x
+	var dy: float = player_pos.y - cam_pos.y
+	if absf(dx) > dead_half.x:
+		cam_pos.x = player_pos.x - signf(dx) * dead_half.x
+	if absf(dy) > dead_half.y:
+		cam_pos.y = player_pos.y - signf(dy) * dead_half.y
+	# 限制摄像机在 region 内，避免显示区域外
+	var half_vis := visible_size * 0.5
+	cam_pos.x = clampf(cam_pos.x, _playable_region.position.x + half_vis.x, _playable_region.end.x - half_vis.x)
+	cam_pos.y = clampf(cam_pos.y, _playable_region.position.y + half_vis.y, _playable_region.end.y - half_vis.y)
+	game_camera.position = cam_pos
+
+
 func _spawn_terrain_map() -> void:
 	var cfg: LevelConfig = GameManager.get_current_level_config(maxi(1, wave_manager.current_wave))
 	if cfg == null:
@@ -500,19 +549,20 @@ func _spawn_terrain_map() -> void:
 	var obstacle_count := rng.randi_range(params.get("obstacle_count_min", obstacle_count_min), params.get("obstacle_count_max", obstacle_count_max))
 	var grass_count := rng.randi_range(params.get("grass_count_min", grass_count_min), params.get("grass_count_max", grass_count_max))
 	var margin: float = params.get("terrain_margin", terrain_margin)
-	var region := Rect2(
-		Vector2(margin, margin),
-		Vector2(
-			maxf(64.0, viewport.x - margin * 2.0),
-			maxf(64.0, viewport.y - margin * 2.0)
-		)
+	var size_scale: float = params.get("map_size_scale", 1.0)
+	var base_size := Vector2(
+		maxf(64.0, viewport.x - margin * 2.0),
+		maxf(64.0, viewport.y - margin * 2.0)
 	)
+	var region := Rect2(Vector2(margin, margin), base_size * size_scale)
 	var water_occupied: Array[Rect2] = []
 	var solid_occupied: Array[Rect2] = []
 	var deep_water_color := _get_terrain_color("deep_water", Color(0.08, 0.20, 0.42, 0.56))
 	var shallow_water_color := _get_terrain_color("shallow_water", Color(0.24, 0.55, 0.80, 0.48))
 	_setup_terrain_tilemap()
-	_spawn_walkable_floor(region)
+	var has_special_terrain := (deep_water_count + shallow_water_count + obstacle_count + grass_count) > 0
+	var default_type: String = params.get("default_terrain_type", "flat")
+	_spawn_walkable_floor(region, default_type, not has_special_terrain)
 
 	placement_attempts = int(params.get("placement_attempts", placement_attempts))
 	var water_pad: float = params.get("water_padding", water_padding)
@@ -847,15 +897,20 @@ func _setup_terrain_tilemap() -> void:
 	var tex: Texture2D = load(tex_path) as Texture2D
 	if tex == null:
 		return
-	# 至少需要 7 个 32x32 瓦片（224x32），否则瓦片不可见，回退 ColorRect。
+	# 至少需要 7x3 个 32x32 瓦片（224x96），否则瓦片不可见，回退 ColorRect。
 	const MIN_ATLAS_W := 224
-	const MIN_ATLAS_H := 32
+	const MIN_ATLAS_H := 96
 	if tex.get_width() < MIN_ATLAS_W or tex.get_height() < MIN_ATLAS_H:
 		return
 	atlas.texture = tex
 	atlas.texture_region_size = Vector2i(TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE)
 	for i in range(7):
 		atlas.create_tile(Vector2i(i, 0))
+	# 第 1、2 行：seaside、mountain 地板瓦片
+	atlas.create_tile(Vector2i(0, 1))
+	atlas.create_tile(Vector2i(1, 1))
+	atlas.create_tile(Vector2i(0, 2))
+	atlas.create_tile(Vector2i(1, 2))
 	var tileset := TileSet.new()
 	tileset.tile_size = Vector2i(TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE)
 	tileset.add_source(atlas, 0)
@@ -880,8 +935,14 @@ func _paint_terrain_rect(rect: Rect2, tile_type: int) -> void:
 			_terrain_tilemap.set_cell(layer, Vector2i(cx, cy), source_id, atlas_coords)
 
 
-func _spawn_walkable_floor(region: Rect2) -> void:
-	# 可移动地面：用 TileMap 铺满可玩区域，棋盘格 floor_a/floor_b；无 TileMap 时回退 ColorRect。
+func _spawn_walkable_floor(region: Rect2, default_terrain_type: String = "flat", use_default_terrain: bool = false) -> void:
+	# 可移动地面：优先用 TileMap 铺满可玩区域，按 default_terrain_type 选择地板瓦片（flat/seaside/mountain）；无 TileMap 时回退 ColorRect。
+	var floor_row := TERRAIN_FLOOR_ROW_FLAT
+	var t := default_terrain_type.to_lower()
+	if t == "seaside":
+		floor_row = TERRAIN_FLOOR_ROW_SEASIDE
+	elif t == "mountain":
+		floor_row = TERRAIN_FLOOR_ROW_MOUNTAIN
 	if _terrain_tilemap != null:
 		var layer := 0
 		var source_id := 0
@@ -889,17 +950,24 @@ func _spawn_walkable_floor(region: Rect2) -> void:
 		var cell_end := Vector2i(ceili(region.end.x / float(TERRAIN_TILE_SIZE)), ceili(region.end.y / float(TERRAIN_TILE_SIZE)))
 		for cx in range(cell_start.x, cell_end.x):
 			for cy in range(cell_start.y, cell_end.y):
-				var tile_type := TERRAIN_TILE_FLOOR_A if ((cx + cy) % 2 == 0) else TERRAIN_TILE_FLOOR_B
-				_terrain_tilemap.set_cell(layer, Vector2i(cx, cy), source_id, Vector2i(tile_type, 0))
+				var tile_x := TERRAIN_TILE_FLOOR_A if ((cx + cy) % 2 == 0) else TERRAIN_TILE_FLOOR_B
+				_terrain_tilemap.set_cell(layer, Vector2i(cx, cy), source_id, Vector2i(tile_x, floor_row))
 		return
 	# 回退：无 TileMap 时用 ColorRect
+	var color_a: Color
+	var color_b: Color
+	if use_default_terrain:
+		var cfg := DefaultTerrainColors.get_floor_colors(default_terrain_type)
+		color_a = cfg[0]
+		color_b = cfg[1]
+	else:
+		color_a = _get_terrain_color("floor_a", floor_color_a)
+		color_b = _get_terrain_color("floor_b", floor_color_b)
 	var floor_root := Node2D.new()
 	floor_root.name = "FloorLayer"
 	floor_root.z_index = -100
 	_terrain_container.add_child(floor_root)
 	var tile := maxf(12.0, floor_tile_size)
-	var color_a := _get_terrain_color("floor_a", floor_color_a)
-	var color_b := _get_terrain_color("floor_b", floor_color_b)
 	var x := region.position.x
 	var row := 0
 	while x < region.end.x:
@@ -934,6 +1002,7 @@ func _spawn_world_bounds(region: Rect2) -> void:
 
 
 func _spawn_boundary_body(rect: Rect2) -> void:
+	# 边界仅保留碰撞，视觉上不可见。
 	var body := StaticBody2D.new()
 	body.collision_layer = 8
 	body.collision_mask = 0
@@ -944,14 +1013,6 @@ func _spawn_boundary_body(rect: Rect2) -> void:
 	body.position = rect.position + rect.size * 0.5
 	body.z_index = 10
 	body.add_child(col)
-	if _terrain_tilemap != null:
-		_paint_terrain_rect(rect, TERRAIN_TILE_BOUNDARY)
-	else:
-		var vis := ColorRect.new()
-		vis.color = _get_terrain_color("boundary", boundary_color)
-		vis.size = rect.size
-		vis.position = -rect.size * 0.5
-		body.add_child(vis)
 	_terrain_container.add_child(body)
 
 

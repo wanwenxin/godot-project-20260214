@@ -19,7 +19,7 @@
 
 ### 2.1 地形（Terrain）
 
-当前地形使用 **ColorRect** 纯色块，无纹理图片。配置在 `resources/terrain_colors.tres` 中：
+地板优先使用 **TileMap** 像素图（`terrain_atlas.png`，3 行 x 7 列，含 flat/seaside/mountain 地板）；草/水/障碍等仍由 `terrain_colors.tres` 或 ColorRect 回退控制。
 
 | 类型 | 用途 | 当前颜色 | 建议 |
 |------|------|----------|------|

@@ -194,6 +194,18 @@ def terrain_tile(tile_id: str) -> Image.Image:
     elif tile_id == "floor_b":
         c = (184, 184, 189, 255)  # 0.72, 0.72, 0.74
         img.paste(Image.new("RGBA", (32, 32), c), (0, 0))
+    elif tile_id == "floor_seaside_a":
+        c = (166, 199, 209, 255)  # 0.65, 0.78, 0.82
+        img.paste(Image.new("RGBA", (32, 32), c), (0, 0))
+    elif tile_id == "floor_seaside_b":
+        c = (140, 179, 191, 255)  # 0.55, 0.70, 0.75
+        img.paste(Image.new("RGBA", (32, 32), c), (0, 0))
+    elif tile_id == "floor_mountain_a":
+        c = (140, 133, 122, 255)  # 0.55, 0.52, 0.48
+        img.paste(Image.new("RGBA", (32, 32), c), (0, 0))
+    elif tile_id == "floor_mountain_b":
+        c = (122, 115, 107, 255)  # 0.48, 0.45, 0.42
+        img.paste(Image.new("RGBA", (32, 32), c), (0, 0))
     elif tile_id == "grass":
         c = (51, 115, 46, 115)  # 0.2, 0.45, 0.18, 0.45
         for x in range(32):
@@ -219,13 +231,21 @@ def terrain_tile(tile_id: str) -> Image.Image:
 
 
 def terrain_atlas() -> Image.Image:
-    """7 tiles in a row: floor_a, floor_b, grass, shallow_water, deep_water, obstacle, boundary"""
-    tiles = ["floor_a", "floor_b", "grass", "shallow_water", "deep_water", "obstacle", "boundary"]
-    w, h = 32 * len(tiles), 32
+    """3 rows x 7 cols: row0=flat, row1=seaside, row2=mountain floor variants; cols 2-6 共用 grass/water/obstacle/boundary"""
+    # 第 0 行：flat_a, flat_b, grass, shallow_water, deep_water, obstacle, boundary
+    row0 = ["floor_a", "floor_b", "grass", "shallow_water", "deep_water", "obstacle", "boundary"]
+    # 第 1 行：seaside_a, seaside_b，其余复用 row0
+    row1 = ["floor_seaside_a", "floor_seaside_b", "grass", "shallow_water", "deep_water", "obstacle", "boundary"]
+    # 第 2 行：mountain_a, mountain_b，其余复用 row0
+    row2 = ["floor_mountain_a", "floor_mountain_b", "grass", "shallow_water", "deep_water", "obstacle", "boundary"]
+    w, h = 32 * 7, 32 * 3
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    for i, tid in enumerate(tiles):
-        tile_img = terrain_tile(tid)
-        img.paste(tile_img, (i * 32, 0))
+    for i, tid in enumerate(row0):
+        img.paste(terrain_tile(tid), (i * 32, 0))
+    for i, tid in enumerate(row1):
+        img.paste(terrain_tile(tid), (i * 32, 32))
+    for i, tid in enumerate(row2):
+        img.paste(terrain_tile(tid), (i * 32, 64))
     return img
 
 
