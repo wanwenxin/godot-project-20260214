@@ -35,6 +35,7 @@ signal wave_countdown_changed(seconds_left: float)
 @export var boss_bonus_coin_count := Vector2i(2, 3)
 @export var spawn_batch_count := 3
 @export var spawn_batch_interval := 6.0
+@export var spawn_positions_count := 5  # 出生点数量，单出生点可产生多个敌人
 
 var current_wave := 0  # 当前波次编号
 var kill_count := 0  # 本局总击杀数
@@ -117,6 +118,7 @@ func _start_next_wave() -> void:
 	wave_duration = cfg.wave_duration if cfg != null else 20.0
 	spawn_batch_count = int(cfg.spawn_batch_count) if cfg != null else 3
 	spawn_batch_interval = cfg.spawn_batch_interval if cfg != null else 6.0
+	spawn_positions_count = int(cfg.spawn_positions_count) if cfg != null else 5
 	_wave_countdown_left = wave_duration
 	emit_signal("wave_started", current_wave)
 	_current_intermission = 0.0
@@ -140,22 +142,45 @@ func _start_next_wave() -> void:
 	else:
 		orders = _get_fallback_orders(game_node)
 
-	# 拆分为多批。
+	# 按出生点分组：单出生点可产生多个敌人。
+	var position_batches: Array = []  # 每项为 {position: Vector2, spawns: Array}
+	var aquatic_orders: Array = []
+	var land_orders: Array = []
+	for o in orders:
+		if o.get("pos_override") != null and o.get("pos_override") is Vector2:
+			aquatic_orders.append(o)
+		else:
+			land_orders.append(o)
+	# 陆生敌人：生成 spawn_positions_count 个出生点，按顺序分配。
+	var pos_count := maxi(1, spawn_positions_count)
+	for i in range(pos_count):
+		position_batches.append({"position": _random_spawn_position(), "spawns": []})
+	for i in range(land_orders.size()):
+		var o: Dictionary = land_orders[i]
+		var idx := i % pos_count
+		position_batches[idx].spawns.append(o)
+	# 水生敌人：每个有独立水域位置，各成一批。
+	for o in aquatic_orders:
+		position_batches.append({"position": o.pos_override, "spawns": [o]})
+	# 将出生点批次按时间拆分到多批（spawn_batch_count）。
 	_pending_spawn_batches.clear()
 	_batch_index = 0
-	var batch_count := maxi(1, spawn_batch_count)
-	var per_batch := int(orders.size() / batch_count)
-	var remainder := orders.size() % batch_count
+	var temporal_count := maxi(1, spawn_batch_count)
+	var per_temporal := int(position_batches.size() / temporal_count)
+	var remainder := position_batches.size() % temporal_count
 	var idx := 0
-	for b in range(batch_count):
-		var batch_size := per_batch + (1 if b < remainder else 0)
-		var batch: Array = []
+	for t in range(temporal_count):
+		var batch_size := per_temporal + (1 if t < remainder else 0)
+		var temporal_batch: Array = []
 		for j in range(batch_size):
-			if idx < orders.size():
-				batch.append(orders[idx])
+			if idx < position_batches.size():
+				temporal_batch.append(position_batches[idx])
 				idx += 1
-		_pending_spawn_batches.append(batch)
-
+		_pending_spawn_batches.append(temporal_batch)
+	# 更新待生成总数。
+	pending_spawn_count = 0
+	for pb in position_batches:
+		pending_spawn_count += pb.spawns.size()
 	# 第 1 批立即生成。
 	if _pending_spawn_batches.size() > 0:
 		_spawn_batch(_pending_spawn_batches[0])
@@ -164,47 +189,38 @@ func _start_next_wave() -> void:
 	is_spawning = false
 
 
-func _spawn_batch(batch: Array) -> void:
-	for order in batch:
-		var o: Dictionary = order
-		_queue_enemy_spawn(
-			o.get("scene", null),
-			o.get("hp_scale", 1.0),
-			o.get("speed_scale", 1.0),
-			o.get("pos_override")
-		)
+func _spawn_batch(temporal_batch: Array) -> void:
+	# temporal_batch 为多个 {position, spawns} 的数组。
+	for pb in temporal_batch:
+		_queue_batch_spawn(pb.position, pb.spawns)
 
 
-# 排队生成敌人：若启用警示则先实例化 telegraph，完成后再生成；否则直接生成。
-# spawn_position_override：可选，传入时使用该位置（如水中敌人在水域内生成）。
-func _queue_enemy_spawn(scene: PackedScene, hp_scale: float, speed_scale: float, spawn_position_override: Variant = null) -> void:
-	if scene == null or not is_instance_valid(_player_ref):
+# 排队生成一批敌人：同一出生点可产生多个敌人，telegraph 显示数量。
+func _queue_batch_spawn(spawn_position: Vector2, spawns: Array) -> void:
+	if spawns.is_empty() or not is_instance_valid(_player_ref):
 		return
-	var spawn_position: Vector2
-	if spawn_position_override != null and spawn_position_override is Vector2:
-		spawn_position = spawn_position_override
-	else:
-		spawn_position = _random_spawn_position()
-	pending_spawn_count += 1
 	if telegraph_enabled and telegraph_scene != null:
 		var telegraph = telegraph_scene.instantiate()
 		telegraph.global_position = spawn_position
 		telegraph.set("duration", telegraph_duration)
 		telegraph.set("show_ring", telegraph_show_ring)
 		telegraph.set("show_countdown", telegraph_show_countdown)
-		telegraph.telegraph_finished.connect(_on_telegraph_finished.bind(scene, hp_scale, speed_scale, telegraph))
+		telegraph.set("spawn_count", spawns.size())
+		telegraph.telegraph_finished.connect(_on_telegraph_batch_finished.bind(spawns, telegraph))
 		get_tree().current_scene.add_child(telegraph)
 	else:
-		_spawn_enemy_at(scene, spawn_position, hp_scale, speed_scale)
-		pending_spawn_count = maxi(pending_spawn_count - 1, 0)
+		for o in spawns:
+			_spawn_enemy_at(o.scene, spawn_position, o.hp_scale, o.speed_scale)
+		pending_spawn_count = maxi(pending_spawn_count - spawns.size(), 0)
 
 
-func _on_telegraph_finished(scene: PackedScene, hp_scale: float, speed_scale: float, telegraph_node: Node) -> void:
+func _on_telegraph_batch_finished(spawns: Array, telegraph_node: Node) -> void:
 	var spawn_position: Vector2 = telegraph_node.global_position if is_instance_valid(telegraph_node) else _random_spawn_position()
 	if is_instance_valid(telegraph_node):
 		telegraph_node.queue_free()
-	_spawn_enemy_at(scene, spawn_position, hp_scale, speed_scale)
-	pending_spawn_count = maxi(pending_spawn_count - 1, 0)
+	for o in spawns:
+		_spawn_enemy_at(o.scene, spawn_position, o.hp_scale, o.speed_scale)
+	pending_spawn_count = maxi(pending_spawn_count - spawns.size(), 0)
 
 
 func _spawn_enemy_at(scene: PackedScene, spawn_position: Vector2, hp_scale: float, speed_scale: float) -> void:

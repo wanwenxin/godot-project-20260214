@@ -159,6 +159,21 @@ def bullet_sprite(is_enemy: bool) -> Image.Image:
     return img
 
 
+def enemy_bullet_sprite() -> Image.Image:
+    """敌人专用子弹：10x10 像素，个头更大，偏红色。"""
+    size = 10
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    c = (255, 77, 77, 255)
+    cx = (size - 1) * 0.5
+    cy = (size - 1) * 0.5
+    r = 4.5
+    for x in range(size):
+        for y in range(size):
+            if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                img.putpixel((x, y), c)
+    return img
+
+
 def bullet_by_type(btype: str, color: tuple) -> Image.Image:
     """3 种子弹类型：firearm(4x4)、laser(12x2)、orb(8x8)"""
     r, g, b = int(color[0] * 255), int(color[1] * 255), int(color[2] * 255)
@@ -446,7 +461,7 @@ def main():
     save_png(bullet_by_type("laser", (0.88, 0.46, 0.95)), ASSETS / "bullets" / "bullet_laser.png")
     save_png(bullet_by_type("orb", (0.88, 0.46, 0.95)), ASSETS / "bullets" / "bullet_orb.png")
     save_png(bullet_sprite(False), ASSETS / "bullets" / "player_bullet.png")
-    save_png(bullet_sprite(True), ASSETS / "bullets" / "enemy_bullet.png")
+    save_png(enemy_bullet_sprite(), ASSETS / "bullets" / "enemy_bullet.png")
     save_png(pickup_sprite(False), ASSETS / "pickups" / "coin.png")
     save_png(pickup_sprite(True), ASSETS / "pickups" / "heal.png")
     for tid in ["floor_a", "floor_b", "grass", "shallow_water", "deep_water", "obstacle", "boundary"]:

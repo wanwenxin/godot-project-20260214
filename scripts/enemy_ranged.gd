@@ -42,7 +42,7 @@ func _physics_process(delta: float) -> void:
 		var bullet = bullet_scene.instantiate()
 		bullet.global_position = global_position
 		bullet.set("direction", dir)
-		bullet.set("speed", 320.0)
+		bullet.set("speed", 190.0)
 		bullet.set("damage", 8)
 		bullet.set("hit_player", true)
 		get_tree().current_scene.add_child(bullet)

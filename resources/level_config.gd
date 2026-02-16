@@ -35,10 +35,10 @@ extends Resource
 @export var grass_cluster_items := Vector2i(3, 6) # 草地集群物品数量
 
 @export_group("Enemies")
-@export var melee_count_min := 4 # 近战敌人数量最小值
-@export var melee_count_max := 7 # 近战敌人数量最大值
-@export var ranged_count_min := 1 # 远程敌人数量最小值
-@export var ranged_count_max := 3 # 远程敌人数量最大值
+@export var melee_count_min := 6 # 近战敌人数量最小值
+@export var melee_count_max := 10 # 近战敌人数量最大值
+@export var ranged_count_min := 2 # 远程敌人数量最小值
+@export var ranged_count_max := 5 # 远程敌人数量最大值
 @export var tank_count_min := 0 # 坦克敌人数量最小值
 @export var tank_count_max := 1 # 坦克敌人数量最大值
 @export var aquatic_count_min := 0 # 水生敌人数量最小值
@@ -52,6 +52,7 @@ extends Resource
 @export var difficulty := 1.0 # 难度
 @export var spawn_batch_count := 3 # 生成批次数量
 @export var spawn_batch_interval := 6.0 # 生成批次间隔时间
+@export var spawn_positions_count := 5 # 出生点数量，单出生点可产生多个敌人
 
 
 func get_terrain_params() -> Dictionary:

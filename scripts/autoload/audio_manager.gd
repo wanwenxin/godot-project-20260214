@@ -6,6 +6,7 @@ const BUS_BGM := "Master"
 
 var _bgm_player: AudioStreamPlayer
 var _sfx_players: Array[AudioStreamPlayer] = []
+var _hit_player: AudioStreamPlayer  # 受击音效专用通道，播放中不重叠
 var _master_volume := 0.70
 
 
@@ -14,6 +15,9 @@ func _ready() -> void:
 	_bgm_player = AudioStreamPlayer.new()
 	_bgm_player.bus = BUS_BGM
 	add_child(_bgm_player)
+	_hit_player = AudioStreamPlayer.new()
+	_hit_player.bus = BUS_SFX
+	add_child(_hit_player)
 	for i in range(4):
 		var player := AudioStreamPlayer.new()
 		player.bus = BUS_SFX
@@ -44,7 +48,12 @@ func play_shoot_by_type(bullet_type: String) -> void:
 
 
 func play_hit() -> void:
-	_play_tone(220.0, 0.08, 0.30)
+	# 受击音效不重叠：播放中则跳过，避免同帧多次受击时音效堆叠。
+	if _hit_player != null and _hit_player.playing:
+		return
+	_hit_player.stream = _create_tone_stream(220.0, 0.08, 0.30)
+	_hit_player.volume_db = linear_to_db(maxf(0.0001, _master_volume))
+	_hit_player.play()
 
 
 func play_kill() -> void:
@@ -78,6 +87,8 @@ func set_master_volume(volume_01: float) -> void:
 	if _bgm_player == null:
 		return
 	_bgm_player.volume_db = db
+	if _hit_player != null:
+		_hit_player.volume_db = db
 	for player in _sfx_players:
 		player.volume_db = db
 

@@ -166,6 +166,13 @@ func _on_hurt_area_body_entered(body: Node) -> void:
 
 
 func _on_contact_timer_timeout() -> void:
+	# 持续接触伤害：若玩家仍在 HurtArea 内，再次造成伤害并重启计时器。
+	if hurt_area != null:
+		for body in hurt_area.get_overlapping_bodies():
+			if body.is_in_group("players") and body.has_method("take_damage"):
+				body.take_damage(contact_damage)
+				contact_timer.start()
+				return
 	_can_contact_damage = true
 
 

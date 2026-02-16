@@ -69,7 +69,8 @@
 | [scripts/game.gd](scripts/game.gd) | 主游戏控制器、地形生成、升级/商店流程、摄像机缩放 | `victory_wave`、`get_player_for_pause` |
 | [scripts/player.gd](scripts/player.gd) | 玩家移动、索敌、开火、受伤、死亡 | `died`、`health_changed`、`get_equipped_weapon_details` |
 | [scripts/bullet.gd](scripts/bullet.gd) | 子弹飞行、命中、穿透、去重 | `hit_player`、`remaining_pierce` |
-| [scripts/pickup.gd](scripts/pickup.gd) | 金币/治疗掉落、拾取、飘动 | `pickup_type`、`value` |
+| [scripts/enemy_bullet.gd](scripts/enemy_bullet.gd) | 敌人专用子弹，更大更慢 | 继承 bullet |
+| [scripts/pickup.gd](scripts/pickup.gd) | 金币/治疗掉落、拾取、飘动、金币吸收动画 | `pickup_type`、`value`、`absorb_range` |
 
 ### 2.3 敌人与波次
 
@@ -83,7 +84,8 @@
 | [scripts/enemy_aquatic.gd](scripts/enemy_aquatic.gd) | 水中专属敌人，离水扣血 | 继承 enemy_base，`is_water_only()` |
 | [scripts/enemy_dasher.gd](scripts/enemy_dasher.gd) | 蓄力冲刺攻击敌人 | 继承 enemy_base |
 | [scripts/wave_manager.gd](scripts/wave_manager.gd) | 波次推进、敌人生成、掉落、倒计时 | `wave_started`、`wave_cleared`、`kill_count_changed` |
-| [scripts/spawn_telegraph.gd](scripts/spawn_telegraph.gd) | 敌人生成前警示 | 配合 wave_manager 使用 |
+| [scripts/spawn_telegraph.gd](scripts/spawn_telegraph.gd) | 敌人生成前警示，显示数量（×N） | 配合 wave_manager 使用 |
+
 
 ### 2.4 地形系统
 
@@ -155,6 +157,7 @@
 | scripts/game.gd | 战斗核心 | 主游戏控制器、地形生成 |
 | scripts/player.gd | 战斗核心 | 玩家移动、索敌、开火、受伤 |
 | scripts/bullet.gd | 战斗核心 | 子弹飞行与命中 |
+| scripts/enemy_bullet.gd | 战斗核心 | 敌人专用子弹 |
 | scripts/pickup.gd | 战斗核心 | 掉落物拾取 |
 | scripts/enemy_base.gd | 敌人 | 敌人基类 |
 | scripts/enemy_melee.gd | 敌人 | 追击型 |

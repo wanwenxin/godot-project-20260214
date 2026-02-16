@@ -1,13 +1,17 @@
 extends Area2D
 
 # 掉落物：金币或治疗，玩家接触后生效并销毁；带初始向上飘动。
+# 金币支持吸收范围：靠近时飞向玩家并有缩放动画。
 @export var pickup_type := "coin"  # "coin" 或 "heal"
 @export var value := 1  # 金币数量或治疗量
 @export var life_time := 10.0  # 超时未拾取则销毁（秒）
+@export var absorb_range: float = 80.0  # 金币吸收触发距离，进入后飞向玩家
+@export var absorb_speed: float = 8.0  # 吸收时飞向玩家的插值速度
 @export_file("*.png") var texture_coin: String = "res://assets/pickups/coin.png"  # 金币纹理
 @export_file("*.png") var texture_heal: String = "res://assets/pickups/heal.png"  # 治疗纹理
 
 var _velocity := Vector2.ZERO  # 飘动速度，每帧衰减
+var _absorbing := false  # 是否处于吸收中（飞向玩家）
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -38,21 +42,46 @@ func _process(delta: float) -> void:
 	if life_time <= 0.0:
 		queue_free()
 		return
-	# 飘动：初速度向上，逐渐衰减至静止。
-	# 飘动：初速度向上，逐渐衰减至静止。
-	_velocity = _velocity.move_toward(Vector2.ZERO, 60.0 * delta)
-	global_position += _velocity * delta
+	# 金币：检测玩家距离，进入吸收范围后飞向玩家并缩小。
+	if pickup_type == "coin":
+		var player := _get_player()
+		if player != null:
+			var dist := global_position.distance_to(player.global_position)
+			if not _absorbing and dist < absorb_range:
+				_absorbing = true
+			if _absorbing:
+				global_position = global_position.lerp(player.global_position, absorb_speed * delta)
+				sprite.scale = sprite.scale.lerp(Vector2(0.3, 0.3), 6.0 * delta)
+				if dist < 12.0:
+					_do_pickup(player)
+					return
+	# 飘动：未吸收时初速度向上，逐渐衰减至静止。
+	if not _absorbing:
+		_velocity = _velocity.move_toward(Vector2.ZERO, 60.0 * delta)
+		global_position += _velocity * delta
+
+
+func _get_player() -> Node2D:
+	var players := get_tree().get_nodes_in_group("players")
+	for p in players:
+		if is_instance_valid(p) and p is Node2D:
+			return p as Node2D
+	return null
+
+
+func _do_pickup(player: Node) -> void:
+	if pickup_type == "coin":
+		GameManager.add_currency(value)
+	elif pickup_type == "heal" and player.has_method("heal"):
+		player.heal(value)
+	AudioManager.play_pickup()
+	queue_free()
 
 
 func _on_body_entered(body: Node) -> void:
 	if not body.is_in_group("players"):
 		return
-	if pickup_type == "coin":
-		GameManager.add_currency(value)
-	elif pickup_type == "heal" and body.has_method("heal"):
-		body.heal(value)
-	AudioManager.play_pickup()
-	queue_free()
+	_do_pickup(body)
 
 
 func _apply_coin_visual_by_value() -> void:

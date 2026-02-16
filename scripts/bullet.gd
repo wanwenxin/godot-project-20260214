@@ -78,7 +78,6 @@ func _on_body_entered(body: Node) -> void:
 	if hit_player and body.is_in_group("players"):
 		if body.has_method("take_damage"):
 			body.take_damage(damage)
-			AudioManager.play_hit()
 		_handle_pierce_or_destroy()
 	elif (not hit_player) and body.is_in_group("enemies"):
 		if body.has_method("take_damage"):

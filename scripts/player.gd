@@ -10,7 +10,7 @@ signal damaged(amount: int)
 
 @export var base_speed := 160.0
 @export var max_health := 100
-@export var invulnerable_duration := 0.35
+@export var invulnerable_duration := 0.5
 @export var inertia_factor := 0.0  # 移动惯性系数：0=无惯性，越大越“滑”。
 
 @export_file("*.png") var texture_sheet: String = "res://assets/characters/player_scheme_0_sheet.png"  # 精灵图（scheme 0）
@@ -24,6 +24,7 @@ signal damaged(amount: int)
 var current_health := 100
 var move_input := Vector2.ZERO
 var _invulnerable_timer := 0.0
+var _pending_damages: Array[int] = []  # 帧内缓冲，帧末取最大后统一结算
 var _character_data := {}
 var _character_traits: CharacterTraitsBase  # 角色特质，参与伤害等数值计算
 var _last_direction_index := 0  # 8 方向索引，用于精灵图
@@ -117,18 +118,25 @@ func _physics_process(delta: float) -> void:
 			if item.has_method("tick_and_try_attack"):
 				item.tick_and_try_attack(self, nearest_enemy, delta)
 
+	# 帧末结算缓冲伤害：多伤害源只取最大。
+	if _pending_damages.size() > 0:
+		var max_amount: int = _pending_damages.max()
+		_pending_damages.clear()
+		current_health = max(current_health - max_amount, 0)
+		_invulnerable_timer = invulnerable_duration
+		emit_signal("health_changed", current_health, max_health)
+		emit_signal("damaged", max_amount)
+		if current_health <= 0:
+			emit_signal("died")
+			queue_free()
+
 
 func take_damage(amount: int) -> void:
 	# 无敌计时器 > 0 时忽略后续伤害，避免多次碰撞瞬间秒杀。
 	if _invulnerable_timer > 0.0:
 		return
-	current_health = max(current_health - amount, 0)
-	_invulnerable_timer = invulnerable_duration
-	emit_signal("health_changed", current_health, max_health)
-	emit_signal("damaged", amount)
-	if current_health <= 0:
-		emit_signal("died")
-		queue_free()
+	# 缓冲到帧末，与同帧其他伤害源取最大后统一结算。
+	_pending_damages.append(amount)
 
 
 func heal(amount: int) -> void:

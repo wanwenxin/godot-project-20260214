@@ -84,15 +84,22 @@
   - 加入 `bullets` 组，波次结束时统一清除
   - 玩家子弹支持 `bullet_type` / `bullet_color` 区分外观与命中反馈
 
+- `scripts/enemy_bullet.gd` + `scenes/enemy_bullet.tscn`
+  - 敌人专用子弹：继承 bullet，个头更大（10x10 像素、collision_radius=6）、速度更慢（约 180–190）
+  - 使用 `assets/bullets/enemy_bullet.png` 专用像素图
+  - enemy_ranged、enemy_boss 使用此场景
+
 - `scripts/pickup.gd`
   - 掉落物（金币/治疗）
   - 金币按价值分级着色（铜/银/金）
+  - 金币吸收：玩家进入 `absorb_range` 后飞向玩家并缩小，带动画
   - 自动飘动与超时销毁
 
 ### 2.3 敌人与波次
 
 - `scripts/enemy_base.gd`
   - 通用生命/接触伤害
+  - 接触持续伤害：玩家与 HurtArea 重叠时，按 `contact_damage_interval` 持续造成伤害（`_on_contact_timer_timeout` 检查重叠并再次施加）
   - 地形速度系数（与玩家规则一致）
   - `apply_knockback(dir, force)`：受击击退，累加冲击速度并每帧衰减
 
@@ -106,6 +113,7 @@
   - 清场信号、击杀信号、间隔信号、波次倒计时信号 `wave_countdown_changed`
   - `wave_duration`：每波最大时长（秒），倒计时归零视为波次结束
   - 波次结束条件：全灭敌人 或 倒计时归零
+  - 出生点多人：`spawn_positions_count` 个出生点，单出生点可产生多个敌人，`spawn_telegraph` 显示数量（×N）
   - 掉落生成（使用 `call_deferred` 避免 physics flushing 报错）
   - Boss 额外金币掉落与掉落概率配置
   - 生成规则：边界内随机、避开玩家安全半径、提示后落地
@@ -264,6 +272,12 @@ flowchart TD
 2. **远程**：`weapon_ranged_base._start_attack()` 若 owner 有 `get_final_damage`，则计算最终伤害并设置到 bullet，同时设置 `elemental_type`
 3. **敌人**：`enemy_base.take_damage(amount, elemental)` 的 `elemental` 参数预留抗性/DOT 扩展
 
+### 3.6 玩家受击与伤害缓冲
+
+- **多伤害源取最大**：子弹、接触、地形 DOT 等调用 `player.take_damage(amount)` 时，伤害先缓冲到 `_pending_damages`，帧末取最大值后统一结算，避免同帧多源叠加秒杀
+- **无敌帧**：受击后 `invulnerable_duration`（默认 0.5 秒）内不再接受伤害
+- **受击音效**：`AudioManager.play_hit()` 使用专用通道，播放中不重叠，避免同帧多次受击时音效堆叠
+
 ## 4. 关键配置项
 
 ### 4.1 `game.gd`
@@ -306,6 +320,7 @@ flowchart TD
   - 倒计时每帧扣减的 delta 被限制为最多 0.5 秒，避免首帧或切回标签页时 delta 过大导致波次瞬间结束
 - `intermission_time`：波次间隔
 - `spawn_min_player_distance`：与玩家的最小出生距离（默认 340）
+- `spawn_positions_count`：出生点数量，单出生点可产生多个敌人（默认 5）
 - `spawn_attempts`：合法出生点采样重试次数
 - `spawn_region_margin`：出生区域边界留白
 - `telegraph_enabled`：是否启用出生提示
@@ -409,7 +424,7 @@ flowchart TD
 2. 新建 `scenes/enemies/*.tscn`
 3. 在 `wave_manager.gd::_start_next_wave()` 接入生成策略
 4. 若需水中专属敌人：`is_water_only()` 返回 true，由 `terrain_zone` 维护 `water_zone_count` meta，离水时 `enemy_base` 自动施加伤害
-5. 若需自定义出生点（如水中）：`_queue_enemy_spawn(scene, hp_scale, speed_scale, spawn_position_override)` 传入 `Vector2` 位置；`game.gd` 提供 `get_random_water_spawn_position()`、`has_water_spawn_positions()`
+5. 若需自定义出生点（如水中）：在 `get_enemy_spawn_orders` 返回的 order 中设置 `pos_override` 为 `Vector2`；`game.gd` 提供 `get_random_water_spawn_position()`、`has_water_spawn_positions()`
 
 ### 5.3 调整敌人出生规则（无需改代码）
 
@@ -471,6 +486,8 @@ flowchart TD
 3. 在 `game_manager.gd::characters` 中为对应角色增加 `traits_path` 字段，指向新脚本路径
 
 ## 6. 常见问题与排障
+
+> 每次修复 BUG 后须在 [BUG_LOG.md](BUG_LOG.md) 中记录（现象、原因、修复、预防）。执行 coding 计划前参考 BUG_LOG，避免同类问题。
 
 ### 6.1 `Can't change this state while flushing queries`
 

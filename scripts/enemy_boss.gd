@@ -29,7 +29,7 @@ func _physics_process(delta: float) -> void:
 		var offset_deg := lerpf(-18.0, 18.0, float(i) / 2.0)
 		bullet.global_position = global_position
 		bullet.set("direction", to_player.rotated(deg_to_rad(offset_deg)))
-		bullet.set("speed", 300.0)
+		bullet.set("speed", 180.0)
 		bullet.set("damage", 11)
 		bullet.set("hit_player", true)
 		get_tree().current_scene.add_child(bullet)
