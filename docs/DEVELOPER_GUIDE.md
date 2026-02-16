@@ -331,7 +331,7 @@ flowchart TD
 
 - `resources/texture_paths.tres`：纹理路径统一入口，含人物、敌人、武器图标、子弹、掉落等
 - `resources/texture_path_config.gd`：Resource 脚本，`@export_file` 定义各纹理路径
-- 分类：Player（`player_scheme_0/1`）、Enemies（`enemy_melee/ranged/tank/boss/aquatic/dasher`）、Weapon Icons（`weapon_blade_short` 等）、Other（`bullet_player/enemy`、`pickup_coin/heal`）
+- 分类：Player（`player_scheme_0/1`、`player_scheme_0_sheet/1_sheet` 8 方向）、Enemies（`enemy_melee` 等及 `*_sheet` 8 方向）、Weapon Icons、Melee Swing（`melee_swing_*`）、Bullets（`bullet_firearm/laser/orb`）、Other
 - `VisualAssetRegistry` 启动时加载，`get_texture(asset_key)` 优先从该配置读取
 - 新增武器时：在 `texture_path_config.gd` 增加 `weapon_{id}` 属性，并在 `texture_paths.tres` 配置路径
 

@@ -18,6 +18,7 @@ var move_input := Vector2.ZERO
 var _invulnerable_timer := 0.0
 var _character_data := {}
 var _character_traits: CharacterTraitsBase  # 角色特质，参与伤害等数值计算
+var _last_direction_index := 0  # 8 方向索引，用于精灵图
 var external_move_input := Vector2.ZERO
 var input_enabled := true
 var _nearest_enemy_refresh := 0.0
@@ -30,11 +31,16 @@ var _weapon_visuals: Array[Sprite2D] = []  # 武器环上的色块图标，随�
 const DEFAULT_TRAITS = preload("res://scripts/characters/character_traits_base.gd")
 const WEAPON_FALLBACK_SCRIPTS := {
 	"blade_short": "res://scripts/weapons/melee/weapon_blade_short.gd",
+	"dagger": "res://scripts/weapons/melee/weapon_dagger.gd",
+	"spear": "res://scripts/weapons/melee/weapon_spear.gd",
+	"chainsaw": "res://scripts/weapons/melee/weapon_chainsaw.gd",
 	"hammer_heavy": "res://scripts/weapons/melee/weapon_hammer_heavy.gd",
 	"pistol_basic": "res://scripts/weapons/ranged/weapon_pistol_basic.gd",
 	"shotgun_wide": "res://scripts/weapons/ranged/weapon_shotgun_wide.gd",
 	"rifle_long": "res://scripts/weapons/ranged/weapon_rifle_long.gd",
-	"wand_focus": "res://scripts/weapons/ranged/weapon_wand_focus.gd"
+	"wand_focus": "res://scripts/weapons/ranged/weapon_wand_focus.gd",
+	"sniper": "res://scripts/weapons/ranged/weapon_sniper.gd",
+	"orb_wand": "res://scripts/weapons/ranged/weapon_orb_wand.gd"
 }
 
 @onready var sprite: Sprite2D = $Sprite2D
@@ -83,6 +89,7 @@ func _physics_process(delta: float) -> void:
 	var response := clampf(1.0 - inertia_factor, 0.05, 1.0)
 	velocity = velocity.lerp(target_velocity, response)
 	move_and_slide()
+	_update_direction_sprite()
 
 	if _invulnerable_timer > 0.0:
 		_invulnerable_timer -= delta
@@ -192,13 +199,39 @@ func _get_nearest_enemy() -> Node2D:
 	return nearest
 
 
+func _update_direction_sprite() -> void:
+	# 8 方向 x 3 行（站立、行走帧1、行走帧2）：根据 velocity 与时间切换，实现肉眼可见的行走动画。
+	if not sprite or not sprite.region_enabled:
+		return
+	var frame_w := 24
+	var frame_h := 24
+	if velocity.length_squared() > 16.0:
+		var angle := velocity.angle()
+		_last_direction_index = wrapi(roundi((angle + PI) / (PI / 4.0)), 0, 8)
+	# 行走时在行 1、2 间交替（约 150ms 一帧）
+	var row := 0
+	if velocity.length_squared() > 16.0:
+		row = 1 + (int(Time.get_ticks_msec() / 150) % 2)
+	sprite.region_rect = Rect2(_last_direction_index * frame_w, row * frame_h, frame_w, frame_h)
+
+
 func _update_sprite(color_scheme: int) -> void:
-	# 角色贴图运行时生成，不依赖外部素材。
+	# 角色贴图：优先 8 方向精灵图，失败时回退单帧。
 	if sprite:
-		var texture_key := "player.scheme_0" if color_scheme == 0 else "player.scheme_1"
-		var fallback := func() -> Texture2D:
-			return PixelGenerator.generate_player_sprite(color_scheme)
-		sprite.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
+		var sheet_key := "player.scheme_0_sheet" if color_scheme == 0 else "player.scheme_1_sheet"
+		var tex: Texture2D = null
+		if VisualAssetRegistry.has_asset(sheet_key):
+			tex = VisualAssetRegistry.get_texture(sheet_key, Callable())
+		if tex != null:
+			sprite.texture = tex
+			sprite.region_enabled = true
+			sprite.region_rect = Rect2(0, 0, 24, 24)
+		else:
+			var texture_key := "player.scheme_0" if color_scheme == 0 else "player.scheme_1"
+			var fallback := func() -> Texture2D:
+				return PixelGenerator.generate_player_sprite(color_scheme)
+			sprite.texture = VisualAssetRegistry.get_texture(texture_key, fallback)
+			sprite.region_enabled = false
 
 
 func _recompute_terrain_speed() -> void:

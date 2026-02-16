@@ -1,4 +1,4 @@
-extends "res://scripts/enemy_base.gd"
+extends EnemyBase
 
 ## 水中专属敌人：仅在水域中生成与存活，离开水面则持续扣血死亡。
 ## 在水中时朝玩家移动，且只在水域边界内移动。

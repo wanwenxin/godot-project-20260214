@@ -122,10 +122,15 @@ func _generate_weapon_icon(weapon_id: String, color: Color) -> Texture2D:
 
 
 func _export_bullets(base: String) -> void:
+	# 玩家/敌人通用子弹
 	var tex_player := PixelGenerator.generate_bullet_sprite(false)
 	var tex_enemy := PixelGenerator.generate_bullet_sprite(true)
 	_tex_to_png(tex_player, base.path_join("bullets").path_join("player_bullet.png"))
 	_tex_to_png(tex_enemy, base.path_join("bullets").path_join("enemy_bullet.png"))
+	# 3 种子弹类型：firearm(pistol/shotgun/rifle)、laser、orb
+	_tex_to_png(PixelGenerator.generate_bullet_sprite_by_type("firearm", Color(1.0, 1.0, 0.4)), base.path_join("bullets").path_join("bullet_firearm.png"))
+	_tex_to_png(PixelGenerator.generate_bullet_sprite_by_type("laser", Color(0.88, 0.46, 0.95)), base.path_join("bullets").path_join("bullet_laser.png"))
+	_tex_to_png(PixelGenerator.generate_bullet_sprite_by_type("orb", Color(0.88, 0.46, 0.95)), base.path_join("bullets").path_join("bullet_orb.png"))
 
 
 func _export_pickups(base: String) -> void:

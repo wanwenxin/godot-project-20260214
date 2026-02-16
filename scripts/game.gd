@@ -58,6 +58,15 @@ var _upgrade_selected := false  # 防重入：本轮是否已选择升级
 var _water_spawn_rects: Array[Rect2] = []  # 水域矩形，供水中敌人生成
 var _playable_region: Rect2 = Rect2()  # 可玩区域，供冲刺怪等边界检测
 var _terrain_container: Node2D  # 地形容器，波次重载时整体清除
+var _terrain_tilemap: TileMap  # 地形 TileMap，用于像素图绘制
+const TERRAIN_TILE_SIZE := 32
+const TERRAIN_TILE_FLOOR_A := 0
+const TERRAIN_TILE_FLOOR_B := 1
+const TERRAIN_TILE_GRASS := 2
+const TERRAIN_TILE_SHALLOW_WATER := 3
+const TERRAIN_TILE_DEEP_WATER := 4
+const TERRAIN_TILE_OBSTACLE := 5
+const TERRAIN_TILE_BOUNDARY := 6
 var _pending_start_weapon_options: Array[Dictionary] = []  # 开局武器选择候选
 var _pending_shop_weapon_options: Array[Dictionary] = []  # 波次后商店武器候选
 var _waves_initialized := false  # 波次管理器是否已 setup
@@ -104,7 +113,8 @@ func _ready() -> void:
 	_equip_weapon_to_player("blade_short", false)
 	_waves_initialized = true
 	wave_manager.setup(player)
-	# 背景随视口尺寸变化，避免全屏/缩放时画面只占一小块。
+	# 背景随视口尺寸变化，避免全屏/缩放时画面只占一小块。z_index 确保背景在地形之后绘制。
+	world_background.z_index = -200
 	call_deferred("_resize_world_background")
 	get_viewport().size_changed.connect(_resize_world_background)
 
@@ -491,6 +501,7 @@ func _spawn_terrain_map() -> void:
 	var solid_occupied: Array[Rect2] = []
 	var deep_water_color := VisualAssetRegistry.get_color("terrain.deep_water", Color(0.08, 0.20, 0.42, 0.56))
 	var shallow_water_color := VisualAssetRegistry.get_color("terrain.shallow_water", Color(0.24, 0.55, 0.80, 0.48))
+	_setup_terrain_tilemap()
 	_spawn_walkable_floor(region)
 
 	placement_attempts = int(params.get("placement_attempts", placement_attempts))
@@ -796,26 +807,82 @@ func _spawn_clustered_grass(
 
 
 func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
-	# 障碍物是 StaticBody2D，玩家与敌人都被阻挡。
+	# 障碍物是 StaticBody2D，玩家与敌人都被阻挡；视觉由 TileMap 绘制。
 	var body := StaticBody2D.new()
 	var col := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	var rect := ColorRect.new()
 	shape.size = size
 	col.shape = shape
 	body.collision_layer = 8
 	body.collision_mask = 0
-	rect.color = VisualAssetRegistry.get_color("terrain.obstacle", Color(0.16, 0.16, 0.20, 1.0))
-	rect.size = size
-	rect.position = -size * 0.5
 	body.position = spawn_pos
 	body.add_child(col)
-	body.add_child(rect)
+	if _terrain_tilemap != null:
+		_paint_terrain_rect(Rect2(spawn_pos - size * 0.5, size), TERRAIN_TILE_OBSTACLE)
+	else:
+		var rect := ColorRect.new()
+		rect.color = VisualAssetRegistry.get_color("terrain.obstacle", Color(0.16, 0.16, 0.20, 1.0))
+		rect.size = size
+		rect.position = -size * 0.5
+		body.add_child(rect)
 	_terrain_container.add_child(body)
 
 
+func _setup_terrain_tilemap() -> void:
+	# 创建 TileSet 与 TileMap，使用地形像素图。纹理尺寸不足时回退 ColorRect。
+	var atlas := TileSetAtlasSource.new()
+	var tex_path := "res://assets/terrain/terrain_atlas.png"
+	if not ResourceLoader.exists(tex_path):
+		return
+	var tex: Texture2D = load(tex_path) as Texture2D
+	if tex == null:
+		return
+	# 至少需要 7 个 32x32 瓦片（224x32），否则瓦片不可见，回退 ColorRect。
+	const MIN_ATLAS_W := 224
+	const MIN_ATLAS_H := 32
+	if tex.get_width() < MIN_ATLAS_W or tex.get_height() < MIN_ATLAS_H:
+		return
+	atlas.texture = tex
+	atlas.texture_region_size = Vector2i(TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE)
+	for i in range(7):
+		atlas.create_tile(Vector2i(i, 0))
+	var tileset := TileSet.new()
+	tileset.tile_size = Vector2i(TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE)
+	tileset.add_source(atlas, 0)
+	_terrain_tilemap = TileMap.new()
+	_terrain_tilemap.name = "TerrainTileMap"
+	_terrain_tilemap.tile_set = tileset
+	_terrain_tilemap.z_index = -100
+	_terrain_container.add_child(_terrain_tilemap)
+
+
+func _paint_terrain_rect(rect: Rect2, tile_type: int) -> void:
+	# 将世界坐标 rect 覆盖的 TileMap 格子涂为指定 tile。
+	if _terrain_tilemap == null:
+		return
+	var layer := 0
+	var source_id := 0
+	var atlas_coords := Vector2i(tile_type, 0)
+	var cell_start := Vector2i(floori(rect.position.x / float(TERRAIN_TILE_SIZE)), floori(rect.position.y / float(TERRAIN_TILE_SIZE)))
+	var cell_end := Vector2i(ceili(rect.end.x / float(TERRAIN_TILE_SIZE)), ceili(rect.end.y / float(TERRAIN_TILE_SIZE)))
+	for cx in range(cell_start.x, cell_end.x):
+		for cy in range(cell_start.y, cell_end.y):
+			_terrain_tilemap.set_cell(layer, Vector2i(cx, cy), source_id, atlas_coords)
+
+
 func _spawn_walkable_floor(region: Rect2) -> void:
-	# 可移动地面：使用浅灰色块铺满可玩区域，形成统一“地砖”视觉基底。
+	# 可移动地面：用 TileMap 铺满可玩区域，棋盘格 floor_a/floor_b；无 TileMap 时回退 ColorRect。
+	if _terrain_tilemap != null:
+		var layer := 0
+		var source_id := 0
+		var cell_start := Vector2i(floori(region.position.x / float(TERRAIN_TILE_SIZE)), floori(region.position.y / float(TERRAIN_TILE_SIZE)))
+		var cell_end := Vector2i(ceili(region.end.x / float(TERRAIN_TILE_SIZE)), ceili(region.end.y / float(TERRAIN_TILE_SIZE)))
+		for cx in range(cell_start.x, cell_end.x):
+			for cy in range(cell_start.y, cell_end.y):
+				var tile_type := TERRAIN_TILE_FLOOR_A if ((cx + cy) % 2 == 0) else TERRAIN_TILE_FLOOR_B
+				_terrain_tilemap.set_cell(layer, Vector2i(cx, cy), source_id, Vector2i(tile_type, 0))
+		return
+	# 回退：无 TileMap 时用 ColorRect
 	var floor_root := Node2D.new()
 	floor_root.name = "FloorLayer"
 	floor_root.z_index = -100
@@ -864,14 +931,17 @@ func _spawn_boundary_body(rect: Rect2) -> void:
 	shape.size = rect.size
 	var col := CollisionShape2D.new()
 	col.shape = shape
-	var vis := ColorRect.new()
-	vis.color = VisualAssetRegistry.get_color("terrain.boundary", boundary_color)
-	vis.size = rect.size
-	vis.position = -rect.size * 0.5
 	body.position = rect.position + rect.size * 0.5
 	body.z_index = 10
 	body.add_child(col)
-	body.add_child(vis)
+	if _terrain_tilemap != null:
+		_paint_terrain_rect(rect, TERRAIN_TILE_BOUNDARY)
+	else:
+		var vis := ColorRect.new()
+		vis.color = VisualAssetRegistry.get_color("terrain.boundary", boundary_color)
+		vis.size = rect.size
+		vis.position = -rect.size * 0.5
+		body.add_child(vis)
 	_terrain_container.add_child(body)
 
 
@@ -996,7 +1066,7 @@ func _spawn_terrain_zone(
 	damage_per_tick: int,
 	damage_interval: float
 ) -> void:
-	# 用同一个 terrain_zone.gd 统一草地/水面的行为，避免复制脚本。
+	# 用同一个 terrain_zone.gd 统一草地/水面的行为；视觉由 TileMap 绘制。
 	var zone := Area2D.new()
 	zone.set_script(load("res://scripts/terrain_zone.gd"))
 	zone.position = spawn_pos
@@ -1011,10 +1081,18 @@ func _spawn_terrain_zone(
 	col.shape = shape
 	zone.add_child(col)
 
-	var rect := ColorRect.new()
-	rect.color = color
-	rect.size = size
-	rect.position = -size * 0.5
-	zone.add_child(rect)
+	if _terrain_tilemap != null:
+		var tile_type := TERRAIN_TILE_GRASS
+		if terrain_type == "shallow_water":
+			tile_type = TERRAIN_TILE_SHALLOW_WATER
+		elif terrain_type == "deep_water":
+			tile_type = TERRAIN_TILE_DEEP_WATER
+		_paint_terrain_rect(Rect2(spawn_pos - size * 0.5, size), tile_type)
+	else:
+		var rect := ColorRect.new()
+		rect.color = color
+		rect.size = size
+		rect.position = -size * 0.5
+		zone.add_child(rect)
 
 	_terrain_container.add_child(zone)

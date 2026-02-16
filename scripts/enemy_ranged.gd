@@ -1,4 +1,4 @@
-extends "res://scripts/enemy_base.gd"
+extends EnemyBase
 
 # 远程敌人：
 # - 维持与玩家的期望距离

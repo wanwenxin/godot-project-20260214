@@ -124,12 +124,25 @@ static func generate_bullet_sprite_by_type(type: String, color: Color, size: Vec
 		"laser":
 			w = 12
 			h = 2
+		"firearm":
+			w = 4
+			h = 4
+		"orb":
+			w = 8
+			h = 8
 		_:
 			w = 4 if w <= 0 else w
 			h = 4 if h <= 0 else h
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	if type == "pistol" or type == "":
+	if type == "orb":
+		# 法球：圆形
+		var r := (minf(w, h) - 1) * 0.5
+		for x in range(w):
+			for y in range(h):
+				if Vector2(x - (w - 1) * 0.5, y - (h - 1) * 0.5).length() <= r:
+					img.set_pixel(x, y, color)
+	elif type == "pistol" or type == "firearm" or type == "":
 		for x in range(w):
 			for y in range(h):
 				if abs(x - (w - 1) * 0.5) + abs(y - (h - 1) * 0.5) <= 2:

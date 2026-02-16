@@ -90,7 +90,7 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/terrain_zone.gd](scripts/terrain_zone.gd) | 草丛/浅水/深水逻辑、速度倍率、深水 DOT | `terrain_type`、`speed_multiplier` |
-| [scripts/game.gd](scripts/game.gd) | `_spawn_terrain_map` 簇团式分层生成、严格无重叠、每关随机数量 | 深水→浅水→障碍→草丛→边界 |
+| [scripts/game.gd](scripts/game.gd) | `_spawn_terrain_map` 簇团式分层生成、TileMap 像素图、严格无重叠 | 深水→浅水→障碍→草丛→边界 |
 | [resources/terrain_colors.tres](resources/terrain_colors.tres) | 地形色块统一配置入口 | floor_a/b、grass、shallow_water、deep_water、obstacle、boundary |
 
 ### 2.5 角色特质

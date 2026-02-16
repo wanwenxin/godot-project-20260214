@@ -8,6 +8,8 @@ const TEXTURE_PATH_CONFIG_PATH := "res://resources/texture_paths.tres"
 const TEXTURE_PATHS := {
 	"player.scheme_0": "res://assets/characters/player_scheme_0.png",
 	"player.scheme_1": "res://assets/characters/player_scheme_1.png",
+	"player.scheme_0_sheet": "res://assets/characters/player_scheme_0_sheet.png",
+	"player.scheme_1_sheet": "res://assets/characters/player_scheme_1_sheet.png",
 	"enemy.melee": "res://assets/enemies/enemy_melee.png",
 	"enemy.ranged": "res://assets/enemies/enemy_ranged.png",
 	"enemy.tank": "res://assets/enemies/enemy_tank.png",
@@ -23,7 +25,15 @@ const TEXTURE_PATHS := {
 	"weapon.icon.pistol_basic": "res://assets/weapons/pistol_basic.png",
 	"weapon.icon.shotgun_wide": "res://assets/weapons/shotgun_wide.png",
 	"weapon.icon.rifle_long": "res://assets/weapons/rifle_long.png",
-	"weapon.icon.wand_focus": "res://assets/weapons/wand_focus.png"
+	"weapon.icon.wand_focus": "res://assets/weapons/wand_focus.png",
+	"melee.swing.blade_short": "res://assets/weapons/swing_blade_short.png",
+	"melee.swing.hammer_heavy": "res://assets/weapons/swing_hammer_heavy.png",
+	"melee.swing.dagger": "res://assets/weapons/swing_dagger.png",
+	"melee.swing.spear": "res://assets/weapons/swing_spear.png",
+	"melee.swing.chainsaw": "res://assets/weapons/swing_chainsaw.png",
+	"bullet.firearm": "res://assets/bullets/bullet_firearm.png",
+	"bullet.laser": "res://assets/bullets/bullet_laser.png",
+	"bullet.orb": "res://assets/bullets/bullet_orb.png"
 }
 
 const COLOR_MAP := {
@@ -56,12 +66,20 @@ const _TERRAIN_KEY_TO_PROPERTY := {
 const _TEXTURE_KEY_TO_PROPERTY := {
 	"player.scheme_0": "player_scheme_0",
 	"player.scheme_1": "player_scheme_1",
+	"player.scheme_0_sheet": "player_scheme_0_sheet",
+	"player.scheme_1_sheet": "player_scheme_1_sheet",
 	"enemy.melee": "enemy_melee",
+	"enemy.melee_sheet": "enemy_melee_sheet",
 	"enemy.ranged": "enemy_ranged",
+	"enemy.ranged_sheet": "enemy_ranged_sheet",
 	"enemy.tank": "enemy_tank",
+	"enemy.tank_sheet": "enemy_tank_sheet",
 	"enemy.boss": "enemy_boss",
+	"enemy.boss_sheet": "enemy_boss_sheet",
 	"enemy.aquatic": "enemy_aquatic",
+	"enemy.aquatic_sheet": "enemy_aquatic_sheet",
 	"enemy.dasher": "enemy_dasher",
+	"enemy.dasher_sheet": "enemy_dasher_sheet",
 	"weapon.icon.blade_short": "weapon_blade_short",
 	"weapon.icon.hammer_heavy": "weapon_hammer_heavy",
 	"weapon.icon.pistol_basic": "weapon_pistol_basic",
@@ -70,8 +88,16 @@ const _TEXTURE_KEY_TO_PROPERTY := {
 	"weapon.icon.wand_focus": "weapon_wand_focus",
 	"bullet.player": "bullet_player",
 	"bullet.enemy": "bullet_enemy",
+	"bullet.firearm": "bullet_firearm",
+	"bullet.laser": "bullet_laser",
+	"bullet.orb": "bullet_orb",
 	"pickup.coin": "pickup_coin",
-	"pickup.heal": "pickup_heal"
+	"pickup.heal": "pickup_heal",
+	"melee.swing.blade_short": "melee_swing_blade_short",
+	"melee.swing.hammer_heavy": "melee_swing_hammer_heavy",
+	"melee.swing.dagger": "melee_swing_dagger",
+	"melee.swing.spear": "melee_swing_spear",
+	"melee.swing.chainsaw": "melee_swing_chainsaw"
 }
 
 
@@ -95,6 +121,8 @@ func _get_texture_path(asset_key: String) -> String:
 			prop = _TEXTURE_KEY_TO_PROPERTY[asset_key]
 		elif asset_key.begins_with("weapon.icon."):
 			prop = "weapon_" + asset_key.trim_prefix("weapon.icon.")
+		elif asset_key.begins_with("melee.swing."):
+			prop = "melee_swing_" + asset_key.trim_prefix("melee.swing.")
 		if prop != "":
 			var val = _texture_path_config.get(prop)
 			var p := str(val) if val else ""

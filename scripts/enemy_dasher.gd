@@ -1,4 +1,4 @@
-extends "res://scripts/enemy_base.gd"
+extends EnemyBase
 
 ## 冲刺攻击敌人：平时慢速靠近；蓄力后向玩家方向高速冲刺，冲刺命中造成伤害。
 

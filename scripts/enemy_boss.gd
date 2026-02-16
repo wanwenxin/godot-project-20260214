@@ -1,4 +1,4 @@
-extends "res://scripts/enemy_base.gd"
+extends EnemyBase
 
 @export var bullet_scene: PackedScene
 @export var fire_rate := 0.95

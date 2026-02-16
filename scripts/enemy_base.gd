@@ -1,4 +1,5 @@
 extends CharacterBody2D
+class_name EnemyBase
 
 # 敌人基类：
 # - 生命与死亡事件
@@ -29,6 +30,7 @@ var _terrain_speed_multiplier := 1.0
 var _health_bar: ProgressBar
 var _knockback_velocity := Vector2.ZERO
 var _out_of_water_cd := 0.0  # 离水伤害 CD
+var _last_direction_index := 0  # 8 方向索引
 
 
 func is_water_only() -> bool:
@@ -57,6 +59,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_direction_sprite()
 	# 水中专属敌人离水时持续扣血。
 	if not is_water_only():
 		return
@@ -74,8 +77,19 @@ func set_player(node: Node2D) -> void:
 
 
 func set_enemy_texture(enemy_type: int) -> void:
-	# 子类通过 enemy_type 指定外观。
+	# 子类通过 enemy_type 指定外观；优先 8 方向精灵图。
 	if sprite:
+		var sheet_keys: Array[String] = ["enemy.melee_sheet", "enemy.ranged_sheet", "enemy.tank_sheet", "enemy.boss_sheet", "enemy.aquatic_sheet", "enemy.dasher_sheet"]
+		var type_idx := enemy_type if enemy_type < 6 else 5
+		var sheet_key: String = sheet_keys[type_idx]
+		var frame_w := 18
+		if VisualAssetRegistry.has_asset(sheet_key):
+			var tex := VisualAssetRegistry.get_texture(sheet_key, Callable())
+			if tex != null:
+				sprite.texture = tex
+				sprite.region_enabled = true
+				sprite.region_rect = Rect2(0, 0, frame_w, 18)
+				return
 		var key := "enemy.melee"
 		if enemy_type == 1:
 			key = "enemy.ranged"
@@ -90,6 +104,23 @@ func set_enemy_texture(enemy_type: int) -> void:
 		var fallback := func() -> Texture2D:
 			return PixelGenerator.generate_enemy_sprite(enemy_type)
 		sprite.texture = VisualAssetRegistry.get_texture(key, fallback)
+		sprite.region_enabled = false
+
+
+func _update_direction_sprite() -> void:
+	# 8 方向 x 3 行（站立、行走帧1、行走帧2）：根据 velocity 与时间切换，实现肉眼可见的行走动画。
+	if not sprite or not sprite.region_enabled:
+		return
+	var frame_w := 18
+	var frame_h := 18
+	if velocity.length_squared() > 16.0:
+		var angle := velocity.angle()
+		_last_direction_index = wrapi(roundi((angle + PI) / (PI / 4.0)), 0, 8)
+	# 行走时在行 1、2 间交替（约 150ms 一帧）
+	var row := 0
+	if velocity.length_squared() > 16.0:
+		row = 1 + (int(Time.get_ticks_msec() / 150) % 2)
+	sprite.region_rect = Rect2(_last_direction_index * frame_w, row * frame_h, frame_w, frame_h)
 
 
 func apply_knockback(dir: Vector2, force: float) -> void:

@@ -122,10 +122,13 @@ func _build_hit_area() -> void:
 
 
 func _build_swing_visual() -> void:
-	# 近战武器挥击时可见的刀刃/锤头，位于武器前方
+	# 近战武器挥击时可见的刀刃/锤头，位于武器前方；优先加载纹理，失败时回退色块。
 	var spr := Sprite2D.new()
 	spr.name = "SwingVisual"
-	var tex := VisualAssetRegistry.make_color_texture("melee.swing." + weapon_id, color_hint, Vector2i(24, 8))
+	var tex_key := "melee.swing." + weapon_id
+	var fallback := func() -> Texture2D:
+		return VisualAssetRegistry.make_color_texture(tex_key, color_hint, Vector2i(24, 8))
+	var tex := VisualAssetRegistry.get_texture(tex_key, fallback)
 	spr.texture = tex
 	spr.centered = false
 	spr.offset = Vector2(12, 4)
