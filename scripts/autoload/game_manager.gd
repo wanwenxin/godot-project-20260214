@@ -62,6 +62,8 @@ var last_run_result := {
 	"survival_time": 0.0
 }
 var run_currency := 0  # 本局金币
+var run_experience := 0  # 本局经验值
+var run_level := 1  # 本局等级
 var enemy_healthbar_visible := true  # 敌人血条显隐
 var move_inertia_factor := 0.0  # 玩家移动惯性，0~0.9
 var run_weapons: Array[String] = []  # 本局已装备武器 id 列表，最多 MAX_WEAPONS
@@ -135,6 +137,7 @@ func start_new_game(character_id: int) -> void:
 	load_level_sequence_from_preset(selected_preset_id)
 	# 本局资源重置，避免跨局带入。
 	run_currency = 0
+	reset_run_experience()
 	reset_run_weapons()
 	get_tree().change_scene_to_file(SCENE_GAME)
 
@@ -143,6 +146,7 @@ func continue_game() -> void:
 	# continue_game 当前语义是“沿用角色重新开一局”。
 	load_level_sequence_from_preset(selected_preset_id)
 	run_currency = 0
+	reset_run_experience()
 	reset_run_weapons()
 	get_tree().change_scene_to_file(SCENE_GAME)
 
@@ -167,6 +171,31 @@ func save_run_result(wave: int, kills: int, survival_time: float) -> void:
 
 func add_currency(amount: int) -> void:
 	run_currency = maxi(run_currency + amount, 0)
+
+
+## 经验值系统：击败敌人获得经验，升级时 run_level 增加。
+## 经验曲线：base_xp * (level ^ curve)，如 base=50, curve=1.2
+const XP_BASE := 50
+const XP_CURVE := 1.2
+
+
+func add_experience(amount: int) -> void:
+	if amount <= 0:
+		return
+	run_experience += amount
+	# 循环检查升级，可能一次获得大量经验连升多级
+	while run_experience >= get_level_up_threshold():
+		run_experience -= get_level_up_threshold()
+		run_level += 1
+
+
+func get_level_up_threshold() -> int:
+	return int(float(XP_BASE) * pow(float(run_level), XP_CURVE))
+
+
+func reset_run_experience() -> void:
+	run_experience = 0
+	run_level = 1
 
 
 func spend_currency(amount: int) -> bool:

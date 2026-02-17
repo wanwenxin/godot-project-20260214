@@ -49,17 +49,8 @@ var player  # 玩家节点引用
 var survival_time := 0.0  # 本局生存时长（秒）
 var is_game_over := false  # 死亡或通关后为 true，停止运行时统计
 var intermission_left := 0.0  # 波次间隔剩余秒数
-# 升级候选池：每项含 id、title_key、desc_key、cost、icon_path（空则色块）
-var _upgrade_pool := [
-	{"id": "damage", "title_key": "upgrade.damage.title", "desc_key": "upgrade.damage.desc", "cost": 2, "icon_path": ""},
-	{"id": "fire_rate", "title_key": "upgrade.fire_rate.title", "desc_key": "upgrade.fire_rate.desc", "cost": 2, "icon_path": ""},
-	{"id": "max_health", "title_key": "upgrade.max_health.title", "desc_key": "upgrade.max_health.desc", "cost": 3, "icon_path": ""},
-	{"id": "speed", "title_key": "upgrade.speed.title", "desc_key": "upgrade.speed.desc", "cost": 2, "icon_path": ""},
-	{"id": "bullet_speed", "title_key": "upgrade.bullet_speed.title", "desc_key": "upgrade.bullet_speed.desc", "cost": 1, "icon_path": ""},
-	{"id": "multi_shot", "title_key": "upgrade.multi_shot.title", "desc_key": "upgrade.multi_shot.desc", "cost": 4, "icon_path": ""},
-	{"id": "pierce", "title_key": "upgrade.pierce.title", "desc_key": "upgrade.pierce.desc", "cost": 4, "icon_path": ""}
-]
-var _pending_upgrade_options: Array[Dictionary] = []  # 当前波次三选一升级项
+const UPGRADE_REFRESH_COST := 2  # 刷新升级选项消耗的金币
+var _pending_upgrade_options: Array[Dictionary] = []  # 当前波次四选一升级项
 var _upgrade_selected := false  # 防重入：本轮是否已选择升级
 var _water_spawn_rects: Array[Rect2] = []  # 水域矩形，供水中敌人生成
 var _playable_region: Rect2 = Rect2()  # 可玩区域，供冲刺怪等边界检测
@@ -109,7 +100,10 @@ func _ready() -> void:
 	wave_manager.wave_countdown_changed.connect(hud.set_wave_countdown)
 	wave_manager.intermission_started.connect(_on_intermission_started)
 	hud.upgrade_selected.connect(_on_upgrade_selected)
+	hud.upgrade_refresh_requested.connect(_on_upgrade_refresh_requested)
 	hud.weapon_shop_selected.connect(_on_weapon_shop_selected)
+	hud.weapon_shop_refresh_requested.connect(_on_shop_refresh_requested)
+	hud.weapon_shop_closed.connect(_on_shop_closed)
 	hud.mobile_move_changed.connect(_on_mobile_move_changed)
 	hud.pause_pressed.connect(_toggle_pause)
 
@@ -154,6 +148,8 @@ func _process(delta: float) -> void:
 	survival_time += delta
 	hud.set_survival_time(survival_time)
 	hud.set_currency(GameManager.run_currency)
+	hud.set_experience(GameManager.run_experience, GameManager.get_level_up_threshold())
+	hud.set_level(GameManager.run_level)
 
 	if intermission_left > 0.0:
 		intermission_left = maxf(intermission_left - delta, 0.0)
@@ -288,9 +284,9 @@ func _on_wave_cleared(wave: int) -> void:
 	player.input_enabled = false
 	_upgrade_selected = false
 	_pending_shop_weapon_options.clear()
-	_pending_upgrade_options = _roll_upgrade_options(3)
+	_pending_upgrade_options = _roll_upgrade_options(4)
 	_set_ui_modal_active(true)
-	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency)
+	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency, UPGRADE_REFRESH_COST)
 
 
 func _on_kill_count_changed(kills: int) -> void:
@@ -349,22 +345,66 @@ func go_main_menu() -> void:
 	GameManager.open_main_menu()
 
 
-# 从 _upgrade_pool 随机抽取 count-1 项，并追加“跳过”选项。
+# 从 UpgradeDefs 随机抽取 count 项，含 reward_value 与 reward_text；升级免费，刷新消耗金币。
 func _roll_upgrade_options(count: int) -> Array[Dictionary]:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	var shuffled: Array = _upgrade_pool.duplicate(true)
-	shuffled.shuffle()
+	var pool: Array = UpgradeDefs.UPGRADE_POOL.duplicate(true)
+	pool.shuffle()
 	var result: Array[Dictionary] = []
-	for i in range(mini(count - 1, shuffled.size())):
-		result.append(shuffled[i])
-	result.append({"id": "skip", "title_key": "upgrade.skip.title", "desc_key": "upgrade.skip.desc", "cost": 0})
+	var level: int = GameManager.run_level
+	for i in range(mini(count, pool.size())):
+		var item: Dictionary = pool[i].duplicate(true)
+		var reward_val = UpgradeDefs.get_reward_value(item, level)
+		item["reward_value"] = reward_val
+		item["reward_text"] = _format_upgrade_reward(str(item.get("id", "")), reward_val)
+		result.append(item)
 	return result
+
+
+func _format_upgrade_reward(upgrade_id: String, value: Variant) -> String:
+	if value == null:
+		return ""
+	if value is float:
+		var v: float = value
+		if upgrade_id == "lifesteal_chance":
+			return "+%.0f%%" % (v * 100.0)
+		return "+%.1f" % v
+	var v: int = int(value)
+	if upgrade_id == "max_health":
+		return "+%d HP" % v
+	if upgrade_id == "max_mana":
+		return "+%d MP" % v
+	if upgrade_id == "armor":
+		return "+%d" % v
+	if upgrade_id == "speed":
+		return "+%.0f" % float(v)
+	if upgrade_id in ["melee_damage", "ranged_damage", "damage"]:
+		return "+%d" % v
+	if upgrade_id == "health_regen":
+		return "+%.1f/s" % float(v)
+	if upgrade_id == "mana_regen":
+		return "+%.1f/s" % float(v)
+	return "+%d" % v
+
+
+func _on_upgrade_refresh_requested() -> void:
+	if GameManager.run_currency < UPGRADE_REFRESH_COST:
+		return
+	if not GameManager.spend_currency(UPGRADE_REFRESH_COST):
+		return
+	_pending_upgrade_options = _roll_upgrade_options(4)
+	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency, UPGRADE_REFRESH_COST)
 
 
 func _on_upgrade_selected(upgrade_id: String) -> void:
 	# 防重入：同一轮只允许结算一次升级选择。
 	if _upgrade_selected or _pending_upgrade_options.is_empty():
+		return
+	if upgrade_id == "skip":
+		_upgrade_selected = true
+		hud.hide_upgrade_options()
+		_open_shop_after_upgrade()
 		return
 	var target: Dictionary = {}
 	for item in _pending_upgrade_options:
@@ -373,18 +413,28 @@ func _on_upgrade_selected(upgrade_id: String) -> void:
 			break
 	if target.is_empty():
 		return
-	var cost := int(target.get("cost", 0))
-	if not GameManager.spend_currency(cost):
-		return
 	_upgrade_selected = true
-	player.apply_upgrade(upgrade_id)
+	var reward_val = target.get("reward_value")
+	player.apply_upgrade(upgrade_id, reward_val)
 	hud.hide_upgrade_options()
-	_pending_shop_weapon_options = _roll_weapon_shop_options(3)
-	if _pending_shop_weapon_options.is_empty():
-		_finish_wave_settlement()
-		return
+	_open_shop_after_upgrade()
+
+
+func _open_shop_after_upgrade() -> void:
+	_pending_shop_weapon_options = _roll_shop_items(4)
 	_set_ui_modal_active(true)
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave)
+
+
+func _on_shop_refresh_requested() -> void:
+	_pending_shop_weapon_options = _roll_shop_items(4)
+	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave)
+
+
+func _on_shop_closed() -> void:
+	_set_ui_modal_active(false)
+	hud.hide_weapon_panel()
+	_finish_wave_settlement()
 
 
 func _on_intermission_started(duration: float) -> void:
@@ -427,33 +477,43 @@ func _on_start_weapon_selected(weapon_id: String) -> void:
 
 
 func _on_weapon_shop_selected(weapon_id: String) -> void:
-	if weapon_id == "skip":
-		_set_ui_modal_active(false)
-		hud.hide_weapon_panel()
-		_finish_wave_settlement()
-		return
 	if _pending_shop_weapon_options.is_empty():
 		return
 	var picked: Dictionary = {}
-	for option in _pending_shop_weapon_options:
-		if str(option.get("id", "")) == weapon_id:
-			picked = option
+	var picked_idx := -1
+	for i in range(_pending_shop_weapon_options.size()):
+		if str(_pending_shop_weapon_options[i].get("id", "")) == weapon_id:
+			picked = _pending_shop_weapon_options[i]
+			picked_idx = i
 			break
 	if picked.is_empty():
 		return
 	var cost := int(picked.get("cost", 0))
 	if not GameManager.spend_currency(cost):
 		return
-	if not _equip_weapon_to_player(weapon_id, true):
-		GameManager.add_currency(cost)
-		return
-	_set_ui_modal_active(false)
-	hud.hide_weapon_panel()
+	var item_type := str(picked.get("type", "weapon"))
+	if item_type == "attribute":
+		var attr := str(picked.get("attr", ""))
+		var val = picked.get("base_value")
+		player.apply_upgrade(attr, val)
+	elif item_type == "magic":
+		if not player.equip_magic(weapon_id):
+			GameManager.add_currency(cost)
+			return
+	else:
+		if not _equip_weapon_to_player(weapon_id, true):
+			GameManager.add_currency(cost)
+			return
+	# 购买后移除该商品
+	_pending_shop_weapon_options.remove_at(picked_idx)
 	hud.set_currency(GameManager.run_currency)
-	_finish_wave_settlement()
+	# 全部购买完则自动刷新；否则刷新显示
+	if _pending_shop_weapon_options.is_empty():
+		_pending_shop_weapon_options = _roll_shop_items(4)
+	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave)
 
 
-# 从武器定义中排除已装备的，随机抽取 count 项作为商店候选。
+# 从武器定义中排除已装备的，随机抽取 count 项作为开局武器候选。
 func _roll_weapon_shop_options(count: int) -> Array[Dictionary]:
 	var defs := GameManager.get_weapon_defs()
 	var owned: Array[String] = player.get_equipped_weapon_ids()
@@ -467,6 +527,44 @@ func _roll_weapon_shop_options(count: int) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for i in range(mini(count, filtered.size())):
 		result.append(filtered[i])
+	return result
+
+
+# 商店商品：武器 + 道具混合，价格随波次上涨。
+func _roll_shop_items(count: int) -> Array[Dictionary]:
+	var wave: int = wave_manager.current_wave
+	var result: Array[Dictionary] = []
+	var weapon_defs := GameManager.get_weapon_defs()
+	var owned: Array[String] = player.get_equipped_weapon_ids()
+	var weapon_candidates: Array[Dictionary] = []
+	for item in weapon_defs:
+		var id := str(item.get("id", ""))
+		if not owned.has(id):
+			var w := item.duplicate(true)
+			w["type"] = "weapon"
+			w["cost"] = ShopItemDefs.get_price(int(item.get("cost", 5)), wave)
+			weapon_candidates.append(w)
+	var owned_magics: Array[String] = player.get_equipped_magic_ids()
+	var magic_slots_full: bool = owned_magics.size() >= 3
+	var item_candidates: Array[Dictionary] = []
+	for item in ShopItemDefs.ITEM_POOL:
+		if str(item.get("type", "")) == "magic":
+			if magic_slots_full or str(item.get("id", "")) in owned_magics:
+				continue
+		var it: Dictionary = item.duplicate(true)
+		it["cost"] = ShopItemDefs.get_price(it.get("base_cost", 5), wave)
+		item_candidates.append(it)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	# 混合池：约一半武器、一半道具
+	var mixed: Array[Dictionary] = []
+	for w in weapon_candidates:
+		mixed.append(w)
+	for it in item_candidates:
+		mixed.append(it)
+	mixed.shuffle()
+	for i in range(mini(count, mixed.size())):
+		result.append(mixed[i])
 	return result
 
 

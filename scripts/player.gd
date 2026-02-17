@@ -10,6 +10,8 @@ signal damaged(amount: int)
 
 @export var base_speed := 160.0
 @export var max_health := 100
+@export var max_mana := 50  # 魔力上限
+@export var armor := 0  # 护甲，减伤点数
 @export var invulnerable_duration := 0.5
 @export var inertia_factor := 0.0  # 移动惯性系数：0=无惯性，越大越“滑”。
 
@@ -22,7 +24,14 @@ signal damaged(amount: int)
 @export var sheet_rows: int = 3  # 精灵图行数（站立、行走1、行走2）
 
 var current_health := 100
+var current_mana := 50.0  # 当前魔力
 var move_input := Vector2.ZERO
+# 扩展属性：伤害加成、恢复、吸血
+var melee_damage_bonus := 0  # 近战伤害加成
+var ranged_damage_bonus := 0  # 远程伤害加成
+var health_regen := 0.0  # 血量/秒恢复
+var lifesteal_chance := 0.0  # 吸血概率 0~1，命中时按概率恢复 1 点血
+var mana_regen := 1.0  # 魔力/秒恢复，初始 1
 var _invulnerable_timer := 0.0
 var _pending_damages: Array[int] = []  # 帧内缓冲，帧末取最大后统一结算
 var _character_data := {}
@@ -36,6 +45,8 @@ var _cached_nearest_enemy: Node2D
 var _terrain_effects: Dictionary = {}
 var _terrain_speed_multiplier := 1.0
 var _equipped_weapons: Array[Node2D] = []  # 已装备武器节点，最多 MAX_WEAPONS 把
+var _equipped_magics: Array = []  # 已装备魔法，最多 3 个，每项为 {def, instance}
+const MAX_MAGICS := 3
 var _weapon_visuals: Array[Sprite2D] = []  # 武器环上的色块图标，随装备刷新
 const DEFAULT_TRAITS = preload("res://scripts/characters/character_traits_base.gd")
 const WEAPON_FALLBACK_SCRIPTS := {
@@ -63,6 +74,7 @@ func _ready() -> void:
 	collision_mask = 2 | 8
 	_update_sprite(0)
 	current_health = max_health
+	current_mana = float(max_mana)
 	emit_signal("health_changed", current_health, max_health)
 
 
@@ -78,9 +90,12 @@ func set_character_data(data: Dictionary) -> void:
 		_character_traits = DEFAULT_TRAITS.new()
 	var base_hp := int(_character_data.get("max_health", 100))
 	var base_spd := float(_character_data.get("speed", 160.0))
+	var base_mana := int(_character_data.get("max_mana", 50))
 	max_health = int(float(base_hp) * _character_traits.get_max_health_multiplier())
+	max_mana = base_mana
 	base_speed = base_spd * _character_traits.get_speed_multiplier()
 	current_health = max_health
+	current_mana = float(max_mana)
 	_update_sprite(int(_character_data.get("color_scheme", 0)))
 	emit_signal("health_changed", current_health, max_health)
 
@@ -99,6 +114,16 @@ func _physics_process(delta: float) -> void:
 	velocity = velocity.lerp(target_velocity, response)
 	move_and_slide()
 	_update_direction_sprite()
+
+	# 魔法释放检测
+	_try_cast_magic(delta)
+
+	# 血量与魔力恢复
+	if health_regen > 0.0 and current_health < max_health:
+		var heal_amount: int = int(health_regen * delta)
+		if heal_amount > 0:
+			heal(heal_amount)
+	current_mana = minf(current_mana + mana_regen * delta, float(max_mana))
 
 	if _invulnerable_timer > 0.0:
 		_invulnerable_timer -= delta
@@ -135,8 +160,10 @@ func take_damage(amount: int) -> void:
 	# 无敌计时器 > 0 时忽略后续伤害，避免多次碰撞瞬间秒杀。
 	if _invulnerable_timer > 0.0:
 		return
+	# 护甲减伤：至少造成 1 点伤害
+	var actual: int = maxi(1, amount - armor)
 	# 缓冲到帧末，与同帧其他伤害源取最大后统一结算。
-	_pending_damages.append(amount)
+	_pending_damages.append(actual)
 
 
 func heal(amount: int) -> void:
@@ -146,24 +173,34 @@ func heal(amount: int) -> void:
 	emit_signal("health_changed", current_health, max_health)
 
 
-# 应用升级到玩家与所有装备武器；damage/fire_rate 等由武器自身处理。
-func apply_upgrade(upgrade_id: String) -> void:
+# 应用升级到玩家与所有装备武器；value 为 UpgradeDefs 计算的奖励值，null 时用默认增量。
+func apply_upgrade(upgrade_id: String, value: Variant = null) -> void:
+	var v = value
 	match upgrade_id:
-		"damage":
-			pass
-		"fire_rate":
-			pass
 		"max_health":
-			max_health += 20
-			current_health = mini(current_health + 20, max_health)
+			var amount: int = int(v) if v != null else 20
+			max_health += amount
+			current_health = mini(current_health + amount, max_health)
 			emit_signal("health_changed", current_health, max_health)
+		"max_mana":
+			var mana_amt: int = int(v) if v != null else 10
+			max_mana += mana_amt
+			current_mana = minf(current_mana + float(mana_amt), float(max_mana))
+		"armor":
+			armor += int(v) if v != null else 2
 		"speed":
-			base_speed += 20.0
-		"bullet_speed":
-			pass
-		"multi_shot":
-			pass
-		"pierce":
+			base_speed += float(v) if v != null else 20.0
+		"melee_damage", "melee_damage_bonus", "damage":
+			melee_damage_bonus += int(v) if v != null else 3
+		"ranged_damage", "ranged_damage_bonus":
+			ranged_damage_bonus += int(v) if v != null else 3
+		"health_regen":
+			health_regen += float(v) if v != null else 0.5
+		"lifesteal_chance":
+			lifesteal_chance = clampf(lifesteal_chance + float(v) if v != null else 0.03, 0.0, 1.0)
+		"mana_regen":
+			mana_regen += float(v) if v != null else 0.3
+		"fire_rate", "bullet_speed", "multi_shot", "pierce":
 			pass
 	# 将升级传递给每把武器（伤害、射速、穿透等由武器实现）。
 	for weapon in _equipped_weapons:
@@ -184,6 +221,92 @@ func clear_terrain_effect(zone_id: int) -> void:
 func set_move_inertia(value: float) -> void:
 	# 统一入口，便于从设置菜单或其他系统动态调整惯性。
 	inertia_factor = clampf(value, 0.0, 0.9)
+
+
+## 装备魔法，最多 MAX_MAGICS 个；返回是否成功。
+func equip_magic(magic_id: String) -> bool:
+	if _equipped_magics.size() >= MAX_MAGICS:
+		return false
+	for m in _equipped_magics:
+		if str(m.get("id", "")) == magic_id:
+			return false
+	var def := MagicDefs.get_magic_by_id(magic_id)
+	if def.is_empty():
+		return false
+	var script_path := str(def.get("script_path", ""))
+	if script_path == "" or not ResourceLoader.exists(script_path):
+		return false
+	var script_obj = load(script_path)
+	if script_obj == null or not (script_obj is GDScript):
+		return false
+	var instance = (script_obj as GDScript).new()
+	if not (instance is MagicBase):
+		return false
+	(instance as MagicBase).configure_from_def(def)
+	_equipped_magics.append({"id": magic_id, "def": def, "instance": instance})
+	return true
+
+
+func get_equipped_magic_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for m in _equipped_magics:
+		ids.append(str(m.get("id", "")))
+	return ids
+
+
+## 获取魔法释放方向：优先朝向最近敌人，否则用移动方向或速度方向。
+func _get_magic_aim_direction() -> Vector2:
+	var nearest := _get_nearest_enemy()
+	if nearest != null:
+		return (nearest.global_position - global_position).normalized()
+	if move_input.length_squared() > 0.01:
+		return move_input.normalized()
+	if velocity.length_squared() > 16.0:
+		return velocity.normalized()
+	return Vector2.RIGHT
+
+
+func _try_cast_magic(_delta: float) -> void:
+	if not input_enabled or _equipped_magics.is_empty():
+		return
+	var slot := -1
+	if Input.is_action_just_pressed("cast_magic_1"):
+		slot = 0
+	elif Input.is_action_just_pressed("cast_magic_2"):
+		slot = 1
+	elif Input.is_action_just_pressed("cast_magic_3"):
+		slot = 2
+	if slot < 0 or slot >= _equipped_magics.size():
+		return
+	var mag: Dictionary = _equipped_magics[slot]
+	var def: Dictionary = mag.get("def", {})
+	var cost := int(def.get("mana_cost", 0))
+	if current_mana < float(cost):
+		return
+	var instance = mag.get("instance")
+	if instance == null or not (instance is MagicBase):
+		return
+	var dir := _get_magic_aim_direction()
+	if (instance as MagicBase).cast(self, dir):
+		current_mana -= float(cost)
+
+
+## 供武器调用：获取近战伤害加成。
+func get_melee_damage_bonus() -> int:
+	return melee_damage_bonus
+
+
+## 供武器调用：获取远程伤害加成。
+func get_ranged_damage_bonus() -> int:
+	return ranged_damage_bonus
+
+
+## 供武器/子弹调用：攻击命中时按 lifesteal_chance 概率恢复 1 点血。
+func try_lifesteal() -> void:
+	if lifesteal_chance <= 0.0:
+		return
+	if randf() < lifesteal_chance:
+		heal(1)
 
 
 ## 供武器调用：获取经角色特质修正后的最终伤害。

@@ -5,12 +5,17 @@ extends CanvasLayer
 # - 升级三选一、武器商店、开局武器选择（运行时构建）
 # - 触控虚拟按键（移动 + 暂停）
 signal upgrade_selected(upgrade_id: String)
+signal upgrade_refresh_requested  # 玩家点击刷新，消耗金币重新随机 4 项
 signal start_weapon_selected(weapon_id: String)
 signal weapon_shop_selected(weapon_id: String)
+signal weapon_shop_refresh_requested  # 商店刷新
+signal weapon_shop_closed  # 下一波，关闭商店
 signal mobile_move_changed(direction: Vector2)
 signal pause_pressed
 
-@onready var health_label: Label = $Root/TopRow/HealthLabel
+@onready var health_label: Label = $Root/TopRow/HealthBox/HealthLabel
+@onready var exp_bar: ProgressBar = $Root/TopRow/HealthBox/ExpBar
+@onready var level_label: Label = $Root/TopRow/HealthBox/LevelLabel
 @onready var wave_label: Label = $Root/TopRow/WaveLabel
 @onready var kill_label: Label = $Root/TopRow/KillLabel
 @onready var timer_label: Label = $Root/TopRow/TimerLabel
@@ -25,11 +30,14 @@ var _upgrade_title_label: Label
 var _upgrade_tip_label: Label
 var _upgrade_buttons: Array[Button] = []
 var _upgrade_icons: Array[TextureRect] = []
+var _upgrade_refresh_btn: Button  # 刷新按钮
 var _weapon_panel: Panel  # 武器商店/开局选择面板
 var _weapon_title_label: Label
 var _weapon_tip_label: Label
 var _weapon_buttons: Array[Button] = []
 var _weapon_icons: Array[TextureRect] = []
+var _shop_refresh_btn: Button
+var _shop_next_btn: Button
 var _modal_backdrop: ColorRect  # 全屏遮罩，升级/商店时显示
 var _weapon_mode := ""  # "start" 或 "shop"，区分开局选择与波次商店
 var _touch_panel: Control  # 触控按钮容器
@@ -43,6 +51,9 @@ var _move_state := {
 }
 var _last_health_current := 0  # 语言切换时重绘用
 var _last_health_max := 0
+var _last_exp_current := 0
+var _last_exp_threshold := 50
+var _last_level := 1
 var _last_wave := 1
 var _last_kills := 0
 var _last_time := 0.0
@@ -59,6 +70,8 @@ func _ready() -> void:
 	set_kills(0)
 	set_survival_time(0.0)
 	set_currency(0)
+	set_experience(0, GameManager.get_level_up_threshold())
+	set_level(GameManager.run_level)
 	_intermission_label.visible = false
 	_wave_banner.visible = false
 	_upgrade_panel.visible = false
@@ -96,6 +109,21 @@ func set_currency(value: int) -> void:
 	_currency_label.text = LocalizationManager.tr_key("hud.gold", {"value": value})
 
 
+func set_experience(current: int, threshold: int) -> void:
+	_last_exp_current = current
+	_last_exp_threshold = maxi(threshold, 1)
+	if exp_bar:
+		exp_bar.min_value = 0.0
+		exp_bar.max_value = float(_last_exp_threshold)
+		exp_bar.value = float(current)
+
+
+func set_level(level: int) -> void:
+	_last_level = level
+	if level_label:
+		level_label.text = LocalizationManager.tr_key("hud.level", {"value": level})
+
+
 func set_intermission_countdown(seconds_left: float) -> void:
 	if seconds_left <= 0.0:
 		_intermission_label.visible = false
@@ -121,7 +149,7 @@ func show_wave_banner(wave: int) -> void:
 	tween.finished.connect(func() -> void: _wave_banner.visible = false)
 
 
-func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void:
+func show_upgrade_options(options: Array[Dictionary], current_gold: int, refresh_cost: int = 2) -> void:
 	_show_modal_backdrop(true)
 	_upgrade_panel.visible = true
 	_currency_label.text = LocalizationManager.tr_key("hud.gold", {"value": current_gold})
@@ -136,13 +164,11 @@ func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void
 		btn.visible = true
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		btn.custom_minimum_size = Vector2(0, 58)
+		btn.disabled = false  # 升级选择免费，不再因金币不足禁用
 		var option: Dictionary = options[i]
-		var cost := int(option.get("cost", 0))
-		var affordable := current_gold >= cost
-		# 金币不足直接置灰，仍保留文案给玩家决策反馈。
-		btn.disabled = not affordable
 		var title_text := LocalizationManager.tr_key(str(option.get("title_key", "upgrade.skip.title")))
 		var desc_text := LocalizationManager.tr_key(str(option.get("desc_key", "upgrade.skip.desc")))
+		var reward_text := str(option.get("reward_text", ""))
 		var icon_path := str(option.get("icon_path", ""))
 		var tex: Texture2D = null
 		if icon_path != "" and ResourceLoader.exists(icon_path):
@@ -151,14 +177,17 @@ func show_upgrade_options(options: Array[Dictionary], current_gold: int) -> void
 			tex = VisualAssetRegistry.make_color_texture(Color(0.68, 0.68, 0.74, 1.0), Vector2i(96, 96))
 		_upgrade_icons[i].texture = tex
 		_upgrade_icons[i].visible = true
-		btn.text = LocalizationManager.tr_key("hud.upgrade_button", {
+		btn.text = LocalizationManager.tr_key("hud.upgrade_button_free", {
 			"title": title_text,
 			"desc": desc_text,
-			"cost": cost,
-			"need": "" if affordable else LocalizationManager.tr_key("hud.need_gold")
+			"reward": reward_text
 		})
 		btn.set_meta("upgrade_id", str(option.get("id", "")))
-		btn.set_meta("upgrade_cost", cost)
+		btn.set_meta("upgrade_value", option.get("reward_value"))
+	if _upgrade_refresh_btn:
+		_upgrade_refresh_btn.visible = true
+		_upgrade_refresh_btn.disabled = current_gold < refresh_cost
+		_upgrade_refresh_btn.text = LocalizationManager.tr_key("hud.upgrade_refresh", {"cost": refresh_cost})
 
 
 func hide_upgrade_options() -> void:
@@ -173,6 +202,10 @@ func show_start_weapon_pick(options: Array[Dictionary]) -> void:
 	_weapon_title_label.text = LocalizationManager.tr_key("weapon.pick_start_title")
 	_weapon_tip_label.text = LocalizationManager.tr_key("weapon.pick_start_tip")
 	_fill_weapon_buttons(options, false, 0, 0)
+	if _shop_refresh_btn:
+		_shop_refresh_btn.visible = false
+	if _shop_next_btn:
+		_shop_next_btn.visible = false
 
 
 func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_left: int, completed_wave: int = 0) -> void:
@@ -185,6 +218,10 @@ func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_le
 		_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title")
 	_weapon_tip_label.text = LocalizationManager.tr_key("weapon.shop_tip", {"gold": current_gold, "capacity": capacity_left})
 	_fill_weapon_buttons(options, true, current_gold, capacity_left)
+	if _shop_refresh_btn:
+		_shop_refresh_btn.visible = true
+	if _shop_next_btn:
+		_shop_next_btn.visible = true
 
 
 func hide_weapon_panel() -> void:
@@ -282,14 +319,14 @@ func _build_runtime_ui() -> void:
 	upgrade_row.add_theme_constant_override("separation", 16)
 	box.add_child(upgrade_row)
 
-	for i in range(3):
+	for i in range(4):
 		var card := VBoxContainer.new()
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.custom_minimum_size = Vector2(280, 260)
+		card.custom_minimum_size = Vector2(220, 240)
 		card.add_theme_constant_override("separation", 8)
 		upgrade_row.add_child(card)
 		var icon := TextureRect.new()
-		icon.custom_minimum_size = Vector2(96, 96)
+		icon.custom_minimum_size = Vector2(64, 64)
 		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		card.add_child(icon)
@@ -297,11 +334,26 @@ func _build_runtime_ui() -> void:
 		var btn := Button.new()
 		btn.text = "Upgrade"
 		btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		btn.custom_minimum_size = Vector2(0, 140)
+		btn.custom_minimum_size = Vector2(0, 120)
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		btn.pressed.connect(_on_upgrade_button_pressed.bind(btn))
 		card.add_child(btn)
 		_upgrade_buttons.append(btn)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 12)
+	var refresh_btn := Button.new()
+	refresh_btn.text = "Refresh"
+	refresh_btn.custom_minimum_size = Vector2(100, 40)
+	refresh_btn.pressed.connect(func() -> void: emit_signal("upgrade_refresh_requested"))
+	btn_row.add_child(refresh_btn)
+	_upgrade_refresh_btn = refresh_btn
+	var skip_btn := Button.new()
+	skip_btn.text = "Skip"
+	skip_btn.custom_minimum_size = Vector2(100, 40)
+	skip_btn.pressed.connect(func() -> void: emit_signal("upgrade_selected", "skip"))
+	btn_row.add_child(skip_btn)
+	box.add_child(btn_row)
 
 	_weapon_panel = Panel.new()
 	_weapon_panel.anchors_preset = Control.PRESET_FULL_RECT
@@ -370,6 +422,19 @@ func _build_runtime_ui() -> void:
 		weapon_card.add_child(weapon_btn)
 		_weapon_buttons.append(weapon_btn)
 
+	var shop_btn_row := HBoxContainer.new()
+	shop_btn_row.add_theme_constant_override("separation", 12)
+	var shop_refresh := Button.new()
+	shop_refresh.text = "Refresh"
+	shop_refresh.pressed.connect(func() -> void: emit_signal("weapon_shop_refresh_requested"))
+	shop_btn_row.add_child(shop_refresh)
+	_shop_refresh_btn = shop_refresh
+	var shop_next := Button.new()
+	shop_next.text = "Next Wave"
+	shop_next.pressed.connect(func() -> void: emit_signal("weapon_shop_closed"))
+	shop_btn_row.add_child(shop_next)
+	_shop_next_btn = shop_next
+	weapon_box.add_child(shop_btn_row)
 
 
 # 触控设备下创建 L/R/U/D 移动键与暂停键，通过 mobile_move_changed 回传方向。
@@ -454,13 +519,15 @@ func _apply_localized_static_texts() -> void:
 func _on_language_changed(_language_code: String) -> void:
 	_apply_localized_static_texts()
 	set_health(_last_health_current, _last_health_max)
+	set_experience(_last_exp_current, _last_exp_threshold)
+	set_level(_last_level)
 	set_wave(_last_wave)
 	set_kills(_last_kills)
 	set_survival_time(_last_time)
 	set_currency(_last_currency)
 
 
-# 填充武器按钮：标题、属性、价格；is_shop 时追加“跳过”按钮。
+# 填充商店/开局按钮：支持武器与道具；is_shop 时道具不检查槽位，武器检查 capacity_left。
 func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gold: int, capacity_left: int) -> void:
 	var button_index := 0
 	for option in options:
@@ -468,7 +535,8 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 			break
 		var btn := _weapon_buttons[button_index]
 		btn.visible = true
-		var weapon_id := str(option.get("id", ""))
+		var item_id := str(option.get("id", ""))
+		var item_type := str(option.get("type", "weapon"))
 		var icon_path := str(option.get("icon_path", ""))
 		var tex: Texture2D = null
 		if icon_path != "" and ResourceLoader.exists(icon_path):
@@ -480,10 +548,20 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 		var cost := int(option.get("cost", 0))
 		var can_buy := true
 		if is_shop:
-			can_buy = current_gold >= cost and capacity_left > 0
+			if item_type == "weapon":
+				can_buy = current_gold >= cost and capacity_left > 0
+			else:
+				can_buy = current_gold >= cost
 		btn.disabled = not can_buy
 		var title_text := LocalizationManager.tr_key(str(option.get("name_key", "weapon.unknown.name")))
-		var stats_text := _build_weapon_stats_text(option)
+		var stats_text: String
+		if item_type == "attribute":
+			stats_text = _build_item_stats_text(option)
+		elif item_type == "magic":
+			var def := MagicDefs.get_magic_by_id(item_id)
+			stats_text = LocalizationManager.tr_key(str(option.get("desc_key", ""))) if def.is_empty() else "%d 伤害 · %d 魔力" % [def.get("power", 0), def.get("mana_cost", 0)]
+		else:
+			stats_text = _build_weapon_stats_text(option)
 		if is_shop:
 			btn.text = LocalizationManager.tr_key("weapon.shop_button", {
 				"name": title_text,
@@ -496,22 +574,24 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 				"name": title_text,
 				"stats": stats_text
 			})
-		btn.set_meta("weapon_id", weapon_id)
-		button_index += 1
-
-	if is_shop and button_index < _weapon_buttons.size():
-		var skip_btn := _weapon_buttons[button_index]
-		skip_btn.visible = true
-		skip_btn.disabled = false
-		skip_btn.text = LocalizationManager.tr_key("weapon.shop_skip")
-		skip_btn.set_meta("weapon_id", "skip")
-		_weapon_icons[button_index].texture = VisualAssetRegistry.make_color_texture(Color(0.45, 0.45, 0.45, 1.0), Vector2i(96, 96))
-		_weapon_icons[button_index].visible = true
+		btn.set_meta("weapon_id", item_id)
+		btn.set_meta("item_type", item_type)
+		btn.set_meta("option", option)
 		button_index += 1
 
 	for i in range(button_index, _weapon_buttons.size()):
 		_weapon_buttons[i].visible = false
 		_weapon_icons[i].visible = false
+
+
+func _build_item_stats_text(option: Dictionary) -> String:
+	var desc := LocalizationManager.tr_key(str(option.get("desc_key", "")))
+	var val = option.get("base_value")
+	if val is float:
+		if option.get("attr", "") == "lifesteal_chance":
+			return "%s +%.0f%%" % [desc, val * 100.0]
+		return "%s +%.1f" % [desc, val]
+	return "%s +%d" % [desc, int(val)]
 
 
 func _apply_modal_panel_style(panel: Panel) -> void:

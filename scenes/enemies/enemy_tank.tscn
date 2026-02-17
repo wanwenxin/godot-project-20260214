@@ -14,6 +14,7 @@ texture_sheet = "res://assets/enemies/enemy_tank_sheet.png"
 texture_single = "res://assets/enemies/enemy_tank.png"
 max_health = 80
 speed = 62.0
+exp_value = 12
 contact_damage = 14
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

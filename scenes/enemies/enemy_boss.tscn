@@ -16,6 +16,7 @@ texture_single = "res://assets/enemies/enemy_boss.png"
 bullet_scene = ExtResource("2")
 max_health = 320
 speed = 58.0
+exp_value = 50
 contact_damage = 18
 fire_rate = 1.0
 

@@ -14,6 +14,7 @@ texture_sheet = "res://assets/enemies/enemy_aquatic_sheet.png"
 texture_single = "res://assets/enemies/enemy_aquatic.png"
 max_health = 20
 speed = 95.0
+exp_value = 6
 contact_damage = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

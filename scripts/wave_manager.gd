@@ -287,6 +287,9 @@ func _on_enemy_died(enemy: Node) -> void:
 	kill_count += 1
 	AudioManager.play_kill()
 	emit_signal("kill_count_changed", kill_count)
+	# 击败敌人获得经验值（enemy_base 及子类均有 exp_value）
+	var xp: int = int(enemy.exp_value) if "exp_value" in enemy else 5
+	GameManager.add_experience(xp)
 	_try_spawn_drop(enemy)
 	_try_spawn_boss_bonus_drop(enemy)
 

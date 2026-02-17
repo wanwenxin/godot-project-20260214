@@ -16,6 +16,7 @@ texture_single = "res://assets/enemies/enemy_ranged.png"
 bullet_scene = ExtResource("2")
 max_health = 40
 speed = 75.0
+exp_value = 8
 contact_damage = 7
 fire_rate = 1.2
 

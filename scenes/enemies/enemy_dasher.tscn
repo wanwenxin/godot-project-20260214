@@ -14,6 +14,7 @@ texture_sheet = "res://assets/enemies/enemy_dasher_sheet.png"
 texture_single = "res://assets/enemies/enemy_dasher.png"
 max_health = 18
 speed = 85.0
+exp_value = 10
 contact_damage = 14
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

@@ -24,7 +24,7 @@
 - `scripts/autoload/game_manager.gd`
   - 场景切换（主菜单/角色选择/战斗）
   - 角色模板数据
-  - 本局金币 `run_currency`
+  - 本局金币 `run_currency`、经验值 `run_experience`、等级 `run_level`
   - 本局武器库存 `run_weapons`（最多 6 把）
   - 武器定义池 `weapon_defs`（近战/远程）
   - 最近战绩缓存 `last_run_result`
@@ -63,6 +63,8 @@
   - 支持可配置移动惯性（`inertia_factor`）
   - 自动索敌与开火
   - 无敌帧/受伤/死亡
+  - 扩展属性：血量上限、魔力上限、护甲、近战/远程伤害加成、血量/魔力恢复、吸血概率
+  - 魔法槽（最多 3 个），按 Q/E/R 释放
   - 升级应用（伤害、射速、穿透、多弹等）
   - 地形减速效果合并
   - 持有 `CharacterTraitsBase`，通过 `get_final_damage`、`get_elemental_enchantment` 供武器参与数值计算
@@ -99,6 +101,7 @@
 
 - `scripts/enemy_base.gd`
   - 通用生命/接触伤害
+  - `exp_value`：击败该敌人获得的经验值，各敌人在场景中配置
   - 接触持续伤害：玩家与 HurtArea 重叠时，按 `contact_damage_interval` 持续造成伤害（`_on_contact_timer_timeout` 检查重叠并再次施加）
   - 地形速度系数（与玩家规则一致）
   - `apply_knockback(dir, force)`：受击击退，累加冲击速度并每帧衰减
@@ -156,10 +159,10 @@
 ### 2.5 HUD 与菜单
 
 - `scripts/ui/hud.gd`
-  - 战斗信息（血量/波次/击杀/时间/金币）
+  - 战斗信息（血量/经验条/等级/波次/击杀/时间/金币）
   - 波次倒计时（正上方）、间隔倒计时与波次横幅
-  - 升级三选一面板（运行时构建）
-  - 武器商店（仅在波次完成后出现，标题显示完成波次）
+  - 升级四选一面板（可金币刷新，等级越高奖励越多）
+  - 商店（武器+道具+魔法，4 件，购买后刷新，价格随波次上涨）
   - 升级/商店结算层使用全屏纯色不透明 backdrop
   - 触控按钮（移动 + 暂停）
 
@@ -198,7 +201,15 @@
 - 玩家默认最多持有 6 把武器，并在玩家周围显示色块
 - 流程：
   1. 开局默认装备短刃（blade_short）直接开始波次
-  2. 每波结算先属性升级，再进入武器商店（金币购买或跳过），商店标题显示“第 N 波完成”
+  2. 每波结算先升级（4 选 1，免费，可金币刷新），再进入商店（武器+道具+魔法，购买后刷新或点下一波）
+
+### 2.7 魔法系统
+
+- `scripts/magic/magic_base.gd`：魔法基类，定义 `cast(caster, target_dir)` 接口
+- `resources/magic_defs.gd`：魔法定义池（mana_cost、power、element、icon_path、script_path）
+- 玩家最多装备 3 个魔法，按 Q/E/R（cast_magic_1/2/3）释放
+- 释放时消耗魔力，生成弹道命中敌人，传入 `take_damage(power, element)` 实现元素附着
+- 魔法可在商店购买
 
 - `scripts/ui/main_menu.gd`
   - 显示总统计、最近战绩、成就数量

@@ -35,9 +35,11 @@
 
 | 流程 | 文件 | 说明 |
 |------|------|------|
-| 逻辑 | [scripts/game.gd](scripts/game.gd) | `_on_upgrade_selected`、`_on_weapon_shop_selected`、`_roll_upgrade_options` |
+| 逻辑 | [scripts/game.gd](scripts/game.gd) | `_on_upgrade_selected`、`_on_weapon_shop_selected`、`_roll_upgrade_options`、`_roll_shop_items` |
 | UI | [scripts/ui/hud.gd](scripts/ui/hud.gd) | `show_upgrade_options`、`show_weapon_shop`、`show_start_weapon_pick` |
-| 金币 | [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | `run_currency`、`spend_currency`、`add_currency` |
+| 升级配置 | [resources/upgrade_defs.gd](resources/upgrade_defs.gd) | 升级池、等级奖励公式 |
+| 商店配置 | [resources/shop_item_defs.gd](resources/shop_item_defs.gd) | 道具池、波次涨价 |
+| 全局 | [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | `run_currency`、`run_experience`、`run_level`、`add_experience` |
 
 ### 1.5 结算与死亡/通关
 
@@ -118,6 +120,17 @@
 | [scripts/weapons/ranged/weapon_wand_focus.gd](scripts/weapons/ranged/weapon_wand_focus.gd) | 聚焦法杖 | 继承 weapon_ranged_base |
 | [scripts/weapon.gd](scripts/weapon.gd) | 旧版武器基类（部分兼容） | - |
 | [resources/weapon_defs.gd](resources/weapon_defs.gd) | 武器定义池 | `WEAPON_DEFS` |
+
+### 2.6b 魔法系统
+
+| 文件 | 职责 | 关键导出/信号 |
+|------|------|---------------|
+| [scripts/magic/magic_base.gd](scripts/magic/magic_base.gd) | 魔法基类 | `cast(caster, target_dir)` |
+| [scripts/magic/fire_bolt.gd](scripts/magic/fire_bolt.gd) | 火球术 | 火焰弹道 |
+| [scripts/magic/ice_shard.gd](scripts/magic/ice_shard.gd) | 冰霜碎片 | 冰霜弹道 |
+| [resources/magic_defs.gd](resources/magic_defs.gd) | 魔法定义 |
+| [resources/upgrade_defs.gd](resources/upgrade_defs.gd) | 升级配置 |
+| [resources/shop_item_defs.gd](resources/shop_item_defs.gd) | 商店道具配置 |
 
 ### 2.7 UI 层
 

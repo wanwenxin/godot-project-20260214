@@ -9,6 +9,7 @@ signal died(enemy: Node)
 
 @export var max_health := 25
 @export var speed := 90.0
+@export var exp_value := 5  # 击败该敌人可获得的经验值，各敌人在场景中配置不同值
 @export var contact_damage := 8
 @export var contact_damage_interval := 0.6
 # 水中专属敌人离水伤害（子类 is_water_only 返回 true 时生效）。

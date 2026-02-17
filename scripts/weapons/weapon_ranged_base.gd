@@ -34,6 +34,8 @@ func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 	var elemental := ""
 	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_final_damage"):
 		final_damage = _owner_ref.get_final_damage(damage, weapon_id, {"is_melee": false})
+	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_ranged_damage_bonus"):
+		final_damage += _owner_ref.get_ranged_damage_bonus()
 	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_elemental_enchantment"):
 		elemental = _owner_ref.get_elemental_enchantment()
 	var base_direction: Vector2 = (target.global_position - global_position).normalized()
@@ -60,6 +62,8 @@ func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 		if bullet_texture_path != "":
 			bullet.set("texture_path", bullet_texture_path)
 		bullet.set("collision_radius", bullet_collision_radius)
+		if is_instance_valid(_owner_ref):
+			bullet.set("owner_ref", _owner_ref)
 		get_tree().current_scene.add_child(bullet)
 		did_shoot = true
 	if did_shoot:

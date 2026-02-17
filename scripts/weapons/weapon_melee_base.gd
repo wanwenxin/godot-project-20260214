@@ -90,6 +90,8 @@ func _apply_touch_hits() -> void:
 		final_damage = _owner_ref.get_final_damage(damage, weapon_id, {"is_melee": true})
 		if _owner_ref.has_method("get_elemental_enchantment"):
 			elemental = _owner_ref.get_elemental_enchantment()
+	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_melee_damage_bonus"):
+		final_damage += _owner_ref.get_melee_damage_bonus()
 	for body in _hit_area.get_overlapping_bodies():
 		if not is_instance_valid(body):
 			continue
@@ -100,6 +102,8 @@ func _apply_touch_hits() -> void:
 		if not _can_hit_enemy(body):
 			continue
 		body.take_damage(final_damage, elemental)
+		if is_instance_valid(_owner_ref) and _owner_ref.has_method("try_lifesteal"):
+			_owner_ref.try_lifesteal()
 		_enemy_last_hit[body.get_instance_id()] = float(Time.get_ticks_msec()) / 1000.0
 		AudioManager.play_hit()
 

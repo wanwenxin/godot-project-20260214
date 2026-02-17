@@ -14,6 +14,7 @@ texture_sheet = "res://assets/enemies/enemy_melee_sheet.png"
 texture_single = "res://assets/enemies/enemy_melee.png"
 max_health = 24
 speed = 110.0
+exp_value = 5
 contact_damage = 10
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

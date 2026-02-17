@@ -16,6 +16,8 @@ var bullet_type := ""
 var bullet_color := Color(1.0, 1.0, 0.4, 1.0)
 # 元素附魔类型（如 "fire"），命中时传入 enemy.take_damage
 var elemental_type := ""
+# 玩家子弹的持有者，用于吸血等回调
+var owner_ref: Node2D = null
 
 var direction := Vector2.RIGHT
 var _hit_targets: Dictionary = {}  # 已命中目标 instance_id，用于同目标去重
@@ -82,6 +84,8 @@ func _on_body_entered(body: Node) -> void:
 	elif (not hit_player) and body.is_in_group("enemies"):
 		if body.has_method("take_damage"):
 			body.take_damage(damage, elemental_type)
+		if is_instance_valid(owner_ref) and owner_ref.has_method("try_lifesteal"):
+			owner_ref.try_lifesteal()
 		if body.has_method("apply_knockback") and bullet_type != "":
 			var force := 40.0
 			match bullet_type:
