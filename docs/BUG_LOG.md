@@ -18,6 +18,34 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-17：词条独立面板、图鉴武器词条细分
+
+- **现象**：词条悬浮面板为主 tooltip 子节点，非独立；词条仅显示名称；图鉴词条缺武器-类型、武器-主题子标签
+- **原因**：`_affix_tooltip` 通过 add_child 挂到主 tooltip；此前简化仅保留 name_key；词条 Tab 仅 5 个子标签
+- **修复**：(1) 词条面板首次显示时加入与主 tooltip 同级（CanvasLayer），position 用屏幕坐标；(2) 恢复 desc+value 双 Label、_effect_type_to_name、_format_bonus；(3) 词条 Tab 新增武器-类型、武器-主题，WeaponTypeAffixDefs/WeaponThemeAffixDefs 各入专属 Tab
+- **预防**：独立悬浮面板需与主面板同级；图鉴细分按数据源建 Tab
+
+### 2026-02-17：词条悬浮简化、图鉴语言切换不刷新
+
+- **现象**：词条悬浮面板展示描述+数值较复杂；图鉴切换语言后内容仍为旧语言
+- **原因**：词条二级面板为双 Label 结构；`_on_language_changed` 仅更新标题/Tab 标题，未重建 Tab 内条目
+- **修复**：(1) 词条悬浮面板简化为单 Label 仅显示名称（name_key 翻译）；(2) `_on_language_changed` 清空 `_tabs` 子节点、重置 `_weapons_sub`/`_affixes_sub`、调用 `_build_tabs()` 重建内容
+- **预防**：语言切换时需重建依赖 tr_key 的动态内容；词条悬浮按需简化展示
+
+### 2026-02-17：词条面板定位、背包尺寸、关闭后无法再打开、图鉴英文
+
+- **现象**：词条切换仍不便；背包悬浮面板关闭后可能无法再打开；中文模式下图鉴有英文（HP、effect_type、weapon_type、element 等）
+- **原因**：词条面板以主 tooltip 右边界定位仍可能遮挡；is_scheduled_to_hide 阻止新槽位显示；图鉴硬编码或直接显示原始 key
+- **修复**：(1) 词条面板改为鼠标定位、AFFIX_TOOLTIP_WIDTH 200、AFFIX_TOOLTIP_FONT_SIZE 14；(2) 主 tooltip TOOLTIP_WIDTH 280→340、TOOLTIP_MAX_HEIGHT 200→280；(3) 移除 BackpackSlot 中 is_scheduled_to_hide 判断；(4) 图鉴所有 stat/effect/element 等改为 tr_key，新增 encyclopedia.*、magic.element_*、pause.stat_fire_rate 等 i18n
+- **预防**：词条二级面板优先跟随鼠标；进入新槽位时取消 hide 并显示；图鉴文案统一走 i18n
+
+### 2026-02-17：词条悬浮面板与背包悬浮面板重叠、图鉴细化
+
+- **现象**：词条悬浮面板与背包悬浮面板重叠（同位置同大小），无法切换词条；图鉴武器/词条未细分；道具 Tab 含魔法
+- **原因**：词条面板以 chip 为基准定位，靠右时翻到 chip 左侧与主 tooltip 重叠；图鉴道具 Tab 直接遍历 ShopItemDefs.ITEM_POOL（含 type=magic）；武器/词条未细分
+- **修复**：(1) `_position_affix_tooltip` 以主 tooltip 右边界为基准，右侧不足时改为主 tooltip 下方，再不足时改左侧；(2) 道具 Tab 过滤 `type=="magic"`；(3) 武器 Tab 嵌套 TabContainer（近战/远程）；(4) 词条 Tab 嵌套 TabContainer（魔法、道具、武器-通用、武器-近战、武器-远程）；(5) 新增 i18n 键 encyclopedia.weapon_melee/ranged、encyclopedia.affix_*
+- **预防**：二级 tooltip 定位时避免与主 tooltip 重叠；图鉴道具与魔法数据源分离；细分 Tab 时用嵌套 TabContainer
+
 ### 2026-02-17：图鉴文字重叠、词条悬浮面板闪跳、背包悬浮面板误关闭
 
 - **现象**：图鉴名称与描述重叠；词条 chip hover 时二级面板闪跳；打开词条悬浮面板后背包主面板不久消失

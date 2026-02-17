@@ -60,9 +60,6 @@ func configure(icon_path: String, color: Color, tip: String, tooltip_popup: Back
 func _on_mouse_entered() -> void:
 	if _tooltip_popup == null:
 		return
-	# 同类不重复打开：主 tooltip 正在关闭时，不响应新槽位
-	if _tooltip_popup.is_scheduled_to_hide():
-		return
 	if not _tip_data.is_empty():
 		_tooltip_popup.show_structured_tooltip(_tip_data)
 	elif _tip_text != "":

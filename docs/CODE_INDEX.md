@@ -12,7 +12,7 @@
 |------|------|------|
 | 入口 | [scripts/ui/main_menu.gd](scripts/ui/main_menu.gd) | 主菜单：新游戏、继续、设置、图鉴、退出；展示存档统计 |
 | 设置 | [scripts/ui/settings_menu.gd](scripts/ui/settings_menu.gd) | 音量、分辨率、按键、惯性等；修改即生效并保存 |
-| 图鉴 | [scripts/ui/encyclopedia_menu.gd](scripts/ui/encyclopedia_menu.gd) | 按类型展示角色、敌人、道具、武器、魔法、词条及详情；只读浏览 |
+| 图鉴 | [scripts/ui/encyclopedia_menu.gd](scripts/ui/encyclopedia_menu.gd) | 按类型展示角色、敌人、道具、武器、魔法、词条及详情；武器/词条嵌套子 Tab；道具排除魔法；只读浏览 |
 | 全局 | [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | 场景切换、角色/武器配置、本局状态 |
 | 存档 | [scripts/autoload/save_manager.gd](scripts/autoload/save_manager.gd) | `user://savegame/save.json` 读写、设置持久化 |
 
@@ -166,10 +166,10 @@
 | [scripts/ui/character_select.gd](scripts/ui/character_select.gd) | 角色选择 | - |
 | [scripts/ui/pause_menu.gd](scripts/ui/pause_menu.gd) | 暂停菜单、属性/背包 Tab、玩家信息 | `set_visible_menu`、`set_player_stats_full` |
 | [scripts/ui/backpack_panel.gd](scripts/ui/backpack_panel.gd) | 背包面板，武器/魔法/道具图标网格，网格线可见 | `set_stats`、`hide_tooltip` |
-| [scripts/ui/backpack_tooltip_popup.gd](scripts/ui/backpack_tooltip_popup.gd) | 背包 Tooltip，结构化词条 Chip、二级悬浮详情、延迟隐藏（0.5s）、同类不重复打开 | `show_tooltip`、`show_structured_tooltip`、`schedule_hide`、`is_scheduled_to_hide`、`hide_tooltip` |
+| [scripts/ui/backpack_tooltip_popup.gd](scripts/ui/backpack_tooltip_popup.gd) | 背包 Tooltip，结构化词条 Chip、独立词条悬浮面板（完整描述+数值、屏幕坐标）、主 tooltip 放大、延迟隐藏（0.5s） | `show_tooltip`、`show_structured_tooltip`、`schedule_hide`、`is_scheduled_to_hide`、`hide_tooltip` |
 | [scripts/ui/backpack_slot.gd](scripts/ui/backpack_slot.gd) | 背包槽，图标 + 悬浮即显 Tooltip（支持 tip_data） | `configure` |
 | [scripts/ui/settings_menu.gd](scripts/ui/settings_menu.gd) | 设置 | `open_menu`、`closed` |
-| [scripts/ui/encyclopedia_menu.gd](scripts/ui/encyclopedia_menu.gd) | 图鉴菜单，按类型展示角色/敌人/道具/武器/魔法/词条 | `open_menu`、`closed` |
+| [scripts/ui/encyclopedia_menu.gd](scripts/ui/encyclopedia_menu.gd) | 图鉴菜单，按类型展示角色/敌人/道具/武器/魔法/词条；武器分近战/远程；词条分七类（魔法、道具、武器-通用/近战/远程、武器-类型、武器-主题）；道具排除魔法 | `open_menu`、`closed` |
 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | 死亡结算 | `show_result` |
 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 通关结算 | `show_result` |
 | [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | 结算面板共享 UI | `build_score_block`、`build_player_stats_block`（支持完整 stats 字典） |

@@ -264,6 +264,7 @@
 
 - `scripts/ui/encyclopedia_menu.gd`
   - 图鉴菜单：按类型 Tab 展示角色、敌人、道具、武器、魔法、词条及其详细信息
+  - 道具 Tab 仅展示 `type!="magic"` 的 ITEM_POOL 项；武器 Tab 内嵌套 TabContainer（近战/远程）；词条 Tab 内嵌套 TabContainer（魔法、道具、武器-通用、武器-近战、武器-远程、武器-类型、武器-主题）
   - 数据来源：GameManager.characters、EnemyDefs、ShopItemDefs、weapon_defs、MagicDefs、各 affix_defs
   - 只读浏览，不修改游戏状态
 
@@ -293,11 +294,12 @@
 
 - `scripts/ui/backpack_tooltip_popup.gd`
   - 背包悬浮面板：PanelContainer 实现，挂到暂停菜单 CanvasLayer 保证同视口、文字可显示
+  - 词条二级面板：独立 PanelContainer，与主 tooltip 同级（CanvasLayer），首次显示时加入场景树，屏幕坐标定位；AFFIX_TOOLTIP_WIDTH 200、字体 14；完整描述+数值
   - `show_tooltip(text)`：纯文本模式，用于魔法等无词条项；同一物体悬浮移动时不重生成
   - `show_structured_tooltip(data)`：结构化模式，名称 + 词条 Chip 横向排布（可 hover 显示描述与数值）+ 效果；武器可含合成按钮
   - `synthesize_requested(weapon_index)`：合成按钮点击时发出
   - `schedule_hide()`：槽位/面板 mouse_exited 时调用，延迟 0.5s 隐藏，便于鼠标移入 tooltip
-  - `is_scheduled_to_hide()`：是否正在延迟关闭，用于「同类不重复打开」：关闭期间新槽位不触发显示
+  - `is_scheduled_to_hide()`：是否正在延迟关闭（已移除槽位侧阻塞，进入新槽位时取消 hide 并显示）
   - `hide_tooltip()`：关闭提示
   - 词条二级面板：chip 离开后延迟 0.5s 隐藏，鼠标在词条/面板上时均不关闭；主 tooltip mouse_exited 时若鼠标在词条面板上则不调度关闭
 
@@ -306,7 +308,7 @@
   - `configure(..., tip_data, weapon_index)`：tip_data 非空时用 `show_structured_tooltip`；weapon_index >= 0 为武器槽
   - `set_merge_selectable(selectable)`：合并模式下置灰不可选或高亮可选
   - `slot_clicked(weapon_index)`：合并模式下点击可选武器槽时发出
-  - 同类不重复打开：`_on_mouse_entered` 时若 popup 正在 `is_scheduled_to_hide()` 则不显示
+  - 进入新槽位时直接显示，show_* 内部会 _cancel_scheduled_hide
 
 - `scripts/ui/settings_menu.gd`
   - 全屏展示布局（与暂停页类似）：Panel 铺满、OuterMargin 边距、CenterContainer 居中内容

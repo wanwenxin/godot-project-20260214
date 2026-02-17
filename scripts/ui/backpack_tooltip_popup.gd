@@ -2,13 +2,15 @@ extends PanelContainer
 class_name BackpackTooltipPopup
 
 # 背包悬浮提示：PanelContainer 实现，挂到 CanvasLayer 保证与暂停菜单同视口，文字可正常显示。
-# 支持结构化展示（名称、词条 Chip、效果），词条可 hover 显示二级详情；延迟隐藏，鼠标移入 tooltip 不消失。
+# 支持结构化展示（名称、词条 Chip、效果），词条 hover 显示独立悬浮面板（完整描述+数值）；延迟隐藏，鼠标移入 tooltip 不消失。
 # 武器 tooltip 可含「合成」按钮，点击后发出 synthesize_requested 信号。
 
 signal synthesize_requested(weapon_index: int)
 const TOOLTIP_FONT_SIZE := 17
-const TOOLTIP_WIDTH := 280  # 固定宽度，替代原 MIN/MAX 区间
-const TOOLTIP_MAX_HEIGHT := 200
+const TOOLTIP_WIDTH := 340  # 主 tooltip 固定宽度
+const TOOLTIP_MAX_HEIGHT := 280  # 主 tooltip 最大高度
+const AFFIX_TOOLTIP_WIDTH := 200  # 词条二级面板宽度，缩小便于切换
+const AFFIX_TOOLTIP_FONT_SIZE := 14  # 词条面板字体
 const MARGIN := 8
 const GAP := 4
 const HIDE_DELAY := 0.5  # 槽位/面板 mouse_exited 后延迟隐藏，便于鼠标移入 tooltip
@@ -21,7 +23,7 @@ var _last_tip: String = ""
 var _last_data_hash: String = ""  # 结构化数据哈希，同物体不重生成
 var _hide_timer: Timer = null
 var _affix_hide_timer: Timer = null  # 词条面板延迟隐藏，chip 离开后给鼠标移入面板的时间
-var _affix_tooltip: PanelContainer = null  # 词条二级悬浮面板
+var _affix_tooltip: PanelContainer = null  # 词条独立悬浮面板（与主 tooltip 同级），显示完整描述+数值
 var _affix_tooltip_desc: Label = null
 var _affix_tooltip_value: Label = null
 
@@ -59,7 +61,7 @@ func _init() -> void:
 	_affix_hide_timer.one_shot = true
 	_affix_hide_timer.timeout.connect(_on_affix_hide_timer_timeout)
 	add_child(_affix_hide_timer)
-	# 词条二级悬浮面板（作为子节点，显示时定位）
+	# 词条独立悬浮面板（首次显示时加入与主 tooltip 同级，屏幕坐标定位）
 	_build_affix_tooltip()
 	# 鼠标进入 tooltip 取消延迟隐藏；离开时隐藏
 	mouse_entered.connect(_on_self_mouse_entered)
@@ -83,16 +85,16 @@ func _build_affix_tooltip() -> void:
 	v.add_theme_constant_override("separation", 2)
 	_affix_tooltip_desc = Label.new()
 	_affix_tooltip_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_affix_tooltip_desc.custom_minimum_size.x = int((TOOLTIP_WIDTH - MARGIN * 2) * 0.9)  # 与主 tooltip 文本区一致
-	_affix_tooltip_desc.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 2)
+	_affix_tooltip_desc.custom_minimum_size.x = int((AFFIX_TOOLTIP_WIDTH - MARGIN * 2) * 0.9)
+	_affix_tooltip_desc.add_theme_font_size_override("font_size", AFFIX_TOOLTIP_FONT_SIZE)
 	_affix_tooltip_desc.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	v.add_child(_affix_tooltip_desc)
 	_affix_tooltip_value = Label.new()
-	_affix_tooltip_value.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 2)
+	_affix_tooltip_value.add_theme_font_size_override("font_size", AFFIX_TOOLTIP_FONT_SIZE)
 	_affix_tooltip_value.add_theme_color_override("font_color", Color(0.7, 0.95, 0.85))
 	v.add_child(_affix_tooltip_value)
 	m.add_child(v)
-	add_child(_affix_tooltip)
+	# 不 add_child 到自身；首次显示时加入与主 tooltip 同级（CanvasLayer），实现独立面板
 
 
 func _make_panel_style() -> StyleBoxFlat:
@@ -124,7 +126,7 @@ func show_tooltip(text: String) -> void:
 	visible = true
 
 
-## 显示结构化悬浮提示（名称、词条 Chip、效果）。词条可 hover 显示二级详情。
+## 显示结构化悬浮提示（名称、词条 Chip、效果）。词条 hover 显示独立悬浮面板（完整描述+数值）。
 ## data: {title, affixes: [{id, type, name_key, desc_key, value, value_fmt}], effects}
 func show_structured_tooltip(data: Dictionary) -> void:
 	if data.is_empty():
@@ -236,6 +238,9 @@ func _make_affix_chip(affix_data: Dictionary) -> Control:
 
 func _on_affix_chip_entered(affix_data: Dictionary, chip: Control) -> void:
 	_cancel_affix_hide()
+	# 首次显示时，将词条面板加入与主 tooltip 同级（CanvasLayer），实现独立面板
+	if get_parent() != null and _affix_tooltip.get_parent() == null:
+		get_parent().add_child(_affix_tooltip)
 	var desc_key: String = str(affix_data.get("desc_key", ""))
 	var value_fmt: String = str(affix_data.get("value_fmt", ""))
 	var desc_text := ""
@@ -281,25 +286,18 @@ func _format_bonus(et: String, bonus: Variant) -> String:
 	return "+%d" % int(bonus)
 
 
-func _position_affix_tooltip(chip: Control) -> void:
+func _position_affix_tooltip(_chip: Control) -> void:
 	var vp := get_viewport()
 	if vp == null:
 		return
-	var chip_global := chip.global_position
-	var chip_size := chip.size
 	var affix_size := _affix_tooltip.get_combined_minimum_size()
-	var pos := chip_global + Vector2(chip_size.x + GAP, 0)
 	var viewport_rect := vp.get_visible_rect()
-	if pos.x + affix_size.x > viewport_rect.end.x:
-		pos.x = chip_global.x - affix_size.x - GAP
-	if pos.x < viewport_rect.position.x:
-		pos.x = viewport_rect.position.x
-	if pos.y + affix_size.y > viewport_rect.end.y:
-		pos.y = viewport_rect.end.y - affix_size.y
-	if pos.y < viewport_rect.position.y:
-		pos.y = viewport_rect.position.y
-	# 二级 tooltip 为主 tooltip 子节点，position 需相对主 tooltip
-	_affix_tooltip.position = pos - global_position
+	var pos := vp.get_mouse_position() + Vector2(GAP, GAP)
+	# 边界裁剪
+	pos.x = clamp(pos.x, viewport_rect.position.x, viewport_rect.end.x - affix_size.x)
+	pos.y = clamp(pos.y, viewport_rect.position.y, viewport_rect.end.y - affix_size.y)
+	# 词条面板与主 tooltip 同级，使用屏幕绝对坐标
+	_affix_tooltip.position = pos
 	_affix_tooltip.custom_minimum_size = affix_size
 
 
