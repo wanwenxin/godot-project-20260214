@@ -21,6 +21,9 @@ const ITEM_POOL := [
 	{"type": "attribute", "id": "item_mana_regen", "attr": "mana_regen", "base_value": 0.5, "tier": 0, "base_cost": 4, "name_key": "item.mana_regen.name", "desc_key": "item.mana_regen.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_mana_regen.png"},
 	{"type": "magic", "id": "fire_bolt", "base_cost": 6, "name_key": "magic.fire_bolt.name", "desc_key": "magic.fire_bolt.desc", "icon_path": "res://assets/magic/icon_fire.png"},
 	{"type": "magic", "id": "ice_shard", "base_cost": 7, "name_key": "magic.ice_shard.name", "desc_key": "magic.ice_shard.desc", "icon_path": "res://assets/magic/icon_ice.png"},
+	{"type": "magic", "id": "shockwave", "base_cost": 10, "name_key": "magic.shockwave.name", "desc_key": "magic.shockwave.desc", "icon_path": "res://assets/magic/icon_fire.png"},
+	{"type": "magic", "id": "burn_zone", "base_cost": 12, "name_key": "magic.burn_zone.name", "desc_key": "magic.burn_zone.desc", "icon_path": "res://assets/magic/icon_fire.png"},
+	{"type": "attribute", "id": "item_spell_speed", "attr": "spell_speed", "base_value": 0.15, "tier": 0, "base_cost": 5, "name_key": "item.spell_speed.name", "desc_key": "item.spell_speed.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_mana.png"},
 ]
 
 ## 计算商品价格（含波次涨价）

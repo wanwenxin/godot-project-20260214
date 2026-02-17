@@ -18,6 +18,13 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-17：settings_menu 中 action 未声明、area_shockwave 中 dist_sq 类型推断失败
+
+- **现象**：settings_menu.gd:325/336/342 报 `Identifier "action" not declared in the current scope`；area_shockwave.gd:30 报 `Cannot infer the type of "dist_sq" variable`
+- **原因**：settings_menu 在 `_unhandled_input` 中先清空 `_waiting_for_action` 再使用其值，导致 `action` 未定义；area_shockwave 中 `node` 来自 `get_nodes_in_group` 返回的 Array，GDScript 无法推断 `length_squared()` 的返回类型
+- **修复**：在清空前 `var action := _waiting_for_action`；为 dist_sq 显式标注 `var dist_sq: float =`
+- **预防**：使用会清空的变量前先保存到局部变量；涉及泛型/弱类型表达式时显式标注类型
+
 ### 2026-02-17：player、wave_manager 中 INTEGER_DIVISION 与 CONFUSABLE_LOCAL_DECLARATION
 
 - **现象**：player.gd:374 整型除法；wave_manager.gd:160 idx 与父块下方声明混淆；wave_manager.gd:169 整型除法

@@ -27,8 +27,9 @@ var default_data := {
 		},
 		"game": {
 			"key_preset": "wasd",
-			"pause_key": "P",
+			"pause_key": "Escape",
 			"toggle_enemy_hp_key": "H",
+			"key_bindings": {},
 			"show_enemy_health_bar": true,
 			"show_key_hints_in_pause": true,
 			"move_inertia": 0.0

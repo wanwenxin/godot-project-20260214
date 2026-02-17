@@ -23,3 +23,8 @@ func configure_from_def(def: Dictionary, tier: int = 0) -> void:
 func cast(_caster: Node2D, _target_dir: Vector2) -> bool:
 	# 子类 override：生成弹道/范围效果，命中敌人时调用 enemy.take_damage(power, element)
 	return false
+
+
+## 区域型魔法：在世界坐标施放。子类 override。
+func cast_at_position(_caster: Node2D, _world_pos: Vector2) -> bool:
+	return false

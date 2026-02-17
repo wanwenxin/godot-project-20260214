@@ -128,11 +128,15 @@
 
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
-| [scripts/magic/magic_base.gd](scripts/magic/magic_base.gd) | 魔法基类 | `cast(caster, target_dir)` |
+| [scripts/magic/magic_base.gd](scripts/magic/magic_base.gd) | 魔法基类 | `cast(caster, target_dir)`、`cast_at_position(caster, world_pos)` |
 | [scripts/magic/fire_bolt.gd](scripts/magic/fire_bolt.gd) | 火球术 | 火焰弹道 |
 | [scripts/magic/ice_shard.gd](scripts/magic/ice_shard.gd) | 冰霜碎片 | 冰霜弹道 |
-| [resources/magic_defs.gd](resources/magic_defs.gd) | 魔法定义 |
-| [resources/upgrade_defs.gd](resources/upgrade_defs.gd) | 升级配置 |
+| [scripts/magic/area_shockwave.gd](scripts/magic/area_shockwave.gd) | 冲击波 | 区域一次性伤害 |
+| [scripts/magic/area_burn.gd](scripts/magic/area_burn.gd) | 燃烧区域 | 区域持续燃烧伤害 |
+| [scripts/magic/burn_zone_node.gd](scripts/magic/burn_zone_node.gd) | 燃烧区域节点 | 持续存在并周期性造成伤害 |
+| [scripts/ui/magic_targeting_overlay.gd](scripts/ui/magic_targeting_overlay.gd) | 区域施法选择 | 圆形范围跟随鼠标，左键施放、右键/Esc 取消 |
+| [resources/magic_defs.gd](resources/magic_defs.gd) | 魔法定义（含 cast_mode、area_radius、effect_type、cooldown） |
+| [resources/upgrade_defs.gd](resources/upgrade_defs.gd) | 升级配置（含 spell_speed） |
 | [resources/shop_item_defs.gd](resources/shop_item_defs.gd) | 商店道具配置 |
 
 ### 2.7 UI 层
@@ -147,6 +151,7 @@
 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | 死亡结算 | `show_result` |
 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 通关结算 | `show_result` |
 | [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | 结算面板共享 UI | `build_score_block`、`build_player_stats_block`（支持完整 stats 字典） |
+| [scripts/ui/magic_targeting_overlay.gd](scripts/ui/magic_targeting_overlay.gd) | 区域施法选择覆盖层 | `start_targeting`、`cast_confirmed`、`cast_cancelled` |
 
 ### 2.8 资源与工具
 
@@ -203,6 +208,10 @@
 | scripts/ui/game_over_screen.gd | UI | 死亡结算 |
 | scripts/ui/victory_screen.gd | UI | 通关结算 |
 | scripts/ui/result_panel_shared.gd | UI | 结算共享 UI |
+| scripts/ui/magic_targeting_overlay.gd | UI | 区域施法选择 |
+| scripts/magic/area_shockwave.gd | 魔法 | 冲击波 |
+| scripts/magic/area_burn.gd | 魔法 | 燃烧区域 |
+| scripts/magic/burn_zone_node.gd | 魔法 | 燃烧区域节点 |
 | scripts/pixel_generator.gd | 工具 | 像素图生成 |
 | resources/weapon_defs.gd | 资源 | 武器定义 |
 | resources/tier_config.gd | 资源 | 品级颜色与倍率 |

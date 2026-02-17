@@ -7,6 +7,8 @@ extends CharacterBody2D
 signal died
 signal health_changed(current: int, max_value: int)
 signal damaged(amount: int)
+## 区域型魔法：请求进入 targeting 模式，参数为 slot、magic_def、instance。
+signal request_area_targeting(slot: int, magic_def: Dictionary, instance: MagicBase)
 
 @export var base_speed := 160.0
 @export var max_health := 100
@@ -33,6 +35,8 @@ var health_regen := 0.0  # 血量/秒恢复
 var lifesteal_chance := 0.0  # 吸血概率 0~1，命中时按概率恢复 1 点血
 var mana_regen := 1.0  # 魔力/秒恢复，初始 1
 var attack_speed := 1.0  # 攻击速度系数，1.0=基准，越高武器冷却越短
+var spell_speed := 1.0  # 施法速度系数，1.0=基准，越大冷却越快
+var _magic_cooldowns: Dictionary = {}  # magic_id -> 剩余冷却秒数
 var _invulnerable_timer := 0.0
 var _pending_damages: Array[int] = []  # 帧内缓冲，帧末取最大后统一结算
 var _character_data := {}
@@ -203,6 +207,8 @@ func apply_upgrade(upgrade_id: String, value: Variant = null) -> void:
 			mana_regen += float(v) if v != null else 0.3
 		"attack_speed":
 			attack_speed += float(v) if v != null else 0.1
+		"spell_speed":
+			spell_speed += float(v) if v != null else 0.1
 		"fire_rate", "bullet_speed", "multi_shot", "pierce":
 			pass
 	# 将升级传递给每把武器（伤害、射速、穿透等由武器实现）。
@@ -283,7 +289,10 @@ func _get_magic_aim_direction() -> Vector2:
 	return Vector2.RIGHT
 
 
-func _try_cast_magic(_delta: float) -> void:
+func _try_cast_magic(delta: float) -> void:
+	# 冷却递减
+	for id in _magic_cooldowns.keys():
+		_magic_cooldowns[id] = maxf(0.0, _magic_cooldowns[id] - delta)
 	if not input_enabled or _equipped_magics.is_empty():
 		return
 	var slot := -1
@@ -302,9 +311,41 @@ func _try_cast_magic(_delta: float) -> void:
 	var cost: int = int((instance as MagicBase).mana_cost)
 	if current_mana < float(cost):
 		return
+	var def: Dictionary = mag.get("def", {})
+	var magic_id: String = str(def.get("id", ""))
+	var cooldown: float = float(def.get("cooldown", 1.0))
+	var actual_cd: float = cooldown / maxf(0.1, spell_speed)
+	if _magic_cooldowns.get(magic_id, 0.0) > 0.0:
+		return
+	var cast_mode: String = str(def.get("cast_mode", "projectile"))
+	if cast_mode == "area":
+		request_area_targeting.emit(slot, def, instance)
+		return
 	var dir := _get_magic_aim_direction()
 	if (instance as MagicBase).cast(self, dir):
 		current_mana -= float(cost)
+		_magic_cooldowns[magic_id] = actual_cd
+
+
+## 区域施法确认：由 game 在 overlay cast_confirmed 时调用。
+func execute_area_cast(slot: int, world_pos: Vector2) -> bool:
+	if slot < 0 or slot >= _equipped_magics.size():
+		return false
+	var mag: Dictionary = _equipped_magics[slot]
+	var instance = mag.get("instance")
+	if instance == null or not (instance is MagicBase):
+		return false
+	var def: Dictionary = mag.get("def", {})
+	var cost: int = int((instance as MagicBase).mana_cost)
+	if current_mana < float(cost):
+		return false
+	var magic_id: String = str(def.get("id", ""))
+	if (instance as MagicBase).cast_at_position(self, world_pos):
+		current_mana -= float(cost)
+		var cooldown: float = float(def.get("cooldown", 1.0))
+		_magic_cooldowns[magic_id] = cooldown / maxf(0.1, spell_speed)
+		return true
+	return false
 
 
 ## 供武器调用：获取近战伤害加成。

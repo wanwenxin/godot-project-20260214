@@ -2,6 +2,8 @@ extends Node
 
 # 全局场景路径，统一由 GameManager 控制切场，避免在各处硬编码。
 const SCENE_MAIN_MENU := "res://scenes/main_menu.tscn"
+## 设计分辨率固定 1280×720，等比例缩放时由 stretch aspect="keep" 负责留黑边。
+const DESIGN_VIEWPORT := Vector2i(1280, 720)
 const SCENE_CHARACTER_SELECT := "res://scenes/character_select.tscn"
 const SCENE_GAME := "res://scenes/game.tscn"
 const MAX_WEAPONS := 6
@@ -213,9 +215,14 @@ func apply_saved_settings() -> void:
 	var game_cfg: Dictionary = settings.get("game", {})
 	AudioManager.set_master_volume(float(system_cfg.get("master_volume", 0.70)))
 	_apply_window_mode(str(system_cfg.get("resolution", "100%")))
-	_apply_key_preset(str(game_cfg.get("key_preset", "wasd")))
-	_set_action_single_key("pause", str(game_cfg.get("pause_key", "P")))
-	_set_action_single_key("toggle_enemy_hp", str(game_cfg.get("toggle_enemy_hp_key", "H")))
+	var key_bindings: Dictionary = game_cfg.get("key_bindings", {})
+	if key_bindings.is_empty():
+		_apply_key_preset(str(game_cfg.get("key_preset", "wasd")))
+		_set_action_single_key("pause", str(game_cfg.get("pause_key", "Escape")))
+		_set_action_single_key("toggle_enemy_hp", str(game_cfg.get("toggle_enemy_hp_key", "H")))
+		# camera_zoom 与 cast_magic 使用 project.godot 默认，或从 key_bindings 补充
+	else:
+		_apply_key_bindings(key_bindings)
 	enemy_healthbar_visible = bool(game_cfg.get("show_enemy_health_bar", true))
 	move_inertia_factor = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, 0.9)
 
@@ -245,7 +252,7 @@ func _do_apply_window_mode(value: String) -> void:
 			var custom_size := Vector2i(int(parts[0]), int(parts[1]))
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 			DisplayServer.window_set_size(custom_size)
-			_apply_content_scale_to_window(custom_size)
+			_apply_content_scale_to_window(DESIGN_VIEWPORT)
 			return
 		scale_factor = 1.0
 	var screen_size: Vector2i = DisplayServer.screen_get_size()
@@ -261,16 +268,14 @@ func _do_apply_window_mode(value: String) -> void:
 	var cy := int((screen_size.y - target_size.y) / 2.0)
 	DisplayServer.window_set_position(Vector2i(cx, cy))
 	DisplayServer.window_set_size(target_size)
-	# 将根视口 content_scale_size 设为窗口尺寸，覆盖 project.godot 的固定 1280x720，使画面填满
-	_apply_content_scale_to_window(target_size)
+	# 设计分辨率固定 1280×720，等比例缩放
+	_apply_content_scale_to_window(DESIGN_VIEWPORT)
 
 
-func _apply_content_scale_to_window(size: Vector2i) -> void:
-	if size.x <= 0 or size.y <= 0:
-		return
+func _apply_content_scale_to_window(_size: Vector2i) -> void:
 	var root := Engine.get_main_loop().root as Window
 	if root:
-		root.content_scale_size = size
+		root.content_scale_size = DESIGN_VIEWPORT
 
 
 func _deferred_apply_content_scale_after_fullscreen() -> void:
@@ -300,6 +305,41 @@ func _apply_key_preset(preset: String) -> void:
 		_set_action_single_key("move_down", "S")
 
 
+## 可配置的 11 个动作，用于按键绑定。
+const BINDABLE_ACTIONS := [
+	"move_left", "move_right", "move_up", "move_down",
+	"pause", "toggle_enemy_hp", "camera_zoom_in", "camera_zoom_out",
+	"cast_magic_1", "cast_magic_2", "cast_magic_3"
+]
+
+
+## 应用完整按键绑定；冲突时后绑定的覆盖先绑定的。
+func _apply_key_bindings(bindings: Dictionary) -> void:
+	# 先清除所有动作的键位，避免同一键被多动作共享
+	var key_to_action: Dictionary = {}
+	for action in BINDABLE_ACTIONS:
+		var key_name: String = str(bindings.get(action, "")).strip_edges()
+		if key_name.is_empty():
+			continue
+		if key_to_action.has(key_name):
+			var old_action: StringName = key_to_action[key_name]
+			_clear_action_events(old_action)
+		key_to_action[key_name] = StringName(action)
+	for action in BINDABLE_ACTIONS:
+		var key_name: String = str(bindings.get(action, "")).strip_edges()
+		if key_name.is_empty():
+			_clear_action_events(StringName(action))
+		else:
+			_set_action_single_key(StringName(action), key_name)
+
+
+func _clear_action_events(action: StringName) -> void:
+	if not InputMap.has_action(action):
+		return
+	for event in InputMap.action_get_events(action):
+		InputMap.action_erase_event(action, event)
+
+
 func _set_action_single_key(action: StringName, key_name: String) -> void:
 	if not InputMap.has_action(action):
 		InputMap.add_action(action)
@@ -311,6 +351,38 @@ func _set_action_single_key(action: StringName, key_name: String) -> void:
 	var event_key := InputEventKey.new()
 	event_key.keycode = keycode
 	InputMap.action_add_event(action, event_key)
+
+
+## 获取当前按键绑定（从 InputMap 或设置），供设置页显示。
+func get_key_bindings() -> Dictionary:
+	var settings := SaveManager.get_settings()
+	var game_cfg: Dictionary = settings.get("game", {})
+	var bindings: Dictionary = game_cfg.get("key_bindings", {})
+	if not bindings.is_empty():
+		return bindings.duplicate()
+	# 从 preset + pause_key + toggle_hp_key 构建
+	var preset: String = str(game_cfg.get("key_preset", "wasd"))
+	if preset == "arrows":
+		bindings["move_left"] = "Left"
+		bindings["move_right"] = "Right"
+		bindings["move_up"] = "Up"
+		bindings["move_down"] = "Down"
+	else:
+		bindings["move_left"] = "A"
+		bindings["move_right"] = "D"
+		bindings["move_up"] = "W"
+		bindings["move_down"] = "S"
+	bindings["pause"] = str(game_cfg.get("pause_key", "Escape"))
+	bindings["toggle_enemy_hp"] = str(game_cfg.get("toggle_enemy_hp_key", "H"))
+	# 从 InputMap 读取 camera_zoom 与 cast_magic 的当前值
+	for act in ["camera_zoom_in", "camera_zoom_out", "cast_magic_1", "cast_magic_2", "cast_magic_3"]:
+		if InputMap.has_action(act):
+			var evts := InputMap.action_get_events(act)
+			if not evts.is_empty() and evts[0] is InputEventKey:
+				bindings[act] = OS.get_keycode_string(evts[0].keycode)
+			elif not bindings.has(act):
+				bindings[act] = "+"
+	return bindings
 
 
 func get_weapon_defs() -> Array[Dictionary]:

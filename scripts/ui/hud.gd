@@ -13,9 +13,11 @@ signal weapon_shop_closed  # 下一波，关闭商店
 signal mobile_move_changed(direction: Vector2)
 signal pause_pressed
 
+@onready var health_bar: ProgressBar = $Root/TopRow/HealthBox/HealthBar
 @onready var health_label: Label = $Root/TopRow/HealthBox/HealthLabel
 @onready var exp_bar: ProgressBar = $Root/TopRow/HealthBox/ExpBar
 @onready var mana_bar: ProgressBar = $Root/TopRow/HealthBox/ManaBar
+@onready var mana_label: Label = $Root/TopRow/HealthBox/ManaLabel
 @onready var level_label: Label = $Root/TopRow/HealthBox/LevelLabel
 @onready var armor_label: Label = $Root/TopRow/HealthBox/ArmorLabel
 @onready var wave_label: Label = $Root/TopRow/WaveLabel
@@ -173,7 +175,7 @@ func _wrap_anchored_label_in_panel(lbl: Label) -> void:
 
 
 func _apply_hud_font_sizes() -> void:
-	for lbl in [health_label, level_label, armor_label, wave_label, kill_label, timer_label, pause_hint]:
+	for lbl in [health_label, mana_label, level_label, armor_label, wave_label, kill_label, timer_label, pause_hint]:
 		if lbl is Label:
 			lbl.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 	if _currency_label:
@@ -185,7 +187,28 @@ func _apply_hud_font_sizes() -> void:
 func set_health(current: int, max_value: int) -> void:
 	_last_health_current = current
 	_last_health_max = max_value
-	health_label.text = LocalizationManager.tr_key("hud.hp", {"current": current, "max": max_value})
+	if health_bar:
+		health_bar.min_value = 0.0
+		health_bar.max_value = float(maxi(max_value, 1))
+		health_bar.value = float(current)
+		# 分段颜色：100%-50% 绿，50%-20% 橘黄，≤20% 红
+		var ratio := float(current) / float(maxi(max_value, 1))
+		var fill_color: Color
+		if ratio > 0.5:
+			fill_color = Color(0.29, 0.87, 0.5)  # #4ade80 绿
+		elif ratio > 0.2:
+			fill_color = Color(0.98, 0.58, 0.24)  # #fb923c 橘黄
+		else:
+			fill_color = Color(0.94, 0.27, 0.27)  # #ef4444 红
+		var fill_style := StyleBoxFlat.new()
+		fill_style.bg_color = fill_color
+		fill_style.set_corner_radius_all(2)
+		health_bar.add_theme_stylebox_override("fill", fill_style)
+		var bg_style := StyleBoxFlat.new()
+		bg_style.bg_color = Color(0.22, 0.25, 0.32)  # #374151 空白/损失部分
+		bg_style.set_corner_radius_all(2)
+		health_bar.add_theme_stylebox_override("background", bg_style)
+	health_label.text = "%d/%d" % [current, max_value]
 
 
 func set_wave(value: int) -> void:
@@ -234,6 +257,17 @@ func set_mana(current: float, max_value: float) -> void:
 		mana_bar.min_value = 0.0
 		mana_bar.max_value = _last_mana_max
 		mana_bar.value = current
+		# 魔力条固定深蓝 #1e40af
+		var fill_style := StyleBoxFlat.new()
+		fill_style.bg_color = Color(0.12, 0.25, 0.69)  # #1e40af 深蓝
+		fill_style.set_corner_radius_all(2)
+		mana_bar.add_theme_stylebox_override("fill", fill_style)
+		var bg_style := StyleBoxFlat.new()
+		bg_style.bg_color = Color(0.22, 0.25, 0.32)
+		bg_style.set_corner_radius_all(2)
+		mana_bar.add_theme_stylebox_override("background", bg_style)
+	if mana_label:
+		mana_label.text = "%d/%d" % [int(current), int(_last_mana_max)]
 
 
 func set_armor(value: int) -> void:

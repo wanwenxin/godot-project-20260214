@@ -6,8 +6,8 @@ var spin_duration := 0.6  # 持续旋转时长
 var _spin_elapsed := 0.0
 
 
-func configure_from_def(def: Dictionary) -> void:
-	super.configure_from_def(def)
+func configure_from_def(def: Dictionary, weapon_tier: int = 0) -> void:
+	super.configure_from_def(def, weapon_tier)
 	var stats: Dictionary = def.get("stats", {})
 	spin_duration = float(stats.get("spin_duration", spin_duration))
 

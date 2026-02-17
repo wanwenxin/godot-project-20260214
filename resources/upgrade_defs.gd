@@ -21,6 +21,7 @@ const UPGRADE_POOL := [
 	{"id": "bullet_speed", "title_key": "upgrade.bullet_speed.title", "desc_key": "upgrade.bullet_speed.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_ranged.png", "base_value": 60, "level_scale": 5.0},
 	{"id": "multi_shot", "title_key": "upgrade.multi_shot.title", "desc_key": "upgrade.multi_shot.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_ranged.png", "base_value": 1, "level_scale": 0},
 	{"id": "pierce", "title_key": "upgrade.pierce.title", "desc_key": "upgrade.pierce.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_ranged.png", "base_value": 1, "level_scale": 0},
+	{"id": "spell_speed", "title_key": "upgrade.spell_speed.title", "desc_key": "upgrade.spell_speed.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_mana.png", "base_value": 0.1, "level_scale": 0.02},
 ]
 
 
@@ -31,6 +32,6 @@ static func get_reward_value(upgrade: Dictionary, level: int) -> Variant:
 	var raw: float = float(base_val) + float(level) * scale_val
 	var id := str(upgrade.get("id", ""))
 	# 浮点类属性
-	if id in ["health_regen", "lifesteal_chance", "mana_regen", "attack_speed"]:
+	if id in ["health_regen", "lifesteal_chance", "mana_regen", "attack_speed", "spell_speed"]:
 		return raw
 	return int(round(raw))

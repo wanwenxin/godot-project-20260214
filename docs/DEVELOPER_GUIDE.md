@@ -5,7 +5,7 @@
 ## 1. 技术栈与项目约定
 
 - 引擎：Godot 4.x
-- 显示：`canvas_items` 拉伸 + `ignore` 宽高比，运行时 `content_scale_size` 设为窗口尺寸，画面填满；窗口支持 50%/75%/100%/全屏
+- 显示：设计分辨率固定 1280×720，`aspect="keep"` 等比例缩放，多余区域留黑边；`content_scale_size` 固定为设计尺寸；窗口支持 50%/75%/100%/全屏
 - 语言：GDScript
 - 类型：2D 俯视角波次生存射击
 - 资源策略：优先运行时生成（像素图与合成音），减少外部资源依赖
@@ -223,10 +223,13 @@
 
 ### 2.7 魔法系统
 
-- `scripts/magic/magic_base.gd`：魔法基类，定义 `cast(caster, target_dir)` 接口
-- `resources/magic_defs.gd`：魔法定义池（mana_cost、power、element、icon_path、script_path）
+- `scripts/magic/magic_base.gd`：魔法基类，定义 `cast(caster, target_dir)`（弹道型）与 `cast_at_position(caster, world_pos)`（区域型）接口
+- `resources/magic_defs.gd`：魔法定义池（mana_cost、power、element、cast_mode、area_radius、effect_type、cooldown、burn_* 等）
+- **cast_mode**：`projectile` 弹道型（按键即释放，方向朝向最近敌人）或 `area` 区域型（进入 targeting 模式，鼠标选点施放）
+- **区域施法**：`scripts/ui/magic_targeting_overlay.gd` 显示圆形范围跟随鼠标，左键施放、右键/Esc 取消；冲击波（一次性伤害）、燃烧区域（持续 DOT）
+- **施法速度**：玩家属性 `spell_speed`，系数越高魔法冷却越短；升级与道具可提升
 - 玩家最多装备 3 个魔法，按 Q/E/R（cast_magic_1/2/3）释放
-- 释放时消耗魔力，生成弹道命中敌人，传入 `take_damage(power, element)` 实现元素附着
+- 释放时消耗魔力，弹道型生成弹道命中敌人；区域型在选定位置生成效果
 - 魔法可在商店购买
 
 - `scripts/ui/main_menu.gd`
@@ -566,12 +569,12 @@ flowchart TD
 2. 居中 Panel 与 Backdrop 的 `mouse_filter=STOP`，按钮可点击
 3. `game.gd` 中 `_on_player_died()` 调用 `game_over_screen.show_result()`，`_on_wave_cleared()` 在 `wave >= victory_wave` 时调用 `victory_screen.show_result()`
 
-### 6.6 全屏/窗口缩放时画面只占一小块
+### 6.6 分辨率与等比例缩放
 
-原因：project.godot 固定 `viewport_width=1280`、`viewport_height=720` 作为设计尺寸，拉伸后可能留黑边。  
-解决：
-1. `project.godot` 使用 `aspect="ignore"` 强制填满（无黑边，可能轻微拉伸）
-2. `game_manager.gd` 在应用窗口设置时调用 `_apply_content_scale_to_window()`，将根视口 `content_scale_size` 设为当前窗口尺寸，覆盖固定 1280×720
+设计分辨率固定 1280×720，窗口调整时强制等比例缩放，多余区域留黑边（letterbox）。  
+实现：
+1. `project.godot` 使用 `aspect="keep"` 保持比例
+2. `game_manager.gd` 中 `_apply_content_scale_to_window()` 将根视口 `content_scale_size` 固定为 1280×720（`DESIGN_VIEWPORT`）
 3. `game.gd` 中 `_resize_world_background()` 用 offset 动态设置 WorldBackground 尺寸
 
 ## 7. 验证清单

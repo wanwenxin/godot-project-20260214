@@ -64,6 +64,10 @@ func play_pickup() -> void:
 	_play_tone(880.0, 0.05, 0.18)
 
 
+func play_magic_cast() -> void:
+	_play_tone(600.0, 0.06, 0.22)
+
+
 func play_wave_start() -> void:
 	_play_tone(520.0, 0.10, 0.20)
 

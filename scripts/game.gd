@@ -73,6 +73,7 @@ var _pending_start_weapon_options: Array[Dictionary] = []  # 开局武器选择�
 var _pending_shop_weapon_options: Array[Dictionary] = []  # 波次后商店武器候选
 var _waves_initialized := false  # 波次管理器是否已 setup
 var _ui_modal_active := false  # 升级/商店等模态面板是否打开
+var _pending_area_slot := -1  # 区域施法时暂存槽位，确认/取消后清除
 # 触控方向缓存（由 HUD 虚拟按键驱动）。
 var _mobile_move := Vector2.ZERO
 
@@ -83,6 +84,7 @@ var _mobile_move := Vector2.ZERO
 @onready var game_over_screen = $GameOverScreen
 @onready var victory_screen = $VictoryScreen
 @onready var world_background: ColorRect = $WorldBackground
+@onready var magic_targeting_overlay: Node2D = $MagicTargetingOverlay
 
 
 func _ready() -> void:
@@ -127,6 +129,11 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_resize_world_background)
 	# 初始化时限制缩放系数在有效范围内
 	camera_zoom_scale = clampf(camera_zoom_scale, camera_zoom_min, camera_zoom_max)
+	# 区域施法 overlay 默认隐藏
+	if magic_targeting_overlay != null:
+		magic_targeting_overlay.visible = false
+		magic_targeting_overlay.cast_confirmed.connect(_on_magic_targeting_confirmed)
+		magic_targeting_overlay.cast_cancelled.connect(_on_magic_targeting_cancelled)
 
 
 func _resize_world_background() -> void:
@@ -184,6 +191,7 @@ func _spawn_player() -> void:
 	player.died.connect(_on_player_died)
 	player.health_changed.connect(_on_player_health_changed)
 	player.damaged.connect(_on_player_damaged)
+	player.request_area_targeting.connect(_on_player_request_area_targeting)
 	add_child(player)
 
 
@@ -296,6 +304,23 @@ func _on_wave_cleared(wave: int) -> void:
 
 func _on_kill_count_changed(kills: int) -> void:
 	hud.set_kills(kills)
+
+
+func _on_player_request_area_targeting(slot: int, magic_def: Dictionary, instance: MagicBase) -> void:
+	if not is_instance_valid(player) or magic_targeting_overlay == null:
+		return
+	_pending_area_slot = slot
+	magic_targeting_overlay.start_targeting(magic_def, instance, player)
+
+
+func _on_magic_targeting_confirmed(world_pos: Vector2) -> void:
+	if is_instance_valid(player) and _pending_area_slot >= 0:
+		player.execute_area_cast(_pending_area_slot, world_pos)
+	_pending_area_slot = -1
+
+
+func _on_magic_targeting_cancelled() -> void:
+	_pending_area_slot = -1
 
 
 func _on_player_died() -> void:
@@ -618,8 +643,8 @@ func _update_camera() -> void:
 	game_camera.zoom = Vector2(zoom_val, zoom_val)
 	var visible_size := viewport_size / zoom_val
 	if _playable_region.size.x <= visible_size.x and _playable_region.size.y <= visible_size.y:
-		# 地图可完全覆盖，摄像机固定于 region 中心
-		game_camera.position = _playable_region.get_center()
+		# 地图可完全覆盖时仍跟随玩家，保持角色在画面中心
+		game_camera.position = player.global_position
 		return
 	# 地图大于可视区域，跟随玩家，保持玩家在 30% 死区内
 	var dead_half := visible_size * camera_dead_zone_ratio * 0.5

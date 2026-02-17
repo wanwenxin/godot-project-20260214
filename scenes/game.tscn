@@ -1,6 +1,7 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/magic_targeting_overlay.gd" id="11"]
 [ext_resource type="Resource" path="res://resources/terrain_colors.tres" id="10"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/enemy_melee.tscn" id="3"]
@@ -42,3 +43,7 @@ wait_time = 3.5
 [node name="GameOverScreen" parent="." instance=ExtResource("8")]
 
 [node name="VictoryScreen" parent="." instance=ExtResource("9")]
+
+[node name="MagicTargetingOverlay" type="Node2D" parent="."]
+z_index = 100
+script = ExtResource("11")

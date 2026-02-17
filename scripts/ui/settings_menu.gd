@@ -5,7 +5,25 @@ signal closed
 # 窗口模式：百分比为屏幕比例，Fullscreen 为全屏
 const WINDOW_MODES := ["50%", "75%", "100%", "Fullscreen"]
 const PRESETS := ["wasd", "arrows"]
-const KEY_CHOICES := ["P", "Escape", "H", "Tab", "F1", "F2"]
+const KEY_CHOICES := ["Escape", "P", "H", "Tab", "F1", "F2"]
+const BINDABLE_ACTIONS := [
+	"move_left", "move_right", "move_up", "move_down",
+	"pause", "toggle_enemy_hp", "camera_zoom_in", "camera_zoom_out",
+	"cast_magic_1", "cast_magic_2", "cast_magic_3"
+]
+const ACTION_NAME_KEYS := {
+	"move_left": "settings.key.move_left",
+	"move_right": "settings.key.move_right",
+	"move_up": "settings.key.move_up",
+	"move_down": "settings.key.move_down",
+	"pause": "settings.key.pause",
+	"toggle_enemy_hp": "settings.key.toggle_hp",
+	"camera_zoom_in": "settings.key.camera_zoom_in",
+	"camera_zoom_out": "settings.key.camera_zoom_out",
+	"cast_magic_1": "settings.key.cast_magic_1",
+	"cast_magic_2": "settings.key.cast_magic_2",
+	"cast_magic_3": "settings.key.cast_magic_3"
+}
 
 # 设置页：全屏展示，与暂停页类似布局（外层边距 + 内容居中）
 @onready var panel: Panel = $Panel
@@ -32,6 +50,8 @@ const KEY_CHOICES := ["P", "Escape", "H", "Tab", "F1", "F2"]
 var _settings: Dictionary = {}  # 当前设置副本，修改后写回 SaveManager
 var _silent := false  # 防重入：_reload_from_save 时忽略控件回调
 var _fullscreen_backdrop: ColorRect
+var _key_binding_rows: Dictionary = {}  # action -> {key_label, rebind_btn}
+var _waiting_for_action: String = ""  # 等待按键时的 action
 
 
 func _ready() -> void:
@@ -52,8 +72,10 @@ func _ready() -> void:
 	LocalizationManager.language_changed.connect(_on_language_changed)
 
 	_build_static_options()
+	_build_key_bindings_tab()
 	_apply_localized_texts()
 	_reload_from_save()
+	set_process_unhandled_input(false)
 
 
 func open_menu() -> void:
@@ -96,10 +118,11 @@ func _reload_from_save() -> void:
 	_select_option_by_value(resolution_option, str(system_cfg.get("resolution", WINDOW_MODES[2])))
 	_select_option_text(preset_option, str(game_cfg.get("key_preset", "wasd")))
 	move_inertia_slider.value = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, 0.9)
-	_select_option_text(pause_key_option, str(game_cfg.get("pause_key", "P")))
+	_select_option_text(pause_key_option, str(game_cfg.get("pause_key", "Escape")))
 	_select_option_text(toggle_hp_key_option, str(game_cfg.get("toggle_enemy_hp_key", "H")))
 	enemy_hp_check.button_pressed = bool(game_cfg.get("show_enemy_health_bar", true))
 	pause_hint_check.button_pressed = bool(game_cfg.get("show_key_hints_in_pause", true))
+	_refresh_key_binding_display()
 	_silent = false
 
 
@@ -229,8 +252,128 @@ func _apply_localized_texts() -> void:
 	pause_hint_check.text = LocalizationManager.tr_key("settings.game.pause_hints")
 
 
+func _build_key_bindings_tab() -> void:
+	var keys_tab := VBoxContainer.new()
+	keys_tab.name = "KeysTab"
+	keys_tab.add_theme_constant_override("separation", 8)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 280)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	scroll.add_child(vbox)
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	keys_tab.add_child(scroll)
+	for action in BINDABLE_ACTIONS:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var name_lbl := Label.new()
+		name_lbl.custom_minimum_size = Vector2(140, 0)
+		var name_key: String = ACTION_NAME_KEYS.get(action, action)
+		name_lbl.text = LocalizationManager.tr_key(name_key)
+		row.add_child(name_lbl)
+		var key_lbl := Label.new()
+		key_lbl.custom_minimum_size = Vector2(60, 0)
+		key_lbl.text = "+"
+		row.add_child(key_lbl)
+		var rebind_btn := Button.new()
+		rebind_btn.text = LocalizationManager.tr_key("settings.key.rebind")
+		rebind_btn.pressed.connect(_on_rebind_pressed.bind(action))
+		row.add_child(rebind_btn)
+		vbox.add_child(row)
+		_key_binding_rows[action] = {"key_label": key_lbl, "rebind_btn": rebind_btn}
+	tabs.add_child(keys_tab)
+	tabs.set_tab_title(2, LocalizationManager.tr_key("settings.tab.keys"))
+
+
+func _on_rebind_pressed(action: String) -> void:
+	_waiting_for_action = action
+	if _key_binding_rows.has(action):
+		_key_binding_rows[action].key_label.text = "..."
+	set_process_unhandled_input(true)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _waiting_for_action.is_empty():
+		return
+	if not event is InputEventKey:
+		return
+	var key_ev: InputEventKey = event
+	if not key_ev.pressed or key_ev.echo:
+		return
+	# 排除仅修饰键；Escape 取消
+	if key_ev.keycode == KEY_ESCAPE:
+		set_process_unhandled_input(false)
+		_waiting_for_action = ""
+		_refresh_key_binding_display()
+		get_viewport().set_input_as_handled()
+		return
+	if key_ev.keycode == KEY_CTRL or key_ev.keycode == KEY_ALT or key_ev.keycode == KEY_SHIFT or key_ev.keycode == KEY_META:
+		return
+	var key_name := OS.get_keycode_string(key_ev.keycode)
+	if key_name.is_empty():
+		return
+	get_viewport().set_input_as_handled()
+	set_process_unhandled_input(false)
+	var action := _waiting_for_action
+	_waiting_for_action = ""
+	var game_cfg: Dictionary = _settings.get("game", {})
+	var bindings: Dictionary = game_cfg.get("key_bindings", {})
+	if bindings.is_empty():
+		bindings = GameManager.get_key_bindings()
+	var conflict_action: String = ""
+	for act in BINDABLE_ACTIONS:
+		if act != action and str(bindings.get(act, "")) == key_name:
+			conflict_action = act
+			break
+	if not conflict_action.is_empty():
+		var conflict_name: String = LocalizationManager.tr_key(ACTION_NAME_KEYS.get(conflict_action, conflict_action))
+		var dlg := AcceptDialog.new()
+		dlg.dialog_text = LocalizationManager.tr_key("settings.key.conflict", {"key": key_name, "action": conflict_name})
+		dlg.ok_button_text = LocalizationManager.tr_key("common.yes")
+		dlg.add_cancel_button(LocalizationManager.tr_key("common.no"))
+		add_child(dlg)
+		dlg.popup_centered()
+		dlg.confirmed.connect(_on_conflict_confirmed.bind(action, key_name, conflict_action, bindings, game_cfg))
+		dlg.canceled.connect(_refresh_key_binding_display)
+		dlg.close_requested.connect(dlg.queue_free)
+		dlg.confirmed.connect(dlg.queue_free)
+		dlg.canceled.connect(dlg.queue_free)
+	else:
+		bindings[action] = key_name
+		game_cfg["key_bindings"] = bindings
+		_settings["game"] = game_cfg
+		_save_and_apply()
+		_refresh_key_binding_display()
+
+
+func _on_conflict_confirmed(action: String, key_name: String, conflict_action: String, bindings: Dictionary, game_cfg: Dictionary) -> void:
+	bindings[conflict_action] = ""
+	bindings[action] = key_name
+	game_cfg["key_bindings"] = bindings
+	_settings["game"] = game_cfg
+	_save_and_apply()
+	_refresh_key_binding_display()
+
+
+func _refresh_key_binding_display() -> void:
+	var bindings: Dictionary = GameManager.get_key_bindings()
+	for action in BINDABLE_ACTIONS:
+		if _key_binding_rows.has(action):
+			var key_str: String = str(bindings.get(action, "+"))
+			_key_binding_rows[action].key_label.text = key_str
+	if not _waiting_for_action.is_empty():
+		_waiting_for_action = ""
+		set_process_unhandled_input(false)
+
+
 func _on_language_changed(_language_code: String) -> void:
 	_apply_localized_texts()
+	if tabs.get_tab_count() >= 3:
+		tabs.set_tab_title(2, LocalizationManager.tr_key("settings.tab.keys"))
+	for action in BINDABLE_ACTIONS:
+		if _key_binding_rows.has(action):
+			_key_binding_rows[action].rebind_btn.text = LocalizationManager.tr_key("settings.key.rebind")
 
 
 func _ensure_fullscreen_backdrop() -> void:
