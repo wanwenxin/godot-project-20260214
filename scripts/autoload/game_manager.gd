@@ -309,7 +309,7 @@ func _apply_key_preset(preset: String) -> void:
 const BINDABLE_ACTIONS := [
 	"move_left", "move_right", "move_up", "move_down",
 	"pause", "toggle_enemy_hp", "camera_zoom_in", "camera_zoom_out",
-	"cast_magic_1", "cast_magic_2", "cast_magic_3"
+	"cast_magic", "magic_prev", "magic_next"
 ]
 
 
@@ -359,7 +359,16 @@ func get_key_bindings() -> Dictionary:
 	var game_cfg: Dictionary = settings.get("game", {})
 	var bindings: Dictionary = game_cfg.get("key_bindings", {})
 	if not bindings.is_empty():
-		return bindings.duplicate()
+		var result := bindings.duplicate()
+		# 迁移旧版 cast_magic_2 (E) 到 cast_magic
+		if result.has("cast_magic_2") and not result.has("cast_magic"):
+			result["cast_magic"] = result["cast_magic_2"]
+		# 新动作缺失时使用默认（左右方向键）
+		if not result.has("magic_prev") or str(result.get("magic_prev", "")).strip_edges().is_empty():
+			result["magic_prev"] = "Left"
+		if not result.has("magic_next") or str(result.get("magic_next", "")).strip_edges().is_empty():
+			result["magic_next"] = "Right"
+		return result
 	# 从 preset + pause_key + toggle_hp_key 构建
 	var preset: String = str(game_cfg.get("key_preset", "wasd"))
 	if preset == "arrows":
@@ -375,7 +384,7 @@ func get_key_bindings() -> Dictionary:
 	bindings["pause"] = str(game_cfg.get("pause_key", "Escape"))
 	bindings["toggle_enemy_hp"] = str(game_cfg.get("toggle_enemy_hp_key", "H"))
 	# 从 InputMap 读取 camera_zoom 与 cast_magic 的当前值
-	for act in ["camera_zoom_in", "camera_zoom_out", "cast_magic_1", "cast_magic_2", "cast_magic_3"]:
+	for act in ["camera_zoom_in", "camera_zoom_out", "cast_magic", "magic_prev", "magic_next"]:
 		if InputMap.has_action(act):
 			var evts := InputMap.action_get_events(act)
 			if not evts.is_empty() and evts[0] is InputEventKey:

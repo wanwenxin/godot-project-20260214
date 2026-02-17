@@ -162,6 +162,7 @@ func _process(delta: float) -> void:
 	if is_instance_valid(player):
 		hud.set_mana(player.current_mana, float(player.max_mana))
 		hud.set_armor(player.armor)
+		hud.set_magic_ui(player.get_magic_ui_data())
 
 	if intermission_left > 0.0:
 		intermission_left = maxf(intermission_left - delta, 0.0)

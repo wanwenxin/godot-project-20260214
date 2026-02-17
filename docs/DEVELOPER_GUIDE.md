@@ -168,6 +168,7 @@
 - `scripts/ui/hud.gd`
   - 战斗信息（血量/魔力条/护甲/经验条/等级/波次/击杀/时间/金币）
   - 魔力条与护甲由 `game.gd` 在 `_process` 中从 player 读取并调用 `set_mana`、`set_armor`
+  - 魔法面板：左下角，横向排列已装备魔法，当前选中绿色边框，独立冷却遮罩；`set_magic_ui(magic_data)` 由 game 每帧传入 `player.get_magic_ui_data()`
   - 多行按键提示：移动、暂停、镜头缩放、魔法、敌人血条（复用 `ResultPanelShared.action_to_text`）
   - 波次倒计时（正上方）、间隔倒计时与波次横幅
   - 波次横幅与倒计时文字特效：描边、缩放动画
@@ -228,7 +229,7 @@
 - **cast_mode**：`projectile` 弹道型（按键即释放，方向朝向最近敌人）或 `area` 区域型（进入 targeting 模式，鼠标选点施放）
 - **区域施法**：`scripts/ui/magic_targeting_overlay.gd` 显示圆形范围跟随鼠标，左键施放、右键/Esc 取消；冲击波（一次性伤害）、燃烧区域（持续 DOT）
 - **施法速度**：玩家属性 `spell_speed`，系数越高魔法冷却越短；升级与道具可提升
-- 玩家最多装备 3 个魔法，按 Q/E/R（cast_magic_1/2/3）释放
+- 玩家最多装备 3 个魔法，左右方向键切换当前魔法，E 键施放（cast_magic、magic_prev、magic_next）
 - 释放时消耗魔力，弹道型生成弹道命中敌人；区域型在选定位置生成效果
 - 魔法可在商店购买
 

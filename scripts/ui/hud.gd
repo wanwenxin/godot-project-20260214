@@ -65,8 +65,11 @@ var _last_currency := 0
 var _last_mana_current := 0.0
 var _last_mana_max := 1.0
 var _last_armor := 0
+var _magic_panel: PanelContainer  # 左下角魔法面板
+var _magic_slots: Array = []  # 每项 {panel, icon, cd_overlay}
 
 const HUD_FONT_SIZE := 18  # 统一基准字号，便于阅读
+const MAGIC_SLOT_SIZE := 56  # 魔法槽尺寸
 
 
 func _ready() -> void:
@@ -134,6 +137,15 @@ func _make_hud_panel_style() -> StyleBox:
 	style.content_margin_right = 8
 	style.content_margin_top = 6
 	style.content_margin_bottom = 6
+	return style
+
+
+func _make_magic_slot_style(is_current: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.set_corner_radius_all(4)
+	style.bg_color = Color(0.15, 0.16, 0.2, 0.9)
+	style.border_color = Color(0.22, 0.84, 0.37, 1.0) if is_current else Color(0.35, 0.37, 0.42, 0.9)
+	style.set_border_width_all(2 if is_current else 1)
 	return style
 
 
@@ -274,6 +286,38 @@ func set_armor(value: int) -> void:
 	_last_armor = value
 	if armor_label:
 		armor_label.text = LocalizationManager.tr_key("hud.armor", {"value": value})
+
+
+## 更新左下角魔法面板：magic_data 为 get_magic_ui_data() 返回的数组。
+func set_magic_ui(magic_data: Array) -> void:
+	if _magic_panel == null:
+		return
+	_magic_panel.visible = not magic_data.is_empty()
+	for i in range(_magic_slots.size()):
+		var slot: Dictionary = _magic_slots[i]
+		var panel: Panel = slot.panel
+		var icon: TextureRect = slot.icon
+		var cd_overlay: ColorRect = slot.cd_overlay
+		if i >= magic_data.size():
+			panel.visible = false
+			continue
+		panel.visible = true
+		var data: Dictionary = magic_data[i]
+		var is_current: bool = data.get("is_current", false)
+		panel.add_theme_stylebox_override("panel", _make_magic_slot_style(is_current))
+		var icon_path: String = str(data.get("icon_path", ""))
+		if icon_path != "" and ResourceLoader.exists(icon_path):
+			icon.texture = load(icon_path) as Texture2D
+		else:
+			icon.texture = VisualAssetRegistry.make_color_texture(Color(0.5, 0.5, 0.55, 1.0), Vector2i(32, 32))
+		var remaining: float = float(data.get("remaining_cd", 0.0))
+		var total: float = float(data.get("total_cd", 1.0))
+		if total > 0.0 and remaining > 0.0:
+			cd_overlay.visible = true
+			var ratio: float = remaining / total
+			cd_overlay.offset_bottom = 4 + (MAGIC_SLOT_SIZE - 8) * ratio
+		else:
+			cd_overlay.visible = false
 
 
 func set_intermission_countdown(seconds_left: float) -> void:
@@ -437,6 +481,51 @@ func _build_runtime_ui() -> void:
 	_wave_banner.text = "WAVE 1"
 	_apply_wave_label_effects(_wave_banner)
 	root.add_child(_wave_banner)
+
+	# 魔法面板：左下角，横向排列最多 3 个魔法槽
+	_magic_panel = PanelContainer.new()
+	_magic_panel.anchors_preset = Control.PRESET_BOTTOM_LEFT
+	_magic_panel.anchor_left = 0.0
+	_magic_panel.anchor_top = 1.0
+	_magic_panel.anchor_right = 0.0
+	_magic_panel.anchor_bottom = 1.0
+	_magic_panel.offset_left = 12
+	_magic_panel.offset_top = -MAGIC_SLOT_SIZE - 24
+	_magic_panel.offset_right = 12 + MAGIC_SLOT_SIZE * 3 + 16
+	_magic_panel.offset_bottom = -12
+	_magic_panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
+	root.add_child(_magic_panel)
+	var magic_row := HBoxContainer.new()
+	magic_row.add_theme_constant_override("separation", 8)
+	_magic_panel.add_child(magic_row)
+	for i in range(3):
+		var slot_panel := Panel.new()
+		slot_panel.custom_minimum_size = Vector2(MAGIC_SLOT_SIZE, MAGIC_SLOT_SIZE)
+		slot_panel.add_theme_stylebox_override("panel", _make_magic_slot_style(false))
+		magic_row.add_child(slot_panel)
+		var icon := TextureRect.new()
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.offset_left = 4
+		icon.offset_top = 4
+		icon.offset_right = -4
+		icon.offset_bottom = -4
+		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		slot_panel.add_child(icon)
+		var cd_overlay := ColorRect.new()
+		cd_overlay.anchor_left = 0.0
+		cd_overlay.anchor_right = 1.0
+		cd_overlay.anchor_top = 0.0
+		cd_overlay.anchor_bottom = 0.0
+		cd_overlay.offset_left = 4
+		cd_overlay.offset_top = 4
+		cd_overlay.offset_right = -4
+		cd_overlay.offset_bottom = 4
+		cd_overlay.color = Color(0, 0, 0, 0.6)
+		cd_overlay.visible = false
+		slot_panel.add_child(cd_overlay)
+		_magic_slots.append({"panel": slot_panel, "icon": icon, "cd_overlay": cd_overlay})
+	_magic_panel.visible = false
 
 	_upgrade_panel = Panel.new()
 	_upgrade_panel.anchors_preset = Control.PRESET_FULL_RECT
@@ -687,7 +776,7 @@ func _build_key_hints_text() -> String:
 		LocalizationManager.tr_key("pause.key_hint.move", {"keys": ResultPanelShared.action_to_text(["move_up", "move_down", "move_left", "move_right"])}),
 		LocalizationManager.tr_key("pause.key_hint.pause", {"key": ResultPanelShared.action_to_text(["pause"])}),
 		LocalizationManager.tr_key("pause.key_hint.camera_zoom", {"keys": ResultPanelShared.action_to_text(["camera_zoom_in", "camera_zoom_out"])}),
-		LocalizationManager.tr_key("pause.key_hint.magic", {"keys": ResultPanelShared.action_to_text(["cast_magic_1", "cast_magic_2", "cast_magic_3"])}),
+		LocalizationManager.tr_key("pause.key_hint.magic", {"keys": ResultPanelShared.action_to_text(["cast_magic", "magic_prev", "magic_next"])}),
 		LocalizationManager.tr_key("pause.key_hint.enemy_hp", {"key": ResultPanelShared.action_to_text(["toggle_enemy_hp"])})
 	])
 

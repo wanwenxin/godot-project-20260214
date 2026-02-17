@@ -51,6 +51,7 @@ var _terrain_effects: Dictionary = {}
 var _terrain_speed_multiplier := 1.0
 var _equipped_weapons: Array[Node2D] = []  # 已装备武器节点，最多 MAX_WEAPONS 把
 var _equipped_magics: Array = []  # 已装备魔法，最多 3 个，每项为 {def, instance}
+var _current_magic_index := 0  # 当前选中的魔法槽位，左右方向键切换
 const MAX_MAGICS := 3
 var _weapon_visuals: Array[Sprite2D] = []  # 武器环上的色块图标，随装备刷新
 const DEFAULT_TRAITS = preload("res://scripts/characters/character_traits_base.gd")
@@ -120,6 +121,13 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_update_direction_sprite()
 
+	# 魔法切换（左右方向键）
+	if not _equipped_magics.is_empty():
+		if Input.is_action_just_pressed("magic_prev"):
+			_current_magic_index = (_current_magic_index - 1 + _equipped_magics.size()) % _equipped_magics.size()
+		elif Input.is_action_just_pressed("magic_next"):
+			_current_magic_index = (_current_magic_index + 1) % _equipped_magics.size()
+		_current_magic_index = clampi(_current_magic_index, 0, _equipped_magics.size() - 1)
 	# 魔法释放检测
 	_try_cast_magic(delta)
 
@@ -277,6 +285,32 @@ func get_equipped_magic_ids() -> Array[String]:
 	return ids
 
 
+## 获取当前选中的魔法槽位索引。
+func get_current_magic_index() -> int:
+	return clampi(_current_magic_index, 0, maxi(0, _equipped_magics.size() - 1))
+
+
+## 供 HUD 获取魔法 UI 数据：{id, def, icon_path, remaining_cd, total_cd, is_current}。
+func get_magic_ui_data() -> Array:
+	var result: Array = []
+	for i in range(_equipped_magics.size()):
+		var mag: Dictionary = _equipped_magics[i]
+		var def: Dictionary = mag.get("def", {})
+		var magic_id: String = str(def.get("id", ""))
+		var cooldown: float = float(def.get("cooldown", 1.0))
+		var total_cd: float = cooldown / maxf(0.1, spell_speed)
+		var remaining: float = _magic_cooldowns.get(magic_id, 0.0)
+		result.append({
+			"id": magic_id,
+			"def": def,
+			"icon_path": str(def.get("icon_path", "")),
+			"remaining_cd": remaining,
+			"total_cd": total_cd,
+			"is_current": (i == _current_magic_index)
+		})
+	return result
+
+
 ## 获取魔法释放方向：优先朝向最近敌人，否则用移动方向或速度方向。
 func _get_magic_aim_direction() -> Vector2:
 	var nearest := _get_nearest_enemy()
@@ -295,13 +329,9 @@ func _try_cast_magic(delta: float) -> void:
 		_magic_cooldowns[id] = maxf(0.0, _magic_cooldowns[id] - delta)
 	if not input_enabled or _equipped_magics.is_empty():
 		return
-	var slot := -1
-	if Input.is_action_just_pressed("cast_magic_1"):
-		slot = 0
-	elif Input.is_action_just_pressed("cast_magic_2"):
-		slot = 1
-	elif Input.is_action_just_pressed("cast_magic_3"):
-		slot = 2
+	if not Input.is_action_just_pressed("cast_magic"):
+		return
+	var slot: int = _current_magic_index
 	if slot < 0 or slot >= _equipped_magics.size():
 		return
 	var mag: Dictionary = _equipped_magics[slot]

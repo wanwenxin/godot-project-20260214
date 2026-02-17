@@ -9,7 +9,7 @@ const KEY_CHOICES := ["Escape", "P", "H", "Tab", "F1", "F2"]
 const BINDABLE_ACTIONS := [
 	"move_left", "move_right", "move_up", "move_down",
 	"pause", "toggle_enemy_hp", "camera_zoom_in", "camera_zoom_out",
-	"cast_magic_1", "cast_magic_2", "cast_magic_3"
+	"cast_magic", "magic_prev", "magic_next"
 ]
 const ACTION_NAME_KEYS := {
 	"move_left": "settings.key.move_left",
@@ -20,9 +20,9 @@ const ACTION_NAME_KEYS := {
 	"toggle_enemy_hp": "settings.key.toggle_hp",
 	"camera_zoom_in": "settings.key.camera_zoom_in",
 	"camera_zoom_out": "settings.key.camera_zoom_out",
-	"cast_magic_1": "settings.key.cast_magic_1",
-	"cast_magic_2": "settings.key.cast_magic_2",
-	"cast_magic_3": "settings.key.cast_magic_3"
+	"cast_magic": "settings.key.cast_magic",
+	"magic_prev": "settings.key.magic_prev",
+	"magic_next": "settings.key.magic_next"
 }
 
 # 设置页：全屏展示，与暂停页类似布局（外层边距 + 内容居中）
