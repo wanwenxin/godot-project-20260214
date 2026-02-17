@@ -534,11 +534,15 @@ func get_equipped_weapon_details() -> Array[Dictionary]:
 		if not is_instance_valid(item):
 			continue
 		var wtier: int = int(item.tier) if "tier" in item else 0
+		var color_hint_any = item.color_hint if "color_hint" in item else Color(0.8, 0.8, 0.8, 1.0)
+		var color_hint: Color = color_hint_any if color_hint_any is Color else Color(0.8, 0.8, 0.8, 1.0)
 		var d: Dictionary = {
 			"id": str(item.weapon_id),
 			"type": str(item.weapon_type),
 			"tier": wtier,
 			"tier_color": TierConfig.get_tier_color(wtier),
+			"icon_path": str(item.icon_path) if "icon_path" in item else "",
+			"color_hint": color_hint,
 			"damage": int(item.damage),
 			"cooldown": float(item.cooldown),
 			"range": float(item.attack_range)
@@ -571,10 +575,12 @@ func get_full_stats_for_pause() -> Dictionary:
 	var magic_details: Array = []
 	for m in _equipped_magics:
 		var mag: Dictionary = m
+		var mdef: Dictionary = mag.get("def", {})
 		magic_details.append({
 			"id": str(mag.get("id", "")),
 			"tier": int(mag.get("tier", 0)),
-			"tier_color": TierConfig.get_tier_color(int(mag.get("tier", 0)))
+			"tier_color": TierConfig.get_tier_color(int(mag.get("tier", 0))),
+			"icon_path": str(mdef.get("icon_path", ""))
 		})
 	var item_ids: Array[String] = GameManager.get_run_items()
 	var visible_affixes: Array = []

@@ -46,7 +46,8 @@ func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_
 
 
 ## 构建玩家信息区。stats 为 Dictionary 时用完整格式；否则兼容旧格式 (hp_current, hp_max, speed, inertia, weapon_details)。
-func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = null, inertia_param = null, weapon_details_param = null) -> Control:
+## stats_only 为 true 时仅构建角色属性区（供暂停菜单属性 Tab 使用）。
+func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = null, inertia_param = null, weapon_details_param = null, stats_only: bool = false) -> Control:
 	var stats: Dictionary
 	if stats_or_hp is Dictionary:
 		stats = stats_or_hp
@@ -91,6 +92,8 @@ func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = nu
 	if stats.has("lifesteal_chance") and float(stats.get("lifesteal_chance", 0)) > 0:
 		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_lifesteal"), "%.0f%%" % (float(stats.get("lifesteal_chance", 0)) * 100.0))
 	vbox.add_child(player_grid)
+	if stats_only:
+		return vbox
 	# 武器区
 	var weapon_details: Array = stats.get("weapon_details", [])
 	var weapon_section := _make_section_header(LocalizationManager.tr_key("pause.section_weapons"))

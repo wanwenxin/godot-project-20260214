@@ -160,7 +160,10 @@
 | [scripts/ui/hud.gd](scripts/ui/hud.gd) | 战斗信息、升级/商店面板、触控 | `upgrade_selected`、`weapon_shop_selected`、`pause_pressed` |
 | [scripts/ui/main_menu.gd](scripts/ui/main_menu.gd) | 主菜单 | - |
 | [scripts/ui/character_select.gd](scripts/ui/character_select.gd) | 角色选择 | - |
-| [scripts/ui/pause_menu.gd](scripts/ui/pause_menu.gd) | 暂停菜单、玩家信息 | `set_visible_menu`、`set_player_stats_full` |
+| [scripts/ui/pause_menu.gd](scripts/ui/pause_menu.gd) | 暂停菜单、属性/背包 Tab、玩家信息 | `set_visible_menu`、`set_player_stats_full` |
+| [scripts/ui/backpack_panel.gd](scripts/ui/backpack_panel.gd) | 背包面板，武器/魔法/道具图标网格，网格线可见 | `set_stats`、`hide_tooltip` |
+| [scripts/ui/backpack_tooltip_popup.gd](scripts/ui/backpack_tooltip_popup.gd) | 自定义 Tooltip Popup，大字号、宽高限制、即显 | `show_tooltip`、`hide_tooltip` |
+| [scripts/ui/backpack_slot.gd](scripts/ui/backpack_slot.gd) | 背包槽，图标 + 悬浮即显 Tooltip | `configure` |
 | [scripts/ui/settings_menu.gd](scripts/ui/settings_menu.gd) | 设置 | `open_menu`、`closed` |
 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | 死亡结算 | `show_result` |
 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 通关结算 | `show_result` |
@@ -219,6 +222,9 @@
 | scripts/ui/main_menu.gd | UI | 主菜单 |
 | scripts/ui/character_select.gd | UI | 角色选择 |
 | scripts/ui/pause_menu.gd | UI | 暂停菜单 |
+| scripts/ui/backpack_panel.gd | UI | 背包面板 |
+| scripts/ui/backpack_tooltip_popup.gd | UI | 背包 Tooltip Popup |
+| scripts/ui/backpack_slot.gd | UI | 背包槽 |
 | scripts/ui/settings_menu.gd | UI | 设置 |
 | scripts/ui/game_over_screen.gd | UI | 死亡结算 |
 | scripts/ui/victory_screen.gd | UI | 通关结算 |

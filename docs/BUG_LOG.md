@@ -18,6 +18,13 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-17：背包悬浮面板无文字、同物体重复生成
+
+- **现象**：背包槽悬浮时弹出的 Tooltip 无任何文字；在同一物体上移动时反复调用 show_tooltip 导致重生成
+- **原因**：BackpackTooltipPopup 继承 Popup（Window），挂到 get_tree().root 后与主视口坐标系/渲染上下文不一致，Label 内容不显示；未判断当前 tip 是否与上次相同
+- **修复**：(1) 改为继承 PanelContainer，挂到暂停菜单所在 CanvasLayer，保证与暂停菜单同视口；(2) show_tooltip 内若 visible 且 _last_tip == text，仅更新位置不重设文本
+- **预防**：自定义 Tooltip 优先挂到与触发控件同视口的 CanvasLayer；同物体悬浮时用 tip 文本去重避免重生成
+
 ### 2026-02-17：settings_menu 中 action 未声明、area_shockwave 中 dist_sq 类型推断失败
 
 - **现象**：settings_menu.gd:325/336/342 报 `Identifier "action" not declared in the current scope`；area_shockwave.gd:30 报 `Cannot infer the type of "dist_sq" variable`

@@ -193,7 +193,7 @@
   - 结算/死亡/通关界面共享 UI 构建逻辑
   - `action_to_text(actions)`：将 InputMap 动作名转为按键字符串，供 HUD、暂停菜单按键提示复用
   - `build_score_block(wave, kills, time, best_wave, best_time)`：得分区（波次、击杀、时间、新纪录标记）
-  - `build_player_stats_block(stats)`：玩家信息区，stats 为 Dictionary 时展示完整属性/武器/道具/魔法；兼容旧格式 (hp_current, hp_max, speed, inertia, weapon_details)
+  - `build_player_stats_block(stats, ..., stats_only)`：玩家信息区；`stats_only=true` 时仅构建角色属性区（供暂停菜单属性 Tab）；默认完整展示武器/道具/词条/魔法（供死亡/通关界面）
   - 统一基准字号 `BASE_FONT_SIZE`（18）
   - 供 pause_menu、game_over_screen、victory_screen 复用
 
@@ -262,13 +262,31 @@
 
 - `scripts/ui/pause_menu.gd`
   - 暂停按钮逻辑
-  - 全屏左右分栏布局：左侧系统信息（标题、按键提示、继续/主菜单），右侧玩家信息（调用 `ResultPanelShared.build_player_stats_block` 构建完整属性）
+  - 全屏左右分栏布局：左侧系统信息（标题、按键提示、继续/主菜单），右侧 TabContainer（属性 Tab + 背包 Tab）
+  - 属性 Tab：调用 `ResultPanelShared.build_player_stats_block(stats, ..., true)` 仅构建角色属性区（HP、魔力、护甲、移速等）
+  - 背包 Tab：`BackpackPanel` 展示装备武器、魔法、道具的图标网格（图标 + 名称，名称按品级着色），悬浮显示背包悬浮面板
   - 右侧内容区使用 ScrollContainer，内容超出时显示垂直滚动条
   - Root 设置为 `MOUSE_FILTER_IGNORE`，避免吞掉 HUD 点击
   - 暂停层新增全屏纯色不透明 backdrop
   - 面板样式强制不透明，保证暂停文本可读
   - 按键提示：移动、暂停、镜头缩放、魔法、敌人血条（随改键同步）
-  - 显示玩家完整属性（HP、魔力、护甲、移速、惯性、攻速、近战/远程加成、恢复、吸血）、装备武器（含品级着色）、已购道具、装备魔法
+  - 属性 Tab 仅显示角色属性；死亡/通关界面仍显示完整信息（武器、道具、词条、魔法）
+
+- `scripts/ui/backpack_panel.gd`
+  - 背包面板：按武器、魔法、道具分栏展示，每项为带边框的 `BackpackSlot`（图标 + 名称，名称按品级着色）
+  - `set_stats(stats)`：根据 `weapon_details`、`magic_details`、`item_ids` 构建三区
+  - 图标缺失时用 `VisualAssetRegistry.make_color_texture` 生成占位图
+  - 悬浮时显示 `BackpackTooltipPopup`，层级化展示：名称、词条、效果（用 `────` 分隔，无空行）
+  - `hide_tooltip()`：暂停菜单关闭时调用
+
+- `scripts/ui/backpack_tooltip_popup.gd`
+  - 背包悬浮面板：PanelContainer 实现，挂到暂停菜单 CanvasLayer 保证同视口、文字可显示
+  - `show_tooltip(text)`：立即显示，紧贴鼠标；同一物体（tip 相同）悬浮移动时不重生成
+  - `hide_tooltip()`：关闭提示
+
+- `scripts/ui/backpack_slot.gd`
+  - 单个背包槽：VBoxContainer（图标 TextureRect + 名称 Label），名称按品级着色
+  - `configure(icon_path, color, tip, tooltip_popup, display_name, name_color)`：图标、名称、悬浮提示
 
 - `scripts/ui/settings_menu.gd`
   - 全屏展示布局（与暂停页类似）：Panel 铺满、OuterMargin 边距、CenterContainer 居中内容
@@ -432,13 +450,15 @@ flowchart TD
 ### 4.8 品级配置
 
 - `resources/tier_config.gd`：品级颜色、伤害倍率、冷却倍率、道具/魔法品级倍率
-  - `get_tier_color(tier)`：0=灰白、1=绿、2=蓝、3=紫、4+=金
+  - **品级规范**：最多 5 档，从低到高 灰、绿、蓝、金、红（tier 0~4）
+  - `get_tier_color(tier)`：0=灰、1=绿、2=蓝、3=金、4=红
   - `get_damage_multiplier(tier)`：1.0 + tier * 0.2
   - `get_cooldown_multiplier(tier)`：1.0 - tier * 0.1，最小 0.5
   - `get_item_tier_multiplier(tier)`：1.0 + tier * 0.15
 
 ### 4.9 武器配置
 
+- **武器基础值与成长系数**：`weapon_defs.stats` 为 tier 0（最低品级）的基础值；damage、cooldown、touch_interval 等由 `TierConfig.get_damage_multiplier`、`get_cooldown_multiplier` 计算
 - `resources/weapon_defs.gd::WEAPON_DEFS` 字段说明：
   - `id`, `type`, `name_key`, `desc_key`, `cost`, `color`
   - `script_path`（具体武器脚本路径）

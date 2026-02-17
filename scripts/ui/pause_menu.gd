@@ -8,6 +8,8 @@ extends CanvasLayer
 
 var _fullscreen_backdrop: ColorRect
 var _stats_container: VBoxContainer
+var _backpack_panel: VBoxContainer  # 背包面板，Tab 2 内容
+var _tab_container: TabContainer  # 属性/背包标签容器，用于语言切换时更新标题
 var _resume_btn: Button
 var _menu_btn: Button
 var _key_hints_label: Label
@@ -32,6 +34,9 @@ func set_visible_menu(value: bool) -> void:
 	if value:
 		_refresh_key_hints()
 		_refresh_stats_from_game()
+	else:
+		if _backpack_panel != null and _backpack_panel.has_method("hide_tooltip"):
+			_backpack_panel.hide_tooltip()
 
 
 func _on_resume_pressed() -> void:
@@ -52,6 +57,9 @@ func _apply_localized_texts() -> void:
 		title.text = LocalizationManager.tr_key("pause.title")
 	_resume_btn.text = LocalizationManager.tr_key("pause.resume")
 	_menu_btn.text = LocalizationManager.tr_key("pause.main_menu")
+	if _tab_container != null:
+		_tab_container.set_tab_title(0, LocalizationManager.tr_key("pause.tab_stats"))
+		_tab_container.set_tab_title(1, LocalizationManager.tr_key("pause.tab_backpack"))
 	_refresh_key_hints()
 
 
@@ -65,7 +73,7 @@ func set_player_stats_full(stats: Dictionary) -> void:
 		return
 	for child in _stats_container.get_children():
 		child.queue_free()
-	var block: Control = ResultPanelShared.build_player_stats_block(stats)
+	var block: Control = ResultPanelShared.build_player_stats_block(stats, null, null, null, null, true)
 	_stats_container.add_child(block)
 
 
@@ -138,22 +146,39 @@ func _build_left_column() -> VBoxContainer:
 
 
 func _build_right_column() -> Control:
-	# 右侧占满剩余空间，内容超出时显示垂直滚动条
+	# 右侧：TabContainer（属性 + 背包），内容超出时显示垂直滚动条
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 24)
 	margin.add_theme_constant_override("margin_top", 24)
 	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_bottom", 24)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.custom_minimum_size = Vector2(320, 400)
-	margin.add_child(scroll)
+	_tab_container = TabContainer.new()
+	_tab_container.name = "PauseTabs"
+	_tab_container.custom_minimum_size = Vector2(320, 400)
+	var tabs := _tab_container
+	# Tab 1：属性
+	var stats_scroll := ScrollContainer.new()
+	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	_stats_container = VBoxContainer.new()
 	_stats_container.name = "StatsContainer"
 	_stats_container.add_theme_constant_override("separation", 12)
 	_stats_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_stats_container)
+	stats_scroll.add_child(_stats_container)
+	tabs.add_child(stats_scroll)
+	tabs.set_tab_title(0, LocalizationManager.tr_key("pause.tab_stats"))
+	# Tab 2：背包
+	var backpack_scroll := ScrollContainer.new()
+	backpack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	backpack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_backpack_panel = (preload("res://scripts/ui/backpack_panel.gd") as GDScript).new()
+	_backpack_panel.name = "BackpackPanel"
+	_backpack_panel.add_theme_constant_override("separation", 12)
+	_backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	backpack_scroll.add_child(_backpack_panel)
+	tabs.add_child(backpack_scroll)
+	tabs.set_tab_title(1, LocalizationManager.tr_key("pause.tab_backpack"))
+	margin.add_child(tabs)
 	return margin
 
 
@@ -181,6 +206,8 @@ func _refresh_stats_from_game() -> void:
 			"item_ids": []
 		}
 	set_player_stats_full(stats)
+	if _backpack_panel != null and _backpack_panel.has_method("set_stats"):
+		_backpack_panel.set_stats(stats)
 
 
 func _refresh_key_hints() -> void:
