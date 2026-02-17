@@ -20,6 +20,8 @@ signal died(enemy: Node)
 @export var frame_size: Vector2i = Vector2i(18, 18)  # 每帧像素尺寸
 @export var sheet_columns: int = 8  # 精灵图列数（8 方向）
 @export var sheet_rows: int = 3  # 精灵图行数（站立、行走1、行走2）
+# 敌人类型：0=melee, 1=ranged, 2=tank, 3=boss, 4=aquatic, 5=dasher，用于死亡动画与 PixelGenerator 回退
+@export var enemy_type: int = 0
 
 var current_health := 25
 var player_ref: Node2D
@@ -37,6 +39,7 @@ var _health_bar: ProgressBar
 var _knockback_velocity := Vector2.ZERO
 var _out_of_water_cd := 0.0  # 离水伤害 CD
 var _last_direction_index := 0  # 8 方向索引
+var _is_dying := false  # 死亡动画播放中，防重入
 
 
 func is_water_only() -> bool:
@@ -129,9 +132,71 @@ func apply_knockback(dir: Vector2, force: float) -> void:
 func take_damage(amount: int, _elemental: String = "") -> void:
 	current_health -= amount
 	_refresh_health_bar()
-	if current_health <= 0:
-		emit_signal("died", self)
-		queue_free()
+	if current_health <= 0 and not _is_dying:
+		_is_dying = true
+		_begin_death_sequence()
+
+
+## 死亡流程：禁用碰撞与移动，播放差异化死亡动画，结束后发出 died 并销毁。
+func _begin_death_sequence() -> void:
+	set_physics_process(false)
+	set_process(false)
+	collision_layer = 0
+	collision_mask = 0
+	velocity = Vector2.ZERO
+	if hurt_area:
+		hurt_area.collision_layer = 0
+		hurt_area.collision_mask = 0
+	if _health_bar:
+		_health_bar.visible = false
+	_play_death_animation()
+
+
+## 按 enemy_type 播放不同死亡动画，动画结束后 emit died 并 queue_free。
+func _play_death_animation() -> void:
+	if not sprite:
+		_finish_death()
+		return
+	var dur := 0.25
+	var tween := create_tween()
+	tween.set_parallel(true)
+	match enemy_type:
+		0:  # melee：红色闪灭 + 快速缩小
+			sprite.modulate = Color(1.2, 0.3, 0.3)
+			tween.tween_property(sprite, "modulate", Color(0.8, 0.2, 0.2, 0.0), dur)
+			tween.tween_property(sprite, "scale", Vector2(0.1, 0.1), dur)
+		1:  # ranged：紫色淡出 + 轻微旋转
+			tween.tween_property(sprite, "modulate", Color(0.7, 0.2, 0.9, 0.0), dur)
+			tween.tween_property(sprite, "rotation", TAU * 0.25, dur)
+		2:  # tank：绿色碎裂感（放大后缩小 + 淡出）
+			tween.tween_property(sprite, "scale", Vector2(1.3, 1.3), dur * 0.4)
+			var ch := tween.chain()
+			ch.set_parallel(true)
+			ch.tween_property(sprite, "scale", Vector2(0.2, 0.2), dur * 0.6)
+			ch.tween_property(sprite, "modulate", Color(0.2, 0.65, 0.25, 0.0), dur * 0.6)
+		3:  # boss：红色爆炸感（先放大再缩小 + 闪白）
+			sprite.modulate = Color(1.5, 1.5, 1.5)
+			tween.tween_property(sprite, "scale", Vector2(1.5, 1.5), dur * 0.35)
+			var ch_boss := tween.chain()
+			ch_boss.set_parallel(true)
+			ch_boss.tween_property(sprite, "modulate", Color(1.0, 0.2, 0.2, 0.0), dur * 0.65)
+			ch_boss.tween_property(sprite, "scale", Vector2(0.2, 0.2), dur * 0.65)
+		4:  # aquatic：青色水花散开（缩放 + 淡出）
+			tween.tween_property(sprite, "scale", Vector2(1.2, 1.2), dur)
+			tween.parallel().tween_property(sprite, "modulate", Color(0.2, 0.8, 0.9, 0.0), dur)
+		5:  # dasher：橙色拖尾淡出（水平拉伸 + 淡出）
+			tween.tween_property(sprite, "scale", Vector2(1.8, 0.4), dur)
+			tween.parallel().tween_property(sprite, "modulate", Color(1.0, 0.5, 0.2, 0.0), dur)
+		_:  # 默认：淡出 + 缩小
+			tween.tween_property(sprite, "modulate", Color(1.0, 1.0, 1.0, 0.0), dur)
+			tween.parallel().tween_property(sprite, "scale", Vector2(0.2, 0.2), dur)
+	tween.set_parallel(false)
+	tween.tween_callback(_finish_death)
+
+
+func _finish_death() -> void:
+	emit_signal("died", self)
+	queue_free()
 
 
 func _move_towards_player(_delta: float, move_scale: float = 1.0) -> void:

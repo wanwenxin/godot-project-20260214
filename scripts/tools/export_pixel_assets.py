@@ -13,7 +13,20 @@ def ensure_dirs():
         (ASSETS / sub).mkdir(parents=True, exist_ok=True)
 
 
-def save_png(img: Image.Image, path: Path):
+def force_opaque(img: Image.Image) -> Image.Image:
+    """将非空白像素的 alpha 设为 255，确保非透明区域完全不透明。"""
+    img = img.copy()
+    for x in range(img.width):
+        for y in range(img.height):
+            r, g, b, a = img.getpixel((x, y))
+            if a > 0:
+                img.putpixel((x, y), (r, g, b, 255))
+    return img
+
+
+def save_png(img: Image.Image, path: Path, make_opaque: bool = True):
+    if make_opaque:
+        img = force_opaque(img)
     img.save(path)
     print(f"  Saved: {path.relative_to(PROJECT_ROOT)}")
 
@@ -25,32 +38,73 @@ def player_sprite_sheet(scheme: int) -> Image.Image:
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     body = (51, 178, 255, 255) if scheme == 0 else (255, 140, 51, 255)
     dark = (38, 133, 191, 255) if scheme == 0 else (191, 105, 38, 255)
+    outline = (20, 90, 140, 255) if scheme == 0 else (180, 90, 20, 255)
+    highlight = (100, 200, 255, 255) if scheme == 0 else (255, 180, 100, 255)
+    belt = (60, 60, 70, 255)
 
-    def draw_frame(ox: int, oy: int, dy_head: int = 0, dy_body: int = 0, arm_left: int = 0, arm_right: int = 0) -> None:
-        # head
+    def draw_frame(ox: int, oy: int, dy_head: int = 0, dy_body: int = 0, arm_left: int = 0, arm_right: int = 0,
+                  leg_left: int = 0, leg_right: int = 0) -> None:
+        # 头部轮廓
+        for x in range(7, 17):
+            img.putpixel((ox + x, oy + 2 + dy_head), outline)
+        for y in range(3, 11):
+            img.putpixel((ox + 7, oy + y + dy_head), outline)
+            img.putpixel((ox + 16, oy + y + dy_head), outline)
+        for x in range(7, 17):
+            img.putpixel((ox + x, oy + 10 + dy_head), outline)
+        # 头部
         for x in range(8, 16):
             for y in range(3, 10):
                 img.putpixel((ox + x, oy + y + dy_head), body)
-        # body
+        # 眼睛
+        img.putpixel((ox + 10, oy + 5 + dy_head), outline)
+        img.putpixel((ox + 13, oy + 5 + dy_head), outline)
+        img.putpixel((ox + 10, oy + 6 + dy_head), highlight)
+        img.putpixel((ox + 13, oy + 6 + dy_head), highlight)
+        # 身体轮廓
+        for x in range(5, 19):
+            img.putpixel((ox + x, oy + 9 + dy_body), outline)
+        for y in range(10, 21):
+            img.putpixel((ox + 5, oy + y + dy_body), outline)
+            img.putpixel((ox + 18, oy + y + dy_body), outline)
+        for x in range(5, 19):
+            img.putpixel((ox + x, oy + 20 + dy_body), outline)
+        # 身体
         for x in range(6, 18):
             for y in range(10, 21):
                 img.putpixel((ox + x, oy + y + dy_body), body)
-        # arms (left 3-6, right 18-21)
-        for x in range(3, 6):
+        # 衣领（身体顶部略深）
+        for x in range(7, 17):
+            img.putpixel((ox + x, oy + 10 + dy_body), dark)
+        # 腰带
+        for x in range(7, 17):
+            img.putpixel((ox + x, oy + 16 + dy_body), belt)
+        # 左臂（带轮廓）
+        for x in range(2, 7):
             for y in range(11, 18):
                 img.putpixel((ox + x + arm_left, oy + y), dark)
-        for x in range(18, 21):
+        for y in range(11, 18):
+            img.putpixel((ox + 7 + arm_left, oy + y), outline)
+        # 右臂
+        for x in range(17, 22):
             for y in range(11, 18):
                 img.putpixel((ox + x + arm_right, oy + y), dark)
+        for y in range(11, 18):
+            img.putpixel((ox + 16 + arm_right, oy + y), outline)
+        # 腿部轮廓（脚部）
+        for x in range(8, 12):
+            img.putpixel((ox + x + leg_left, oy + 20 + dy_body), outline)
+        for x in range(12, 16):
+            img.putpixel((ox + x + leg_right, oy + 20 + dy_body), outline)
 
     for dir_idx in range(8):
         ox = dir_idx * fw
         # 行 0：站立
         draw_frame(ox, 0)
-        # 行 1：行走帧1（身体略下移、左臂前摆）
-        draw_frame(ox, fh, dy_head=0, dy_body=1, arm_left=1, arm_right=-1)
-        # 行 2：行走帧2（身体略上移、右臂前摆）
-        draw_frame(ox, fh * 2, dy_head=-1, dy_body=0, arm_left=-1, arm_right=1)
+        # 行 1：行走帧1（左腿前、右臂前摆）
+        draw_frame(ox, fh, dy_head=0, dy_body=1, arm_left=1, arm_right=-1, leg_left=1, leg_right=-1)
+        # 行 2：行走帧2（右腿前、左臂前摆）
+        draw_frame(ox, fh * 2, dy_head=-1, dy_body=0, arm_left=-1, arm_right=1, leg_left=-1, leg_right=1)
     return img
 
 
@@ -78,24 +132,65 @@ def enemy_sprite_sheet(etype: int) -> Image.Image:
 
 
 def player_sprite(scheme: int) -> Image.Image:
+    """单帧玩家精灵，与 player_sprite_sheet 细节一致。"""
     img = Image.new("RGBA", (24, 24), (0, 0, 0, 0))
     body = (51, 178, 255, 255) if scheme == 0 else (255, 140, 51, 255)
     dark = (38, 133, 191, 255) if scheme == 0 else (191, 105, 38, 255)
-    # head
+    outline = (20, 90, 140, 255) if scheme == 0 else (180, 90, 20, 255)
+    highlight = (100, 200, 255, 255) if scheme == 0 else (255, 180, 100, 255)
+    belt = (60, 60, 70, 255)
+    # 头部轮廓
+    for x in range(7, 17):
+        img.putpixel((x, 2), outline)
+    for y in range(3, 11):
+        img.putpixel((7, y), outline)
+        img.putpixel((16, y), outline)
+    for x in range(7, 17):
+        img.putpixel((x, 10), outline)
+    # 头部
     for x in range(8, 16):
         for y in range(3, 10):
             img.putpixel((x, y), body)
-    # body
+    # 眼睛
+    img.putpixel((10, 5), outline)
+    img.putpixel((13, 5), outline)
+    img.putpixel((10, 6), highlight)
+    img.putpixel((13, 6), highlight)
+    # 身体轮廓
+    for x in range(5, 19):
+        img.putpixel((x, 9), outline)
+    for y in range(10, 21):
+        img.putpixel((5, y), outline)
+        img.putpixel((18, y), outline)
+    for x in range(5, 19):
+        img.putpixel((x, 20), outline)
+    # 身体
     for x in range(6, 18):
         for y in range(10, 21):
             img.putpixel((x, y), body)
-    # arms
+    # 衣领
+    for x in range(7, 17):
+        img.putpixel((x, 10), dark)
+    # 腰带
+    for x in range(7, 17):
+        img.putpixel((x, 16), belt)
+    # 左臂
     for x in range(3, 6):
         for y in range(11, 18):
             img.putpixel((x, y), dark)
+    img.putpixel((7, 11), outline)
+    img.putpixel((7, 12), outline)
+    # 右臂
     for x in range(18, 21):
         for y in range(11, 18):
             img.putpixel((x, y), dark)
+    img.putpixel((16, 11), outline)
+    img.putpixel((16, 12), outline)
+    # 腿部轮廓
+    for x in range(8, 12):
+        img.putpixel((x, 20), outline)
+    for x in range(12, 16):
+        img.putpixel((x, 20), outline)
     return img
 
 

@@ -19,7 +19,7 @@ var _cooldown_remaining := 0.0
 
 func _ready() -> void:
 	super._ready()
-	set_enemy_texture(5)
+	set_enemy_texture(enemy_type)
 
 
 func _physics_process(delta: float) -> void:

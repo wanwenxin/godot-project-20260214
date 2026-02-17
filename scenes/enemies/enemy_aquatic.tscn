@@ -16,6 +16,7 @@ max_health = 20
 speed = 95.0
 exp_value = 6
 contact_damage = 8
+enemy_type = 4
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_1")

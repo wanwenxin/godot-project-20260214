@@ -24,7 +24,7 @@
 - `scripts/autoload/game_manager.gd`
   - 场景切换（主菜单/角色选择/战斗）
   - 角色模板数据
-  - 本局金币 `run_currency`、经验值 `run_experience`、等级 `run_level`
+  - 本局金币 `run_currency`（新游戏/继续默认 500）、经验值 `run_experience`、等级 `run_level`
   - 本局武器库存 `run_weapons`（每项 `{id, tier}`，最多 6 把，2 同品级合成 1 高一品级）
   - 本局已购道具 `run_items`（道具 id 列表）
   - 武器定义池 `weapon_defs`（近战/远程）
@@ -86,7 +86,7 @@
   - 子弹穿透（`bullet_pierce`）
 
 - `scripts/bullet.gd`
-  - 子弹寿命与命中
+  - 子弹寿命与命中：玩家子弹用 `life_time` 超时销毁；敌人子弹（`hit_player=true`）出界前不消失，仅当超出可玩区域时销毁
   - 同目标去重命中
   - 穿透后延迟销毁
   - 加入 `bullets` 组，波次结束时统一清除
@@ -106,6 +106,7 @@
 ### 2.3 敌人与波次
 
 - `scripts/enemy_base.gd`
+  - 死亡时播放差异化动画（按 `enemy_type`：melee 闪灭缩小、ranged 淡出旋转、tank 碎裂、boss 爆炸、aquatic 水花、dasher 拖尾），动画结束后 emit `died` 并 `queue_free`
   - 通用生命/接触伤害
   - `exp_value`：击败该敌人获得的经验值，各敌人在场景中配置
   - 接触持续伤害：玩家与 HurtArea 重叠时，按 `contact_damage_interval` 持续造成伤害（`_on_contact_timer_timeout` 检查重叠并再次施加）
@@ -389,7 +390,7 @@ flowchart TD
 
 - 各实现类自行绑定所需美术，不再通过 `VisualAssetRegistry` 集中管理纹理路径
 - **Player**：`player.gd` 的 `@export_file texture_sheet`、`texture_single`、`frame_size`、`sheet_columns`、`sheet_rows`
-- **Enemies**：`enemy_base.gd` 的 `@export_file texture_sheet`、`texture_single`，各敌人场景在 Inspector 配置
+- **Enemies**：`enemy_base.gd` 的 `@export_file texture_sheet`、`texture_single`、`enemy_type`（0=melee, 1=ranged, 2=tank, 3=boss, 4=aquatic, 5=dasher，用于死亡动画与 PixelGenerator 回退），各敌人场景在 Inspector 配置
 - **Bullet**：`bullet.gd` 的 `@export_file texture_path`、`@export collision_radius`，武器 def 的 `bullet_texture_path`、`bullet_collision_radius`
 - **近战挥击**：`weapon_melee_base.gd` 的 `@export_file swing_texture_path`、`@export swing_frame_size`，weapon_defs 的 `swing_texture_path`
 - **武器图标**：weapon_defs 的 `icon_path`，HUD/player 从 option 或 weapon 节点读取

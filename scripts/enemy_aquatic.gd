@@ -16,7 +16,7 @@ func is_water_only() -> bool:
 
 func _ready() -> void:
 	super._ready()
-	set_enemy_texture(4)
+	set_enemy_texture(enemy_type)
 
 
 func _physics_process(delta: float) -> void:

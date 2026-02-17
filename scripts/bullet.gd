@@ -65,9 +65,26 @@ func _apply_bullet_appearance() -> void:
 func _process(delta: float) -> void:
 	# 简单直线弹道。
 	global_position += direction * speed * delta
-	life_time -= delta
-	if life_time <= 0.0:
-		queue_free()
+	if hit_player:
+		# 敌人子弹：出界前不消失，仅当超出可玩区域时销毁。
+		var bounds := _get_destroy_bounds()
+		if not bounds.has_point(global_position):
+			queue_free()
+	else:
+		# 玩家子弹：沿用 life_time 逻辑。
+		life_time -= delta
+		if life_time <= 0.0:
+			queue_free()
+
+
+## 获取子弹销毁边界：优先用游戏可玩区域，否则用视口加边距。
+func _get_destroy_bounds() -> Rect2:
+	var scene := get_tree().current_scene
+	if scene != null and scene.has_method("get_playable_bounds"):
+		return scene.get_playable_bounds()
+	var vp := get_viewport_rect()
+	var margin := 64.0
+	return Rect2(vp.position - Vector2(margin, margin), vp.size + Vector2(margin * 2.0, margin * 2.0))
 
 
 func _on_body_entered(body: Node) -> void:

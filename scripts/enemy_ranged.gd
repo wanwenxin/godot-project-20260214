@@ -13,7 +13,7 @@ var _shoot_cd := 0.0
 func _ready() -> void:
 	super._ready()
 	# 远程敌人外观：紫色菱形风格。
-	set_enemy_texture(1)
+	set_enemy_texture(enemy_type)
 
 
 func _physics_process(delta: float) -> void:

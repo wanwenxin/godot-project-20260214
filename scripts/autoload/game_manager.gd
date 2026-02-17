@@ -136,8 +136,8 @@ func start_new_game(character_id: int) -> void:
 	# 新游戏前先落当前角色选择。
 	set_selected_character(character_id)
 	load_level_sequence_from_preset(selected_preset_id)
-	# 本局资源重置，避免跨局带入。
-	run_currency = 0
+	# 本局资源重置，避免跨局带入。新游戏默认 500 金币。
+	run_currency = 500
 	reset_run_experience()
 	reset_run_weapons()
 	get_tree().change_scene_to_file(SCENE_GAME)
@@ -146,7 +146,7 @@ func start_new_game(character_id: int) -> void:
 func continue_game() -> void:
 	# continue_game 当前语义是“沿用角色重新开一局”。
 	load_level_sequence_from_preset(selected_preset_id)
-	run_currency = 0
+	run_currency = 500
 	reset_run_experience()
 	reset_run_weapons()
 	get_tree().change_scene_to_file(SCENE_GAME)
