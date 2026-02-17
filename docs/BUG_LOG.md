@@ -18,6 +18,27 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-17：图鉴文字重叠、词条悬浮面板闪跳、背包悬浮面板误关闭
+
+- **现象**：图鉴名称与描述重叠；词条 chip hover 时二级面板闪跳；打开词条悬浮面板后背包主面板不久消失
+- **原因**：图鉴 `_add_entry` 中 MarginContainer 直接添加多个子节点导致布局异常；chip mouse_exited 立即隐藏词条面板，鼠标移向面板前已关闭；主 tooltip mouse_exited 时未判断鼠标是否在词条面板上
+- **修复**：(1) 图鉴文本区改为 MarginContainer -> VBoxContainer -> title_lbl, detail_lbl，移除 detail_lbl.size_flags_vertical；(2) 词条面板新增 `_affix_hide_timer`，chip/词条面板 mouse_exited 改为延迟 0.5s 隐藏；(3) 主 tooltip `_on_self_mouse_exited` 检查鼠标是否在词条面板上，若是则不 schedule_hide；(4) HIDE_DELAY 0.4→0.5；(5) BackpackTooltipPopup 新增 `is_scheduled_to_hide()`，BackpackSlot 在关闭期间不响应新槽位
+- **预防**：MarginContainer 仅作边距时内层用单一布局容器；悬浮面板离开时统一延迟隐藏，离开前检查鼠标是否在关联面板上
+
+### 2026-02-17：背包悬浮与武器手动合成改造
+
+- **现象**：悬浮面板鼠标移入时易关闭；道具名用词条名不直观；武器自动合成不符合预期；需手动选择素材合成
+- **原因**：HIDE_DELAY 过短；道具无 display_name_key；add_run_weapon 内置自动合并逻辑
+- **修复**：(1) HIDE_DELAY 0.15→0.4，词条区 HFlowContainer→HBoxContainer 横向排布；(2) shop_item_defs 增加 display_name_key，道具 tooltip 仅展示效果；(3) add_run_weapon 移除自动合并，新增 merge_run_weapons；(4) 武器 tooltip 增加合成按钮，点击进入合并模式，选择素材完成合并，可取消
+- **预防**：手动合成需在 UI 层实现选择流程，GameManager 仅提供 merge_run_weapons API
+
+### 2026-02-17：背包悬浮面板词条展示不完整、无法 hover 词条详情
+
+- **现象**：武器 tooltip 仅展示 weapon_upgrades，漏掉 type_affix_id、theme_affix_id、random_affix_ids；道具仅展示词条名称，无描述与数值；鼠标移向 tooltip 时 tooltip 消失，无法对词条 hover 显示详情
+- **原因**：tooltip 为单 Label 纯文本，词条构建逻辑未包含完整词条；槽位 mouse_exited 立即 hide，tooltip 为 MOUSE_FILTER_IGNORE 无法接收鼠标
+- **修复**：(1) BackpackTooltipPopup 新增 `show_structured_tooltip(data)`，VBoxContainer + 词条 Chip（HFlowContainer），每个 Chip 可 hover 显示二级 tooltip；(2) mouse_filter 改为 STOP，槽位 mouse_exited 调用 `schedule_hide()` 延迟 0.15s，tooltip mouse_entered 取消延迟；(3) BackpackPanel 实现 `_build_weapon_tooltip_data`、`_build_item_tooltip_data` 补全 type/theme/random 词条；(4) BackpackSlot 支持 tip_data 参数，有则用 show_structured_tooltip
+- **预防**：结构化 tooltip 需支持延迟隐藏与 mouse_entered 取消，词条 Chip 需单独 Control 以支持 hover
+
 ### 2026-02-17：背包悬浮面板无文字、同物体重复生成
 
 - **现象**：背包槽悬浮时弹出的 Tooltip 无任何文字；在同一物体上移动时反复调用 show_tooltip 导致重生成

@@ -1,0 +1,257 @@
+extends Control
+
+# 图鉴菜单：按类型展示角色、敌人、道具、武器、魔法、词条及其详细信息。
+# 主菜单入口打开，只读浏览，不修改游戏状态。
+
+signal closed
+
+@onready var _panel: Panel = $Panel
+@onready var _title_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Title
+@onready var _tabs: TabContainer = $Panel/OuterMargin/CenterContainer/VBox/Tabs
+@onready var _close_button: Button = $Panel/OuterMargin/CenterContainer/VBox/CloseButton
+
+const FONT_SIZE := 16
+const FONT_SIZE_SMALL := 14
+const ITEM_SEP := 8
+const ICON_SIZE := 48
+const PLACEHOLDER_COLOR := Color(0.5, 0.55, 0.6, 1.0)
+const TEXT_MIN_WIDTH := 400
+
+
+func _ready() -> void:
+	visible = false
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ensure_fullscreen_backdrop()
+	_apply_panel_style()
+	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_close_button.pressed.connect(_on_close_pressed)
+	LocalizationManager.language_changed.connect(_on_language_changed)
+	_build_tabs()
+	_apply_localized_texts()
+
+
+func open_menu() -> void:
+	if get_parent():
+		get_parent().move_child(self, get_parent().get_child_count() - 1)
+	visible = true
+
+
+func _ensure_fullscreen_backdrop() -> void:
+	var backdrop := ColorRect.new()
+	backdrop.name = "FullscreenBackdrop"
+	backdrop.anchors_preset = Control.PRESET_FULL_RECT
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	backdrop.color = UiThemeConfig.load_theme().modal_backdrop
+	add_child(backdrop)
+	move_child(backdrop, 0)
+
+
+func _apply_panel_style() -> void:
+	_panel.add_theme_stylebox_override("panel", UiThemeConfig.load_theme().get_modal_panel_stylebox())
+
+
+func _build_tabs() -> void:
+	_build_characters_tab()
+	_build_enemies_tab()
+	_build_items_tab()
+	_build_weapons_tab()
+	_build_magic_tab()
+	_build_affixes_tab()
+
+
+func _make_scroll_vbox() -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 360)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", ITEM_SEP)
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(vbox)
+	_tabs.add_child(scroll)
+	return vbox
+
+
+## 添加图鉴项：左侧图片 + 右侧名称与详情。icon_path 为空时使用占位色块。
+func _add_entry(vbox: VBoxContainer, title: String, details: String, icon_path: String = "") -> void:
+	var card := PanelContainer.new()
+	var card_style := StyleBoxFlat.new()
+	card_style.set_corner_radius_all(4)
+	card_style.bg_color = Color(0.15, 0.16, 0.19, 0.9)
+	card_style.set_border_width_all(1)
+	card_style.border_color = Color(0.4, 0.42, 0.48, 1.0)
+	card.add_theme_stylebox_override("panel", card_style)
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 12)
+	# 左侧图标
+	var icon_rect := TextureRect.new()
+	var tex: Texture2D = null
+	if icon_path != "" and ResourceLoader.exists(icon_path):
+		tex = load(icon_path) as Texture2D
+	if tex == null:
+		tex = VisualAssetRegistry.make_color_texture(PLACEHOLDER_COLOR, Vector2i(ICON_SIZE, ICON_SIZE))
+	icon_rect.texture = tex
+	icon_rect.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(icon_rect)
+	# 右侧文本区
+	var text_vbox := VBoxContainer.new()
+	text_vbox.add_theme_constant_override("separation", 4)
+	text_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_vbox.custom_minimum_size.x = TEXT_MIN_WIDTH
+	var m := MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 0)
+	m.add_theme_constant_override("margin_right", 10)
+	m.add_theme_constant_override("margin_top", 8)
+	m.add_theme_constant_override("margin_bottom", 8)
+	text_vbox.add_child(m)
+	var inner_vbox := VBoxContainer.new()
+	inner_vbox.add_theme_constant_override("separation", 4)
+	m.add_child(inner_vbox)
+	var title_lbl := Label.new()
+	title_lbl.text = title
+	title_lbl.add_theme_font_size_override("font_size", FONT_SIZE)
+	title_lbl.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
+	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	inner_vbox.add_child(title_lbl)
+	if not details.is_empty():
+		var detail_lbl := Label.new()
+		detail_lbl.text = details
+		detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		detail_lbl.add_theme_font_size_override("font_size", FONT_SIZE_SMALL)
+		detail_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
+		inner_vbox.add_child(detail_lbl)
+	hbox.add_child(text_vbox)
+	card.add_child(hbox)
+	vbox.add_child(card)
+
+
+func _build_characters_tab() -> void:
+	var vbox := _make_scroll_vbox()
+	for c in GameManager.characters:
+		var name_str := LocalizationManager.tr_key("char_select.card_a") if c.get("id", 0) == 0 else LocalizationManager.tr_key("char_select.card_b")
+		if c.has("name"):
+			name_str = str(c.get("name", ""))
+		var details := "HP: %d | 移速: %.0f | 射速: %.2f | 伤害: %d | 弹速: %.0f" % [
+			int(c.get("max_health", 100)),
+			float(c.get("speed", 150)),
+			float(c.get("fire_rate", 0.3)),
+			int(c.get("bullet_damage", 10)),
+			float(c.get("bullet_speed", 500))
+		]
+		var scheme: int = int(c.get("color_scheme", 0))
+		var icon_path: String = "res://assets/characters/player_scheme_0.png" if scheme == 0 else "res://assets/characters/player_scheme_1.png"
+		_add_entry(vbox, name_str, details, icon_path)
+	_tabs.set_tab_title(0, LocalizationManager.tr_key("encyclopedia.tab_characters"))
+
+
+func _build_enemies_tab() -> void:
+	var vbox := _make_scroll_vbox()
+	for e in EnemyDefs.ENEMY_DEFS:
+		var name_str := LocalizationManager.tr_key(str(e.get("name_key", "")))
+		var details := "HP: %d | 移速: %.0f | 接触伤害: %d | 经验: %d" % [
+			int(e.get("max_health", 25)),
+			float(e.get("speed", 90)),
+			int(e.get("contact_damage", 8)),
+			int(e.get("exp_value", 5))
+		]
+		var desc_key: String = str(e.get("desc_key", ""))
+		if desc_key != "":
+			details += "\n" + LocalizationManager.tr_key(desc_key)
+		_add_entry(vbox, name_str, details, str(e.get("icon_path", "")))
+	_tabs.set_tab_title(1, LocalizationManager.tr_key("encyclopedia.tab_enemies"))
+
+
+func _build_items_tab() -> void:
+	var vbox := _make_scroll_vbox()
+	for item in ShopItemDefs.ITEM_POOL:
+		var name_key: String = str(item.get("display_name_key", item.get("name_key", "")))
+		var name_str := LocalizationManager.tr_key(name_key)
+		var details := LocalizationManager.tr_key(str(item.get("desc_key", "")))
+		var base_cost: int = int(item.get("base_cost", 0))
+		if base_cost > 0:
+			details = "基础价格: %d | %s" % [base_cost, details]
+		_add_entry(vbox, name_str, details, str(item.get("icon_path", "")))
+	_tabs.set_tab_title(2, LocalizationManager.tr_key("encyclopedia.tab_items"))
+
+
+func _build_weapons_tab() -> void:
+	var vbox := _make_scroll_vbox()
+	for w in GameManager.weapon_defs:
+		var name_str := LocalizationManager.tr_key(str(w.get("name_key", "")))
+		var stats: Dictionary = w.get("stats", {})
+		var details := LocalizationManager.tr_key(str(w.get("desc_key", "")))
+		if not stats.is_empty():
+			var dmg: int = int(stats.get("damage", 0))
+			var cd: float = float(stats.get("cooldown", 0))
+			var rng: float = float(stats.get("range", 0))
+			details = "伤害: %d | 冷却: %.2f | 范围: %.0f\n%s" % [dmg, cd, rng, details]
+		_add_entry(vbox, name_str, details, str(w.get("icon_path", "")))
+	_tabs.set_tab_title(3, LocalizationManager.tr_key("encyclopedia.tab_weapons"))
+
+
+func _build_magic_tab() -> void:
+	var vbox := _make_scroll_vbox()
+	for m in MagicDefs.MAGIC_POOL:
+		var name_str := LocalizationManager.tr_key(str(m.get("name_key", "")))
+		var details := LocalizationManager.tr_key(str(m.get("desc_key", "")))
+		var mana: int = int(m.get("mana_cost", 0))
+		var power: int = int(m.get("power", 0))
+		var elem: String = str(m.get("element", ""))
+		var cd: float = float(m.get("cooldown", 0))
+		details = "魔力: %d | 威力: %d | 元素: %s | 冷却: %.1fs\n%s" % [mana, power, elem, cd, details]
+		_add_entry(vbox, name_str, details, str(m.get("icon_path", "")))
+	_tabs.set_tab_title(4, LocalizationManager.tr_key("encyclopedia.tab_magic"))
+
+
+func _build_affixes_tab() -> void:
+	var vbox := _make_scroll_vbox()
+	var all_affixes: Array = []
+	for a in ItemAffixDefs.ITEM_AFFIX_POOL:
+		all_affixes.append({"source": "item", "data": a})
+	for a in WeaponAffixDefs.WEAPON_AFFIX_POOL:
+		all_affixes.append({"source": "weapon", "data": a})
+	for a in WeaponTypeAffixDefs.WEAPON_TYPE_AFFIX_POOL:
+		all_affixes.append({"source": "type", "data": a})
+	for a in WeaponThemeAffixDefs.WEAPON_THEME_AFFIX_POOL:
+		all_affixes.append({"source": "theme", "data": a})
+	for a in MagicAffixDefs.MAGIC_AFFIX_POOL:
+		all_affixes.append({"source": "magic", "data": a})
+	for entry in all_affixes:
+		var a: Dictionary = entry.data
+		var name_str := LocalizationManager.tr_key(str(a.get("name_key", "")))
+		var details := LocalizationManager.tr_key(str(a.get("desc_key", "")))
+		var effect_type: String = str(a.get("effect_type", ""))
+		var base_val = a.get("base_value", 0)
+		var weapon_type: String = str(a.get("weapon_type", ""))
+		var bonus: Variant = a.get("bonus_per_count", 0)
+		if effect_type != "":
+			details = "效果: %s" % effect_type
+			if base_val != 0:
+				details += " | 基础: %s" % str(base_val)
+			if weapon_type != "":
+				details += " | 适用: %s" % weapon_type
+			if bonus != 0:
+				details += " | 每件: %s" % str(bonus)
+			if a.get("desc_key", ""):
+				details += "\n" + LocalizationManager.tr_key(str(a.get("desc_key", "")))
+		_add_entry(vbox, name_str, details, "")  # 词条无统一图标，使用占位色块
+	_tabs.set_tab_title(5, LocalizationManager.tr_key("encyclopedia.tab_affixes"))
+
+
+func _apply_localized_texts() -> void:
+	_title_label.text = LocalizationManager.tr_key("encyclopedia.title")
+	_close_button.text = LocalizationManager.tr_key("common.close")
+	for i in range(6):
+		var keys := ["encyclopedia.tab_characters", "encyclopedia.tab_enemies", "encyclopedia.tab_items", "encyclopedia.tab_weapons", "encyclopedia.tab_magic", "encyclopedia.tab_affixes"]
+		if i < keys.size():
+			_tabs.set_tab_title(i, LocalizationManager.tr_key(keys[i]))
+
+
+func _on_close_pressed() -> void:
+	visible = false
+	emit_signal("closed")
+
+
+func _on_language_changed(_code: String) -> void:
+	_apply_localized_texts()

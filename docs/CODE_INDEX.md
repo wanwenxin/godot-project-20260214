@@ -10,8 +10,9 @@
 
 | 流程 | 文件 | 说明 |
 |------|------|------|
-| 入口 | [scripts/ui/main_menu.gd](scripts/ui/main_menu.gd) | 主菜单：新游戏、继续、设置、退出；展示存档统计 |
+| 入口 | [scripts/ui/main_menu.gd](scripts/ui/main_menu.gd) | 主菜单：新游戏、继续、设置、图鉴、退出；展示存档统计 |
 | 设置 | [scripts/ui/settings_menu.gd](scripts/ui/settings_menu.gd) | 音量、分辨率、按键、惯性等；修改即生效并保存 |
+| 图鉴 | [scripts/ui/encyclopedia_menu.gd](scripts/ui/encyclopedia_menu.gd) | 按类型展示角色、敌人、道具、武器、魔法、词条及详情；只读浏览 |
 | 全局 | [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | 场景切换、角色/武器配置、本局状态 |
 | 存档 | [scripts/autoload/save_manager.gd](scripts/autoload/save_manager.gd) | `user://savegame/save.json` 读写、设置持久化 |
 
@@ -59,7 +60,7 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/autoload/affix_manager.gd](scripts/autoload/affix_manager.gd) | 词条收集、聚合、效果应用 | `collect_affixes_from_player`、`refresh_player`、`get_visible_affixes` |
-| [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | 场景切换、角色/武器配置、本局金币与武器库存 | `change_scene`、`get_character_data`、`run_currency` |
+| [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | 场景切换、角色/武器配置、本局金币与武器库存、手动合成 | `change_scene`、`get_character_data`、`run_currency`、`add_run_weapon`、`merge_run_weapons` |
 | [scripts/autoload/save_manager.gd](scripts/autoload/save_manager.gd) | 存档读写、设置持久化、统计聚合 | `load_game`、`set_settings`、`has_save` |
 | [scripts/autoload/audio_manager.gd](scripts/autoload/audio_manager.gd) | 合成音效与 BGM | `play_shoot_by_type`、`play_menu_bgm`、`play_game_bgm` |
 | [scripts/autoload/localization_manager.gd](scripts/autoload/localization_manager.gd) | 多语言、文案 key | `tr_key`、`language_changed` |
@@ -90,6 +91,7 @@
 | [scripts/enemy_dasher.gd](scripts/enemy_dasher.gd) | 蓄力冲刺攻击敌人 | 继承 enemy_base |
 | [scripts/wave_manager.gd](scripts/wave_manager.gd) | 波次推进、敌人生成、掉落、倒计时 | `wave_started`、`wave_cleared`、`kill_count_changed` |
 | [scripts/spawn_telegraph.gd](scripts/spawn_telegraph.gd) | 敌人生成前警示，显示数量（×N） | 配合 wave_manager 使用 |
+| [resources/enemy_defs.gd](resources/enemy_defs.gd) | 敌人定义集中化，供图鉴等 UI 展示 | `ENEMY_DEFS` |
 
 
 ### 2.4 地形系统
@@ -150,6 +152,8 @@
 | [scripts/affix/item_affix.gd](scripts/affix/item_affix.gd) | 道具词条 | 继承 AffixBase |
 | [resources/item_affix_defs.gd](resources/item_affix_defs.gd) | 道具词条库 | `ITEM_AFFIX_POOL` |
 | [resources/weapon_affix_defs.gd](resources/weapon_affix_defs.gd) | 武器词条库 | `WEAPON_AFFIX_POOL` |
+| [resources/weapon_type_affix_defs.gd](resources/weapon_type_affix_defs.gd) | 武器类型词条库 | `WEAPON_TYPE_AFFIX_POOL` |
+| [resources/weapon_theme_affix_defs.gd](resources/weapon_theme_affix_defs.gd) | 武器主题词条库 | `WEAPON_THEME_AFFIX_POOL` |
 | [resources/magic_affix_defs.gd](resources/magic_affix_defs.gd) | 魔法词条库 | `MAGIC_AFFIX_POOL` |
 | [resources/affix_combo_defs.gd](resources/affix_combo_defs.gd) | 词条组合效果配置 | `COMBO_POOL` |
 
@@ -162,9 +166,10 @@
 | [scripts/ui/character_select.gd](scripts/ui/character_select.gd) | 角色选择 | - |
 | [scripts/ui/pause_menu.gd](scripts/ui/pause_menu.gd) | 暂停菜单、属性/背包 Tab、玩家信息 | `set_visible_menu`、`set_player_stats_full` |
 | [scripts/ui/backpack_panel.gd](scripts/ui/backpack_panel.gd) | 背包面板，武器/魔法/道具图标网格，网格线可见 | `set_stats`、`hide_tooltip` |
-| [scripts/ui/backpack_tooltip_popup.gd](scripts/ui/backpack_tooltip_popup.gd) | 自定义 Tooltip Popup，大字号、宽高限制、即显 | `show_tooltip`、`hide_tooltip` |
-| [scripts/ui/backpack_slot.gd](scripts/ui/backpack_slot.gd) | 背包槽，图标 + 悬浮即显 Tooltip | `configure` |
+| [scripts/ui/backpack_tooltip_popup.gd](scripts/ui/backpack_tooltip_popup.gd) | 背包 Tooltip，结构化词条 Chip、二级悬浮详情、延迟隐藏（0.5s）、同类不重复打开 | `show_tooltip`、`show_structured_tooltip`、`schedule_hide`、`is_scheduled_to_hide`、`hide_tooltip` |
+| [scripts/ui/backpack_slot.gd](scripts/ui/backpack_slot.gd) | 背包槽，图标 + 悬浮即显 Tooltip（支持 tip_data） | `configure` |
 | [scripts/ui/settings_menu.gd](scripts/ui/settings_menu.gd) | 设置 | `open_menu`、`closed` |
+| [scripts/ui/encyclopedia_menu.gd](scripts/ui/encyclopedia_menu.gd) | 图鉴菜单，按类型展示角色/敌人/道具/武器/魔法/词条 | `open_menu`、`closed` |
 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | 死亡结算 | `show_result` |
 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 通关结算 | `show_result` |
 | [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | 结算面板共享 UI | `build_score_block`、`build_player_stats_block`（支持完整 stats 字典） |

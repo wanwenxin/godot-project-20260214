@@ -443,64 +443,51 @@ func get_run_weapon_upgrades() -> Array[String]:
 	return run_weapon_upgrades.duplicate()
 
 
-## 返回本局武器列表，每项为 {id, tier}。
+## 返回本局武器列表，每项为 {id, tier, random_affix_ids}。
 func get_run_weapons() -> Array:
 	var result: Array = []
 	for w in run_weapons:
-		result.append({"id": str(w.get("id", "")), "tier": int(w.get("tier", 0))})
+		var ra: Array = w.get("random_affix_ids", [])
+		result.append({"id": str(w.get("id", "")), "tier": int(w.get("tier", 0)), "random_affix_ids": ra.duplicate()})
 	return result
 
 
-## 添加武器；若已有同 id 同 tier 的，则 2 合 1 升品级。返回是否成功。
-func add_run_weapon(weapon_id: String) -> bool:
+## 添加武器；仅做容量检查与 append，不自动合成。
+func add_run_weapon(weapon_id: String, random_affix_ids: Array = []) -> bool:
 	if get_weapon_def_by_id(weapon_id).is_empty():
 		return false
-	# 查找同 id 同 tier 0 的（新获得武器为 tier 0）
-	var tier_to_merge := 0
-	var first_idx := -1
-	for i in range(run_weapons.size()):
-		var w: Dictionary = run_weapons[i]
-		if str(w.get("id", "")) == weapon_id and int(w.get("tier", 0)) == tier_to_merge:
-			first_idx = i
-			break
-	if first_idx >= 0:
-		# 有同品级，合并：移除 2 个，添加 1 个高一品级，递归检查
-		run_weapons.remove_at(first_idx)
-		var new_tier := tier_to_merge + 1
-		_try_merge_weapon(weapon_id, new_tier)
-		return true
-	# 无同品级可合并，需检查容量
 	if run_weapons.size() >= MAX_WEAPONS:
 		return false
-	run_weapons.append({"id": weapon_id, "tier": 0})
+	run_weapons.append({"id": weapon_id, "tier": 0, "random_affix_ids": random_affix_ids.duplicate()})
 	return true
 
 
-## 递归：若存在 2 个同 id 同 tier，则合并为 tier+1。
-func _try_merge_weapon(weapon_id: String, tier: int) -> void:
-	var indices: Array[int] = []
-	for i in range(run_weapons.size()):
-		var w: Dictionary = run_weapons[i]
-		if str(w.get("id", "")) == weapon_id and int(w.get("tier", 0)) == tier:
-			indices.append(i)
-	if indices.size() < 2:
-		# 不足 2 个，添加当前这一个
-		run_weapons.append({"id": weapon_id, "tier": tier})
-		return
-	# 移除前 2 个
-	run_weapons.remove_at(indices[1])
-	run_weapons.remove_at(indices[0])
-	_try_merge_weapon(weapon_id, tier + 1)
+## 手动合并：base_index 武器品级 +1，material_index 武器移除。保留 base 的 random_affix_ids。
+func merge_run_weapons(base_index: int, material_index: int) -> bool:
+	if base_index < 0 or base_index >= run_weapons.size():
+		return false
+	if material_index < 0 or material_index >= run_weapons.size():
+		return false
+	if base_index == material_index:
+		return false
+	var base_w: Dictionary = run_weapons[base_index]
+	var mat_w: Dictionary = run_weapons[material_index]
+	if str(base_w.get("id", "")) != str(mat_w.get("id", "")):
+		return false
+	if int(base_w.get("tier", 0)) != int(mat_w.get("tier", 0)):
+		return false
+	var kept_affixes: Array = base_w.get("random_affix_ids", []).duplicate()
+	var wid: String = str(base_w.get("id", ""))
+	var new_tier: int = int(base_w.get("tier", 0)) + 1
+	var lo: int = mini(base_index, material_index)
+	var hi: int = maxi(base_index, material_index)
+	run_weapons.remove_at(hi)
+	run_weapons.remove_at(lo)
+	run_weapons.insert(lo, {"id": wid, "tier": new_tier, "random_affix_ids": kept_affixes})
+	return true
 
 
 func can_add_run_weapon(weapon_id: String) -> bool:
 	if get_weapon_def_by_id(weapon_id).is_empty():
 		return false
-	# 若有同 id 同 tier 0 的，合并不占新槽位
-	var count_tier0 := 0
-	for w in run_weapons:
-		if str(w.get("id", "")) == weapon_id and int(w.get("tier", 0)) == 0:
-			count_tier0 += 1
-	if count_tier0 >= 1:
-		return true
 	return run_weapons.size() < MAX_WEAPONS

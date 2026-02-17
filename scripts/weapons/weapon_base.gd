@@ -76,3 +76,5 @@ func apply_upgrade(upgrade_id: String) -> void:
 			damage += 3
 		"fire_rate":
 			cooldown = maxf(0.08, cooldown - 0.03)
+		"attack_range":
+			attack_range += 15.0

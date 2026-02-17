@@ -2,23 +2,31 @@ extends VBoxContainer
 class_name BackpackSlot
 
 # 背包槽：图标 + 名称（按品级着色），鼠标悬浮时立即显示自定义 Tooltip。
-# 缺图时使用 make_color_texture 生成占位图。
+# 缺图时使用 make_color_texture 生成占位图。武器槽支持合并模式点击。
 const SLOT_SIZE := 48
 const PLACEHOLDER_COLOR := Color(0.5, 0.55, 0.6, 1.0)
 const NAME_FONT_SIZE := 12
 
+signal slot_clicked(weapon_index: int)
+
 var _icon_rect: TextureRect
 var _name_label: Label
 var _tip_text: String = ""
+var _tip_data: Dictionary = {}  # 结构化 tooltip 数据，非空时用 show_structured_tooltip
 var _tooltip_popup: BackpackTooltipPopup = null
+var _weapon_index: int = -1  # 武器槽索引，-1 表示非武器
+var _merge_selectable: bool = false  # 合并模式下是否可选为素材
 
 
-## 配置槽位：icon_path、color 用于图标，tip 用于悬浮提示，display_name、name_color 用于图标下名称。
-func configure(icon_path: String, color: Color, tip: String, tooltip_popup: BackpackTooltipPopup = null, display_name: String = "", name_color: Color = Color(0.85, 0.85, 0.9)) -> void:
+## 配置槽位：icon_path、color 用于图标，tip 用于纯文本悬浮（魔法等），tip_data 用于结构化悬浮（武器/道具）。
+## weapon_index 为武器槽索引，>=0 时表示武器槽，合并模式可点击。
+func configure(icon_path: String, color: Color, tip: String, tooltip_popup: BackpackTooltipPopup = null, display_name: String = "", name_color: Color = Color(0.85, 0.85, 0.9), tip_data: Dictionary = {}, weapon_index: int = -1) -> void:
 	for c in get_children():
 		c.queue_free()
 	_tip_text = tip
+	_tip_data = tip_data
 	_tooltip_popup = tooltip_popup
+	_weapon_index = weapon_index
 	# 图标
 	_icon_rect = TextureRect.new()
 	var tex: Texture2D = null
@@ -45,13 +53,35 @@ func configure(icon_path: String, color: Color, tip: String, tooltip_popup: Back
 		mouse_entered.connect(_on_mouse_entered)
 	if not mouse_exited.is_connected(_on_mouse_exited):
 		mouse_exited.connect(_on_mouse_exited)
+	if not gui_input.is_connected(_on_gui_input):
+		gui_input.connect(_on_gui_input)
 
 
 func _on_mouse_entered() -> void:
-	if _tooltip_popup != null and _tip_text != "":
+	if _tooltip_popup == null:
+		return
+	# 同类不重复打开：主 tooltip 正在关闭时，不响应新槽位
+	if _tooltip_popup.is_scheduled_to_hide():
+		return
+	if not _tip_data.is_empty():
+		_tooltip_popup.show_structured_tooltip(_tip_data)
+	elif _tip_text != "":
 		_tooltip_popup.show_tooltip(_tip_text)
 
 
 func _on_mouse_exited() -> void:
 	if _tooltip_popup != null:
-		_tooltip_popup.hide_tooltip()
+		_tooltip_popup.schedule_hide()
+
+
+func _on_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var ev := event as InputEventMouseButton
+		if ev.button_index == MOUSE_BUTTON_LEFT and ev.pressed and _merge_selectable and _weapon_index >= 0:
+			slot_clicked.emit(_weapon_index)
+
+
+## 设置合并模式下是否可选为素材；不可选时置灰。
+func set_merge_selectable(selectable: bool) -> void:
+	_merge_selectable = selectable
+	modulate = Color(1, 1, 1, 1) if selectable else Color(0.5, 0.5, 0.5, 0.8)

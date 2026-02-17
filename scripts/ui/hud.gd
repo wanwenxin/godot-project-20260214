@@ -912,4 +912,13 @@ func _build_weapon_stats_text(option: Dictionary) -> String:
 		lines.append(LocalizationManager.tr_key("weapon.stat.pellet_count", {"value": int(stats.get("pellet_count", 1))}))
 		lines.append(LocalizationManager.tr_key("weapon.stat.spread", {"value": "%.1f" % float(stats.get("spread_degrees", 0.0))}))
 		lines.append(LocalizationManager.tr_key("weapon.stat.pierce", {"value": int(stats.get("bullet_pierce", 0))}))
+	var affix_ids: Array = option.get("random_affix_ids", [])
+	if affix_ids.size() > 0:
+		var affix_names: Array[String] = []
+		for aid in affix_ids:
+			var adef := WeaponAffixDefs.get_affix_def(str(aid))
+			if not adef.is_empty():
+				affix_names.append(LocalizationManager.tr_key(str(adef.get("name_key", aid))))
+		if affix_names.size() > 0:
+			lines.append(LocalizationManager.tr_key("backpack.tooltip_affixes") + ": " + ", ".join(affix_names))
 	return "\n".join(lines)

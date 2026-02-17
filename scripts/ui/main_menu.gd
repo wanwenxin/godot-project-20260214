@@ -13,6 +13,7 @@ extends Control
 @onready var language_label: Label = $CenterContainer/VBoxContainer/LanguageRow/LanguageLabel
 @onready var language_option: OptionButton = $CenterContainer/VBoxContainer/LanguageRow/LanguageOption
 @onready var settings_menu: Control = $SettingsMenu
+@onready var encyclopedia_menu: Control = $EncyclopediaMenu
 
 var _is_updating_option := false  # 防重入：语言选项刷新时忽略 item_selected
 
@@ -23,6 +24,7 @@ func _ready() -> void:
 	new_game_btn.pressed.connect(_on_new_game_pressed)
 	continue_btn.pressed.connect(_on_continue_pressed)
 	settings_btn.pressed.connect(_on_settings_pressed)
+	$CenterContainer/VBoxContainer/EncyclopediaButton.pressed.connect(_on_encyclopedia_pressed)
 	quit_btn.pressed.connect(_on_quit_pressed)
 	language_option.item_selected.connect(_on_language_item_selected)
 	LocalizationManager.language_changed.connect(_on_language_changed)
@@ -38,6 +40,7 @@ func _apply_localized_texts() -> void:
 	continue_btn.text = LocalizationManager.tr_key("menu.continue")
 	settings_btn.text = LocalizationManager.tr_key("menu.settings")
 	quit_btn.text = LocalizationManager.tr_key("menu.quit")
+	$CenterContainer/VBoxContainer/EncyclopediaButton.text = LocalizationManager.tr_key("menu.encyclopedia")
 
 	var save_data := SaveManager.load_game()
 	var has := SaveManager.has_save()
@@ -79,6 +82,12 @@ func _on_settings_pressed() -> void:
 	AudioManager.play_button()
 	if settings_menu.has_method("open_menu"):
 		settings_menu.call("open_menu")
+
+
+func _on_encyclopedia_pressed() -> void:
+	AudioManager.play_button()
+	if encyclopedia_menu.has_method("open_menu"):
+		encyclopedia_menu.call("open_menu")
 
 
 func _refresh_language_options() -> void:

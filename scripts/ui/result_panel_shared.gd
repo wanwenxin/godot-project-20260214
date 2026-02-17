@@ -133,6 +133,17 @@ func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = nu
 			if affix is AffixBase:
 				affix_row.add_child(_make_affix_chip(affix as AffixBase))
 		vbox.add_child(affix_row)
+	# 套装效果区
+	var set_bonus_info: Array = stats.get("set_bonus_info", [])
+	if set_bonus_info.size() > 0:
+		var set_section := _make_section_header(LocalizationManager.tr_key("pause.section_set_bonus"))
+		vbox.add_child(set_section)
+		var set_row := HFlowContainer.new()
+		set_row.add_theme_constant_override("h_separation", 8)
+		set_row.add_theme_constant_override("v_separation", 8)
+		for sb in set_bonus_info:
+			set_row.add_child(_make_set_bonus_chip(sb))
+		vbox.add_child(set_row)
 	# 魔法区
 	var magic_details: Array = stats.get("magic_details", [])
 	if magic_details.size() > 0:
@@ -240,6 +251,48 @@ static func _make_weapon_card(w: Dictionary) -> Control:
 		_add_stat_row(grid, LocalizationManager.tr_key("pause.stat_pellets"), str(w.get("pellet_count", 1)))
 		_add_stat_row(grid, LocalizationManager.tr_key("pause.stat_spread"), "%.1f°" % float(w.get("spread_degrees", 0)))
 		_add_stat_row(grid, LocalizationManager.tr_key("pause.stat_pierce"), str(w.get("bullet_pierce", 0)))
+	# 类型/主题/随机词条标签
+	var tags: Array[String] = []
+	var type_id: String = str(w.get("type_affix_id", ""))
+	if type_id != "":
+		var tdef := WeaponTypeAffixDefs.get_affix_def(type_id)
+		if not tdef.is_empty():
+			tags.append(LocalizationManager.tr_key(str(tdef.get("name_key", ""))))
+	var theme_id: String = str(w.get("theme_affix_id", ""))
+	if theme_id != "":
+		var thdef := WeaponThemeAffixDefs.get_affix_def(theme_id)
+		if not thdef.is_empty():
+			tags.append(LocalizationManager.tr_key(str(thdef.get("name_key", ""))))
+	for aid in w.get("random_affix_ids", []):
+		var adef := WeaponAffixDefs.get_affix_def(str(aid))
+		if not adef.is_empty():
+			tags.append(LocalizationManager.tr_key(str(adef.get("name_key", aid))))
+	if tags.size() > 0:
+		var tag_lbl := Label.new()
+		tag_lbl.text = " | ".join(tags)
+		tag_lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE - 2)
+		tag_lbl.add_theme_color_override("font_color", Color(0.65, 0.75, 0.8, 1.0))
+		inner.add_child(tag_lbl)
 	inner.add_child(grid)
 	card.add_child(inner)
 	return card
+
+
+static func _make_set_bonus_chip(sb: Dictionary) -> Control:
+	var lbl := Label.new()
+	var name_str := LocalizationManager.tr_key(str(sb.get("name_key", "")))
+	var count: int = int(sb.get("count", 0))
+	var bonus = sb.get("bonus", 0)
+	var et: String = str(sb.get("effect_type", ""))
+	var bonus_str := ""
+	if et in ["health_regen", "lifesteal_chance", "mana_regen", "attack_speed", "spell_speed", "speed"]:
+		if et == "lifesteal_chance":
+			bonus_str = "+%.0f%%" % (float(bonus) * 100.0)
+		else:
+			bonus_str = "+%.2f" % float(bonus)
+	else:
+		bonus_str = "+%d" % int(bonus)
+	lbl.text = "%s x%d: %s" % [name_str, count, bonus_str]
+	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	lbl.add_theme_color_override("font_color", Color(0.7, 0.95, 0.85, 1.0))
+	return lbl

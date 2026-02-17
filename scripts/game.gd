@@ -539,7 +539,8 @@ func _on_weapon_shop_selected(weapon_id: String) -> void:
 			GameManager.add_currency(cost)
 			return
 	else:
-		if not _equip_weapon_to_player(weapon_id, true):
+		var random_affixes: Array = picked.get("random_affix_ids", [])
+		if not _equip_weapon_to_player(weapon_id, true, random_affixes):
 			GameManager.add_currency(cost)
 			return
 	# 购买后移除该商品
@@ -568,7 +569,28 @@ func _roll_weapon_shop_options(count: int) -> Array[Dictionary]:
 	return result
 
 
-# 商店商品：武器 + 道具混合，价格随波次上涨。
+## 根据武器类型（melee/ranged）随机抽取词条，数量在 count_min~count_max 之间。
+func _roll_random_weapon_affixes(weapon_type: String, count_min: int, count_max: int) -> Array:
+	var pool: Array = WeaponAffixDefs.WEAPON_AFFIX_POOL
+	var filtered: Array[Dictionary] = []
+	for a in pool:
+		var wt: String = str(a.get("weapon_type", "both"))
+		if wt == "both" or wt == weapon_type:
+			filtered.append(a)
+	if filtered.is_empty():
+		return []
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var n: int = rng.randi_range(count_min, count_max)
+	n = mini(n, filtered.size())
+	filtered.shuffle()
+	var ids: Array = []
+	for i in range(n):
+		ids.append(str(filtered[i].get("id", "")))
+	return ids
+
+
+# 商店商品：武器 + 道具混合，价格随波次上涨。武器随机附加 0~2 个词条（近战/远程/通用）。
 func _roll_shop_items(count: int) -> Array[Dictionary]:
 	var wave: int = wave_manager.current_wave
 	var result: Array[Dictionary] = []
@@ -578,6 +600,7 @@ func _roll_shop_items(count: int) -> Array[Dictionary]:
 		var w: Dictionary = item.duplicate(true)
 		w["type"] = "weapon"
 		w["cost"] = ShopItemDefs.get_price(int(item.get("cost", 5)), wave)
+		w["random_affix_ids"] = _roll_random_weapon_affixes(str(item.get("type", "melee")), 0, 2)
 		weapon_candidates.append(w)
 	var owned_magics: Array[String] = player.get_equipped_magic_ids()
 	var magic_slots_full: bool = owned_magics.size() >= 3
@@ -604,10 +627,10 @@ func _roll_shop_items(count: int) -> Array[Dictionary]:
 	return result
 
 
-func _equip_weapon_to_player(weapon_id: String, need_capacity: bool) -> bool:
+func _equip_weapon_to_player(weapon_id: String, need_capacity: bool, random_affix_ids: Array = []) -> bool:
 	if need_capacity and player.get_weapon_capacity_left() <= 0:
 		return false
-	return player.equip_weapon_by_id(weapon_id)
+	return player.equip_weapon_by_id(weapon_id, random_affix_ids)
 
 
 func _finish_wave_settlement() -> void:

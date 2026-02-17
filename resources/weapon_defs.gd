@@ -9,6 +9,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "blade_short",
 		"type": "melee",
+		"type_affix_id": "type_blade",
+		"theme_affix_id": "theme_classical",
 		"script_path": "res://scripts/weapons/melee/weapon_blade_short.gd",
 		"name_key": "weapon.blade_short.name",
 		"desc_key": "weapon.blade_short.desc",
@@ -30,6 +32,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "dagger",
 		"type": "melee",
+		"type_affix_id": "type_blade",
+		"theme_affix_id": "theme_classical",
 		"script_path": "res://scripts/weapons/melee/weapon_dagger.gd",
 		"name_key": "weapon.dagger.name",
 		"desc_key": "weapon.dagger.desc",
@@ -51,6 +55,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "spear",
 		"type": "melee",
+		"type_affix_id": "type_spear",
+		"theme_affix_id": "theme_classical",
 		"script_path": "res://scripts/weapons/melee/weapon_spear.gd",
 		"name_key": "weapon.spear.name",
 		"desc_key": "weapon.spear.desc",
@@ -72,6 +78,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "chainsaw",
 		"type": "melee",
+		"type_affix_id": "type_blade",
+		"theme_affix_id": "theme_modern",
 		"script_path": "res://scripts/weapons/melee/weapon_chainsaw.gd",
 		"name_key": "weapon.chainsaw.name",
 		"desc_key": "weapon.chainsaw.desc",
@@ -94,6 +102,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "hammer_heavy",
 		"type": "melee",
+		"type_affix_id": "type_spear",
+		"theme_affix_id": "theme_classical",
 		"script_path": "res://scripts/weapons/melee/weapon_hammer_heavy.gd",
 		"name_key": "weapon.hammer_heavy.name",
 		"desc_key": "weapon.hammer_heavy.desc",
@@ -115,6 +125,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "pistol_basic",
 		"type": "ranged",
+		"type_affix_id": "type_firearm",
+		"theme_affix_id": "theme_modern",
 		"script_path": "res://scripts/weapons/ranged/weapon_pistol_basic.gd",
 		"name_key": "weapon.pistol_basic.name",
 		"desc_key": "weapon.pistol_basic.desc",
@@ -129,6 +141,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "shotgun_wide",
 		"type": "ranged",
+		"type_affix_id": "type_firearm",
+		"theme_affix_id": "theme_modern",
 		"script_path": "res://scripts/weapons/ranged/weapon_shotgun_wide.gd",
 		"name_key": "weapon.shotgun_wide.name",
 		"desc_key": "weapon.shotgun_wide.desc",
@@ -143,6 +157,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "rifle_long",
 		"type": "ranged",
+		"type_affix_id": "type_firearm",
+		"theme_affix_id": "theme_modern",
 		"script_path": "res://scripts/weapons/ranged/weapon_rifle_long.gd",
 		"name_key": "weapon.rifle_long.name",
 		"desc_key": "weapon.rifle_long.desc",
@@ -157,6 +173,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "wand_focus",
 		"type": "ranged",
+		"type_affix_id": "type_staff",
+		"theme_affix_id": "theme_fantasy",
 		"script_path": "res://scripts/weapons/ranged/weapon_wand_focus.gd",
 		"name_key": "weapon.wand_focus.name",
 		"desc_key": "weapon.wand_focus.desc",
@@ -171,6 +189,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "sniper",
 		"type": "ranged",
+		"type_affix_id": "type_firearm",
+		"theme_affix_id": "theme_scifi",
 		"script_path": "res://scripts/weapons/ranged/weapon_sniper.gd",
 		"name_key": "weapon.sniper.name",
 		"desc_key": "weapon.sniper.desc",
@@ -185,6 +205,8 @@ const WEAPON_DEFS := [
 	{
 		"id": "orb_wand",
 		"type": "ranged",
+		"type_affix_id": "type_staff",
+		"theme_affix_id": "theme_xuanhuan",
 		"script_path": "res://scripts/weapons/ranged/weapon_orb_wand.gd",
 		"name_key": "weapon.orb_wand.name",
 		"desc_key": "weapon.orb_wand.desc",
@@ -195,5 +217,60 @@ const WEAPON_DEFS := [
 		"bullet_texture_path": "res://assets/bullets/bullet_orb.png",
 		"bullet_collision_radius": 4.0,
 		"stats": {"damage": 11, "cooldown": 0.38, "range": 800.0, "bullet_speed": 420.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 0}
+	},
+	{
+		"id": "blade_long",
+		"type": "melee",
+		"type_affix_id": "type_blade",
+		"theme_affix_id": "theme_classical",
+		"script_path": "res://scripts/weapons/melee/weapon_blade_long.gd",
+		"name_key": "weapon.blade_long.name",
+		"desc_key": "weapon.blade_long.desc",
+		"cost": 6,
+		"color": Color(0.85, 0.25, 0.25, 1.0),
+		"swing_texture_path": "res://assets/weapons/swing_blade_short.png",
+		"icon_path": "res://assets/weapons/blade_short.png",
+		"stats": {
+			"damage": 18,
+			"cooldown": 0.48,
+			"range": 88.0,
+			"touch_interval": 0.42,
+			"swing_duration": 0.24,
+			"swing_degrees": 90.0,
+			"swing_reach": 28.0,
+			"hitbox_radius": 15.0
+		}
+	},
+	{
+		"id": "crossbow",
+		"type": "ranged",
+		"type_affix_id": "type_firearm",
+		"theme_affix_id": "theme_classical",
+		"script_path": "res://scripts/weapons/ranged/weapon_crossbow.gd",
+		"name_key": "weapon.crossbow.name",
+		"desc_key": "weapon.crossbow.desc",
+		"cost": 8,
+		"color": Color(0.55, 0.45, 0.35, 1.0),
+		"bullet_type": "rifle",
+		"icon_path": "res://assets/weapons/rifle_long.png",
+		"bullet_texture_path": "res://assets/bullets/bullet_firearm.png",
+		"bullet_collision_radius": 2.5,
+		"stats": {"damage": 22, "cooldown": 0.65, "range": 1300.0, "bullet_speed": 680.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 1}
+	},
+	{
+		"id": "elemental_staff",
+		"type": "ranged",
+		"type_affix_id": "type_staff",
+		"theme_affix_id": "theme_fantasy",
+		"script_path": "res://scripts/weapons/ranged/weapon_elemental_staff.gd",
+		"name_key": "weapon.elemental_staff.name",
+		"desc_key": "weapon.elemental_staff.desc",
+		"cost": 9,
+		"color": Color(0.95, 0.50, 0.90, 1.0),
+		"bullet_type": "laser",
+		"icon_path": "res://assets/weapons/wand_focus.png",
+		"bullet_texture_path": "res://assets/bullets/bullet_laser.png",
+		"bullet_collision_radius": 2.5,
+		"stats": {"damage": 12, "cooldown": 0.30, "range": 1100.0, "bullet_speed": 580.0, "pellet_count": 1, "spread_degrees": 0.0, "bullet_pierce": 0}
 	}
 ]

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://g8o5t4k8erqv" path="res://scripts/ui/main_menu.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_menu.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/encyclopedia_menu.tscn" id="3"]
 
 [node name="MainMenu" type="Control" unique_id=1185658076]
 layout_mode = 3
@@ -60,9 +61,16 @@ text = "Continue"
 layout_mode = 2
 text = "Settings"
 
+[node name="EncyclopediaButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1890848583]
+layout_mode = 2
+text = "Encyclopedia"
+
 [node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=590085531]
 layout_mode = 2
 text = "Quit"
 
 [node name="SettingsMenu" parent="." unique_id=342035354 instance=ExtResource("2")]
+layout_mode = 1
+
+[node name="EncyclopediaMenu" parent="." unique_id=342035355 instance=ExtResource("3")]
 layout_mode = 1

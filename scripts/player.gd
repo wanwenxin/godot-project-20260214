@@ -477,8 +477,8 @@ func _recompute_terrain_speed() -> void:
 		_terrain_speed_multiplier = minf(_terrain_speed_multiplier, float(_terrain_effects[key]))
 
 
-# 根据 run_weapons 同步装备；清除旧武器，按 {id, tier} 重新装备。
-# 同步后对每把武器应用 run_weapon_upgrades。
+# 根据 run_weapons 同步装备；清除旧武器，按 {id, tier, random_affix_ids} 重新装备。
+# 同步后对每把武器应用 run_weapon_upgrades 与 random_affix_ids。
 func sync_weapons_from_run(run_weapons_list: Array) -> void:
 	for w in _equipped_weapons:
 		if is_instance_valid(w):
@@ -487,6 +487,7 @@ func sync_weapons_from_run(run_weapons_list: Array) -> void:
 	for w_dict in run_weapons_list:
 		var wid: String = str(w_dict.get("id", ""))
 		var wtier: int = int(w_dict.get("tier", 0))
+		var random_affix_ids: Array = w_dict.get("random_affix_ids", [])
 		var def := GameManager.get_weapon_def_by_id(wid)
 		if def.is_empty():
 			continue
@@ -497,16 +498,23 @@ func sync_weapons_from_run(run_weapons_list: Array) -> void:
 		for u_id in GameManager.get_run_weapon_upgrades():
 			if instance.has_method("apply_upgrade"):
 				instance.apply_upgrade(u_id)
+		for aid in random_affix_ids:
+			var affix_def := WeaponAffixDefs.get_affix_def(str(aid))
+			if affix_def.is_empty():
+				continue
+			var effect_type: String = str(affix_def.get("effect_type", ""))
+			if effect_type != "" and instance.has_method("apply_upgrade"):
+				instance.apply_upgrade(effect_type)
 		weapon_slots.add_child(instance)
 		_equipped_weapons.append(instance)
 	_refresh_weapon_visuals()
 
 
-# 装备指定武器（兼容旧接口，内部转为 sync）；返回是否成功。
-func equip_weapon_by_id(weapon_id: String) -> bool:
+# 装备指定武器（兼容旧接口，内部转为 sync）；random_affix_ids 为商店随机词条。返回是否成功。
+func equip_weapon_by_id(weapon_id: String, random_affix_ids: Array = []) -> bool:
 	if not GameManager.can_add_run_weapon(weapon_id):
 		return false
-	if not GameManager.add_run_weapon(weapon_id):
+	if not GameManager.add_run_weapon(weapon_id, random_affix_ids):
 		return false
 	sync_weapons_from_run(GameManager.get_run_weapons())
 	return true
@@ -528,11 +536,15 @@ func has_weapon_id(weapon_id: String) -> bool:
 
 
 func get_equipped_weapon_details() -> Array[Dictionary]:
-	# 返回每把装备武器的详细数据，供暂停界面等 UI 展示；含 tier 与 tier_color。
+	# 返回每把装备武器的详细数据，供暂停界面等 UI 展示；含 tier、type_affix、theme_affix、random_affix_ids。
 	var result: Array[Dictionary] = []
-	for item in _equipped_weapons:
+	var run_list: Array = GameManager.get_run_weapons()
+	for idx in range(_equipped_weapons.size()):
+		var item = _equipped_weapons[idx]
+		var w_run: Dictionary = run_list[idx] if idx < run_list.size() else {}
 		if not is_instance_valid(item):
 			continue
+		var def := GameManager.get_weapon_def_by_id(str(item.weapon_id))
 		var wtier: int = int(item.tier) if "tier" in item else 0
 		var color_hint_any = item.color_hint if "color_hint" in item else Color(0.8, 0.8, 0.8, 1.0)
 		var color_hint: Color = color_hint_any if color_hint_any is Color else Color(0.8, 0.8, 0.8, 1.0)
@@ -545,7 +557,10 @@ func get_equipped_weapon_details() -> Array[Dictionary]:
 			"color_hint": color_hint,
 			"damage": int(item.damage),
 			"cooldown": float(item.cooldown),
-			"range": float(item.attack_range)
+			"range": float(item.attack_range),
+			"type_affix_id": str(def.get("type_affix_id", "")),
+			"theme_affix_id": str(def.get("theme_affix_id", "")),
+			"random_affix_ids": w_run.get("random_affix_ids", []).duplicate()
 		}
 		if item is WeaponMeleeBase:
 			var melee_item: WeaponMeleeBase = item
@@ -584,9 +599,11 @@ func get_full_stats_for_pause() -> Dictionary:
 		})
 	var item_ids: Array[String] = GameManager.get_run_items()
 	var visible_affixes: Array = []
+	var set_bonus_info: Array = []
 	if AffixManager:
 		var affixes := AffixManager.collect_affixes_from_player(self)
 		visible_affixes = AffixManager.get_visible_affixes(affixes)
+		set_bonus_info = AffixManager.get_set_bonus_display_info()
 	return {
 		"hp_current": current_health,
 		"hp_max": max_health,
@@ -603,7 +620,8 @@ func get_full_stats_for_pause() -> Dictionary:
 		"weapon_details": weapon_details,
 		"magic_details": magic_details,
 		"item_ids": item_ids,
-		"visible_affixes": visible_affixes
+		"visible_affixes": visible_affixes,
+		"set_bonus_info": set_bonus_info
 	}
 
 

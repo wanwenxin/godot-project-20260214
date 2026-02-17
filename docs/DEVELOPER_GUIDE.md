@@ -25,7 +25,7 @@
   - 场景切换（主菜单/角色选择/战斗）
   - 角色模板数据
   - 本局金币 `run_currency`（新游戏/继续默认 500）、经验值 `run_experience`、等级 `run_level`
-  - 本局武器库存 `run_weapons`（每项 `{id, tier}`，最多 6 把，2 同品级合成 1 高一品级）
+  - 本局武器库存 `run_weapons`（每项 `{id, tier, random_affix_ids}`，最多 6 把；手动合成，`merge_run_weapons`）
   - 本局已购道具 `run_items`（道具 id 列表）
   - 本局玩家相关升级 `run_upgrades`（每项 `{id, value}`，供词条系统聚合）
   - 本局武器相关升级 `run_weapon_upgrades`（升级 id 列表，同步武器时应用）
@@ -232,11 +232,15 @@
 - 词条库：`resources/item_affix_defs.gd`、`weapon_affix_defs.gd`、`magic_affix_defs.gd`，互不干涉
 - 物体定义可带 `affix_ids: []`，运行时（商店购买、升级选择）可追加
 - 词条分可见/不可见，可见词条在暂停菜单、结算面板展示
+- **数值可调节**：词条定义中的 `base_value` 为默认值；绑定时（如 `shop_item_defs` 的 item 中 `base_value`）可指定具体值覆盖，`AffixManager.collect_affixes_from_player` 优先使用绑定值
+- **武器词条分类**：`weapon_affix_defs` 中 `weapon_type` 为 `melee` | `ranged` | `both`，供 UI 筛选与展示
 - 效果应用流程：`AffixManager.collect_affixes_from_player` → `get_aggregated_effects` → `_apply_affix_aggregated` 写入玩家
 - 组合效果扩展：`resources/affix_combo_defs.gd` 配置，`AffixManager.check_combos` 检测
 - 武器数值集中配置于：`resources/weapon_defs.gd`，远程武器需配置 `bullet_type`
 - 玩家默认最多持有 6 把武器，并在玩家周围显示色块
-- **品级系统**：`run_weapons` 每项为 `{id, tier}`；2 把同 id 同 tier 自动合成 1 把高一品级；品级越高伤害越高、冷却越短；武器名按品级着色（`resources/tier_config.gd`）
+- **品级系统**：`run_weapons` 每项为 `{id, tier, random_affix_ids}`；手动合成：背包悬浮面板点击「合成」选择素材，`GameManager.merge_run_weapons` 合并；品级越高伤害越高、冷却越短；武器名按品级着色（`resources/tier_config.gd`）
+- **武器类型/主题词条**：`weapon_defs` 中每把武器绑定 `type_affix_id`、`theme_affix_id`；2-6 件同类套装生效，线性增长；多把同名武器只计 1 次；`AffixManager.get_set_bonus_effects` 计算并合并到玩家属性
+- **商店随机词条**：`_roll_shop_items` 为武器随机附加 0~2 个词条（按 weapon_type 筛选），购买时传入 `add_run_weapon`；`sync_weapons_from_run` 对每把武器应用 `random_affix_ids`
 - **攻击速度**：玩家属性 `attack_speed`，系数越高武器冷却越短
 - 流程：
   1. 开局默认装备短刃（blade_short）直接开始波次
@@ -256,6 +260,12 @@
 - `scripts/ui/main_menu.gd`
   - 显示总统计、最近战绩、成就数量
   - 设置入口按钮（弹出 `settings_menu`）
+  - 图鉴入口按钮（弹出 `encyclopedia_menu`）
+
+- `scripts/ui/encyclopedia_menu.gd`
+  - 图鉴菜单：按类型 Tab 展示角色、敌人、道具、武器、魔法、词条及其详细信息
+  - 数据来源：GameManager.characters、EnemyDefs、ShopItemDefs、weapon_defs、MagicDefs、各 affix_defs
+  - 只读浏览，不修改游戏状态
 
 - `scripts/ui/character_select.gd`
   - 显示角色属性 + 该角色历史战绩
@@ -276,17 +286,27 @@
   - 背包面板：按武器、魔法、道具分栏展示，每项为带边框的 `BackpackSlot`（图标 + 名称，名称按品级着色）
   - `set_stats(stats)`：根据 `weapon_details`、`magic_details`、`item_ids` 构建三区
   - 图标缺失时用 `VisualAssetRegistry.make_color_texture` 生成占位图
-  - 悬浮时显示 `BackpackTooltipPopup`，层级化展示：名称、词条、效果（用 `────` 分隔，无空行）
+  - 悬浮时显示 `BackpackTooltipPopup`，武器/道具用结构化数据（名称、词条 Chip 横向排布、效果），词条可 hover 显示二级详情
+  - 道具 tooltip 仅展示最终效果加成，不展示词条与数值；道具名用 `display_name_key`（如疾风靴、恶魔药剂）
+  - 武器 tooltip 含「合成」按钮（非最高品级且存在同名同品级其他武器时）；点击后进入合并模式，选择素材完成手动合成
   - `hide_tooltip()`：暂停菜单关闭时调用
 
 - `scripts/ui/backpack_tooltip_popup.gd`
   - 背包悬浮面板：PanelContainer 实现，挂到暂停菜单 CanvasLayer 保证同视口、文字可显示
-  - `show_tooltip(text)`：立即显示，紧贴鼠标；同一物体（tip 相同）悬浮移动时不重生成
+  - `show_tooltip(text)`：纯文本模式，用于魔法等无词条项；同一物体悬浮移动时不重生成
+  - `show_structured_tooltip(data)`：结构化模式，名称 + 词条 Chip 横向排布（可 hover 显示描述与数值）+ 效果；武器可含合成按钮
+  - `synthesize_requested(weapon_index)`：合成按钮点击时发出
+  - `schedule_hide()`：槽位/面板 mouse_exited 时调用，延迟 0.5s 隐藏，便于鼠标移入 tooltip
+  - `is_scheduled_to_hide()`：是否正在延迟关闭，用于「同类不重复打开」：关闭期间新槽位不触发显示
   - `hide_tooltip()`：关闭提示
+  - 词条二级面板：chip 离开后延迟 0.5s 隐藏，鼠标在词条/面板上时均不关闭；主 tooltip mouse_exited 时若鼠标在词条面板上则不调度关闭
 
 - `scripts/ui/backpack_slot.gd`
   - 单个背包槽：VBoxContainer（图标 TextureRect + 名称 Label），名称按品级着色
-  - `configure(icon_path, color, tip, tooltip_popup, display_name, name_color)`：图标、名称、悬浮提示
+  - `configure(..., tip_data, weapon_index)`：tip_data 非空时用 `show_structured_tooltip`；weapon_index >= 0 为武器槽
+  - `set_merge_selectable(selectable)`：合并模式下置灰不可选或高亮可选
+  - `slot_clicked(weapon_index)`：合并模式下点击可选武器槽时发出
+  - 同类不重复打开：`_on_mouse_entered` 时若 popup 正在 `is_scheduled_to_hide()` 则不显示
 
 - `scripts/ui/settings_menu.gd`
   - 全屏展示布局（与暂停页类似）：Panel 铺满、OuterMargin 边距、CenterContainer 居中内容
@@ -511,8 +531,8 @@ flowchart TD
 
 ### 5.1b 新增词条
 
-1. 在对应词条库（`item_affix_defs.gd` / `weapon_affix_defs.gd` / `magic_affix_defs.gd`）增加定义：`id`、`visible`、`effect_type`、`base_value`、`name_key`
-2. 道具：在 `shop_item_defs.gd` 的 item 中增加 `affix_ids: ["xxx"]`
+1. 在对应词条库（`item_affix_defs.gd` / `weapon_affix_defs.gd` / `magic_affix_defs.gd`）增加定义：`id`、`visible`、`effect_type`、`base_value`、`name_key`；武器词条需加 `weapon_type`（`melee` | `ranged` | `both`）
+2. 道具：在 `shop_item_defs.gd` 的 item 中增加 `affix_ids: ["xxx"]`；item 的 `base_value` 可覆盖词条默认值
 3. 武器/魔法：在 def 中增加 `affix_ids: []`（可选）
 4. 若 effect_type 为新类型，在 `player._apply_affix_aggregated` 或对应效果应用处补充处理
 
