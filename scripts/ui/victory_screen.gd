@@ -35,19 +35,24 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 	var score_block: Control = ResultPanelShared.build_score_block(wave, kills, time, best_wave, best_time)
 	_content_container.add_child(score_block)
 	# 玩家信息区
-	var hp_current := 0
-	var hp_max := 0
-	var speed := 0.0
-	var inertia := 0.0
-	var weapon_details: Array = []
-	if is_instance_valid(player_node):
-		hp_current = int(player_node.current_health)
-		hp_max = int(player_node.max_health)
-		speed = float(player_node.base_speed)
-		inertia = float(player_node.inertia_factor)
-		if player_node.has_method("get_equipped_weapon_details"):
-			weapon_details = player_node.get_equipped_weapon_details()
-	var player_block: Control = ResultPanelShared.build_player_stats_block(hp_current, hp_max, speed, inertia, weapon_details)
+	var stats: Dictionary = {}
+	if is_instance_valid(player_node) and player_node.has_method("get_full_stats_for_pause"):
+		stats = player_node.get_full_stats_for_pause()
+	else:
+		var hp_current := 0
+		var hp_max := 0
+		var speed := 0.0
+		var inertia := 0.0
+		var weapon_details: Array = []
+		if is_instance_valid(player_node):
+			hp_current = int(player_node.current_health)
+			hp_max = int(player_node.max_health)
+			speed = float(player_node.base_speed)
+			inertia = float(player_node.inertia_factor)
+			if player_node.has_method("get_equipped_weapon_details"):
+				weapon_details = player_node.get_equipped_weapon_details()
+		stats = {"hp_current": hp_current, "hp_max": hp_max, "speed": speed, "inertia": inertia, "weapon_details": weapon_details, "magic_details": [], "item_ids": []}
+	var player_block: Control = ResultPanelShared.build_player_stats_block(stats)
 	_content_container.add_child(player_block)
 	# 返回主菜单按钮
 	_content_container.add_child(_menu_btn)

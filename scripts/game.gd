@@ -494,8 +494,16 @@ func _on_weapon_shop_selected(weapon_id: String) -> void:
 	var item_type := str(picked.get("type", "weapon"))
 	if item_type == "attribute":
 		var attr := str(picked.get("attr", ""))
-		var val = picked.get("base_value")
+		var base_val = picked.get("base_value")
+		var tier_val: int = int(picked.get("tier", 0))
+		var mult: float = TierConfig.get_item_tier_multiplier(tier_val)
+		var val
+		if base_val is float:
+			val = base_val * mult
+		else:
+			val = int(float(base_val) * mult)
 		player.apply_upgrade(attr, val)
+		GameManager.add_run_item(str(picked.get("id", "")))
 	elif item_type == "magic":
 		if not player.equip_magic(weapon_id):
 			GameManager.add_currency(cost)
@@ -535,21 +543,19 @@ func _roll_shop_items(count: int) -> Array[Dictionary]:
 	var wave: int = wave_manager.current_wave
 	var result: Array[Dictionary] = []
 	var weapon_defs := GameManager.get_weapon_defs()
-	var owned: Array[String] = player.get_equipped_weapon_ids()
 	var weapon_candidates: Array[Dictionary] = []
 	for item in weapon_defs:
-		var id := str(item.get("id", ""))
-		if not owned.has(id):
-			var w := item.duplicate(true)
-			w["type"] = "weapon"
-			w["cost"] = ShopItemDefs.get_price(int(item.get("cost", 5)), wave)
-			weapon_candidates.append(w)
+		var w: Dictionary = item.duplicate(true)
+		w["type"] = "weapon"
+		w["cost"] = ShopItemDefs.get_price(int(item.get("cost", 5)), wave)
+		weapon_candidates.append(w)
 	var owned_magics: Array[String] = player.get_equipped_magic_ids()
 	var magic_slots_full: bool = owned_magics.size() >= 3
 	var item_candidates: Array[Dictionary] = []
 	for item in ShopItemDefs.ITEM_POOL:
 		if str(item.get("type", "")) == "magic":
-			if magic_slots_full or str(item.get("id", "")) in owned_magics:
+			var mid := str(item.get("id", ""))
+			if magic_slots_full and not owned_magics.has(mid):
 				continue
 		var it: Dictionary = item.duplicate(true)
 		it["cost"] = ShopItemDefs.get_price(it.get("base_cost", 5), wave)
@@ -571,11 +577,7 @@ func _roll_shop_items(count: int) -> Array[Dictionary]:
 func _equip_weapon_to_player(weapon_id: String, need_capacity: bool) -> bool:
 	if need_capacity and player.get_weapon_capacity_left() <= 0:
 		return false
-	if not GameManager.can_add_run_weapon(weapon_id):
-		return false
-	if not player.equip_weapon_by_id(weapon_id):
-		return false
-	return GameManager.add_run_weapon(weapon_id)
+	return player.equip_weapon_by_id(weapon_id)
 
 
 func _finish_wave_settlement() -> void:

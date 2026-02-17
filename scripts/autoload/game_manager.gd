@@ -66,7 +66,8 @@ var run_experience := 0  # 本局经验值
 var run_level := 1  # 本局等级
 var enemy_healthbar_visible := true  # 敌人血条显隐
 var move_inertia_factor := 0.0  # 玩家移动惯性，0~0.9
-var run_weapons: Array[String] = []  # 本局已装备武器 id 列表，最多 MAX_WEAPONS
+var run_weapons: Array = []  # 本局武器列表，每项为 {id, tier}；2 同品级合成 1 高一品级
+var run_items: Array[String] = []  # 本局已购买道具 id 列表（固化配置，品级固定）
 
 
 func _ready() -> void:
@@ -328,24 +329,76 @@ func get_weapon_def_by_id(weapon_id: String) -> Dictionary:
 
 func reset_run_weapons() -> void:
 	run_weapons.clear()
+	run_items.clear()
 
 
-func get_run_weapons() -> Array[String]:
-	return run_weapons.duplicate()
+func add_run_item(item_id: String) -> void:
+	if not run_items.has(item_id):
+		run_items.append(item_id)
 
 
+func get_run_items() -> Array[String]:
+	return run_items.duplicate()
+
+
+## 返回本局武器列表，每项为 {id, tier}。
+func get_run_weapons() -> Array:
+	var result: Array = []
+	for w in run_weapons:
+		result.append({"id": str(w.get("id", "")), "tier": int(w.get("tier", 0))})
+	return result
+
+
+## 添加武器；若已有同 id 同 tier 的，则 2 合 1 升品级。返回是否成功。
 func add_run_weapon(weapon_id: String) -> bool:
-	if not can_add_run_weapon(weapon_id):
+	if get_weapon_def_by_id(weapon_id).is_empty():
 		return false
-	run_weapons.append(weapon_id)
+	# 查找同 id 同 tier 0 的（新获得武器为 tier 0）
+	var tier_to_merge := 0
+	var first_idx := -1
+	for i in range(run_weapons.size()):
+		var w: Dictionary = run_weapons[i]
+		if str(w.get("id", "")) == weapon_id and int(w.get("tier", 0)) == tier_to_merge:
+			first_idx = i
+			break
+	if first_idx >= 0:
+		# 有同品级，合并：移除 2 个，添加 1 个高一品级，递归检查
+		run_weapons.remove_at(first_idx)
+		var new_tier := tier_to_merge + 1
+		_try_merge_weapon(weapon_id, new_tier)
+		return true
+	# 无同品级可合并，需检查容量
+	if run_weapons.size() >= MAX_WEAPONS:
+		return false
+	run_weapons.append({"id": weapon_id, "tier": 0})
 	return true
+
+
+## 递归：若存在 2 个同 id 同 tier，则合并为 tier+1。
+func _try_merge_weapon(weapon_id: String, tier: int) -> void:
+	var indices: Array[int] = []
+	for i in range(run_weapons.size()):
+		var w: Dictionary = run_weapons[i]
+		if str(w.get("id", "")) == weapon_id and int(w.get("tier", 0)) == tier:
+			indices.append(i)
+	if indices.size() < 2:
+		# 不足 2 个，添加当前这一个
+		run_weapons.append({"id": weapon_id, "tier": tier})
+		return
+	# 移除前 2 个
+	run_weapons.remove_at(indices[1])
+	run_weapons.remove_at(indices[0])
+	_try_merge_weapon(weapon_id, tier + 1)
 
 
 func can_add_run_weapon(weapon_id: String) -> bool:
-	if run_weapons.size() >= MAX_WEAPONS:
-		return false
-	if run_weapons.has(weapon_id):
-		return false
 	if get_weapon_def_by_id(weapon_id).is_empty():
 		return false
-	return true
+	# 若有同 id 同 tier 0 的，合并不占新槽位
+	var count_tier0 := 0
+	for w in run_weapons:
+		if str(w.get("id", "")) == weapon_id and int(w.get("tier", 0)) == 0:
+			count_tier0 += 1
+	if count_tier0 >= 1:
+		return true
+	return run_weapons.size() < MAX_WEAPONS

@@ -27,8 +27,8 @@ func _ready() -> void:
 	_build_hit_area()
 
 
-func configure_from_def(def: Dictionary) -> void:
-	super.configure_from_def(def)
+func configure_from_def(def: Dictionary, weapon_tier: int = 0) -> void:
+	super.configure_from_def(def, weapon_tier)
 	swing_texture_path = str(def.get("swing_texture_path", swing_texture_path))
 	var frame: Variant = def.get("swing_frame_size")
 	if frame is Vector2i:
@@ -36,7 +36,7 @@ func configure_from_def(def: Dictionary) -> void:
 	elif frame is Array and frame.size() >= 2:
 		swing_frame_size = Vector2i(int(frame[0]), int(frame[1]))
 	var stats: Dictionary = def.get("stats", {})
-	touch_interval = float(stats.get("touch_interval", touch_interval))
+	touch_interval = float(stats.get("touch_interval", touch_interval)) * TierConfig.get_cooldown_multiplier(tier)
 	swing_duration = float(stats.get("swing_duration", swing_duration))
 	swing_degrees = float(stats.get("swing_degrees", swing_degrees))
 	swing_reach = float(stats.get("swing_reach", swing_reach))

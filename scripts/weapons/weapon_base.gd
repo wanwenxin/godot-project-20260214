@@ -6,6 +6,7 @@ class_name WeaponBase
 # - 由近战/远程基类继承扩展具体攻击行为
 var weapon_id := ""
 var weapon_type := ""
+var tier := 0  # 品级，影响伤害与冷却
 var cooldown := 0.35
 var damage := 8
 var attack_range := 120.0
@@ -18,23 +19,30 @@ var _slot_base_rotation := 0.0
 var _owner_ref: Node2D  # 持有者（Player），供子类调用 get_final_damage 等
 
 
-# 从武器定义字典初始化 id、type、color、damage、cooldown、range。
-func configure_from_def(def: Dictionary) -> void:
+# 从武器定义字典初始化 id、type、color、damage、cooldown、range；tier 影响伤害与冷却倍率。
+func configure_from_def(def: Dictionary, weapon_tier: int = 0) -> void:
 	weapon_id = str(def.get("id", ""))
 	weapon_type = str(def.get("type", ""))
+	tier = weapon_tier
 	color_hint = def.get("color", color_hint)
 	icon_path = str(def.get("icon_path", ""))
 	var stats: Dictionary = def.get("stats", {})
-	damage = int(stats.get("damage", damage))
-	cooldown = float(stats.get("cooldown", cooldown))
+	var base_damage := int(stats.get("damage", damage))
+	var base_cooldown := float(stats.get("cooldown", cooldown))
+	damage = int(float(base_damage) * TierConfig.get_damage_multiplier(tier))
+	cooldown = base_cooldown * TierConfig.get_cooldown_multiplier(tier)
 	attack_range = float(stats.get("range", attack_range))
 
 
 # 每帧调用：扣减冷却，冷却归零且距离足够时尝试 _start_attack，成功则重置冷却。
+# 实际冷却受 owner 的 attack_speed 影响。
 func tick_and_try_attack(owner_node: Node2D, target: Node2D, delta: float) -> void:
 	_owner_ref = owner_node
 	_tick_attack(owner_node, target, delta)
-	_cooldown_left = maxf(_cooldown_left - delta, 0.0)
+	var speed_factor := 1.0
+	if owner_node.has_method("get_attack_speed"):
+		speed_factor = owner_node.get_attack_speed()
+	_cooldown_left = maxf(_cooldown_left - delta * speed_factor, 0.0)
 	if _cooldown_left > 0.0:
 		return
 	if not is_instance_valid(owner_node) or not is_instance_valid(target):
@@ -42,7 +50,8 @@ func tick_and_try_attack(owner_node: Node2D, target: Node2D, delta: float) -> vo
 	if owner_node.global_position.distance_to(target.global_position) > attack_range:
 		return
 	if _start_attack(owner_node, target):
-		_cooldown_left = cooldown
+		var effective_cooldown: float = cooldown / maxf(0.1, speed_factor)
+		_cooldown_left = effective_cooldown
 
 
 func set_slot_pose(local_position: Vector2, local_rotation: float) -> void:

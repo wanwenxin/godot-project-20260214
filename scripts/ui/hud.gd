@@ -322,7 +322,7 @@ func _build_runtime_ui() -> void:
 	for i in range(4):
 		var card := VBoxContainer.new()
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.custom_minimum_size = Vector2(220, 240)
+		card.custom_minimum_size = Vector2(180, 200)
 		card.add_theme_constant_override("separation", 8)
 		upgrade_row.add_child(card)
 		var icon := TextureRect.new()
@@ -404,7 +404,7 @@ func _build_runtime_ui() -> void:
 	for i in range(4):
 		var weapon_card := VBoxContainer.new()
 		weapon_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		weapon_card.custom_minimum_size = Vector2(280, 280)
+		weapon_card.custom_minimum_size = Vector2(200, 240)
 		weapon_card.add_theme_constant_override("separation", 8)
 		weapon_row.add_child(weapon_card)
 		var weapon_icon := TextureRect.new()
@@ -549,7 +549,7 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 		var can_buy := true
 		if is_shop:
 			if item_type == "weapon":
-				can_buy = current_gold >= cost and capacity_left > 0
+				can_buy = current_gold >= cost and GameManager.can_add_run_weapon(item_id)
 			else:
 				can_buy = current_gold >= cost
 		btn.disabled = not can_buy

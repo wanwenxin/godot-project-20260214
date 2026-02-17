@@ -69,7 +69,7 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/game.gd](scripts/game.gd) | 主游戏控制器、地形生成、升级/商店流程、摄像机缩放 | `victory_wave`、`get_player_for_pause` |
-| [scripts/player.gd](scripts/player.gd) | 玩家移动、索敌、开火、受伤、死亡 | `died`、`health_changed`、`get_equipped_weapon_details` |
+| [scripts/player.gd](scripts/player.gd) | 玩家移动、索敌、开火、受伤、死亡 | `died`、`health_changed`、`get_equipped_weapon_details`、`get_full_stats_for_pause`、`get_attack_speed` |
 | [scripts/bullet.gd](scripts/bullet.gd) | 子弹飞行、命中、穿透、去重 | `hit_player`、`remaining_pierce` |
 | [scripts/enemy_bullet.gd](scripts/enemy_bullet.gd) | 敌人专用子弹，更大更慢 | 继承 bullet |
 | [scripts/pickup.gd](scripts/pickup.gd) | 金币/治疗掉落、拾取、飘动、金币吸收动画 | `pickup_type`、`value`、`absorb_range` |
@@ -120,6 +120,7 @@
 | [scripts/weapons/ranged/weapon_wand_focus.gd](scripts/weapons/ranged/weapon_wand_focus.gd) | 聚焦法杖 | 继承 weapon_ranged_base |
 | [scripts/weapon.gd](scripts/weapon.gd) | 旧版武器基类（部分兼容） | - |
 | [resources/weapon_defs.gd](resources/weapon_defs.gd) | 武器定义池 | `WEAPON_DEFS` |
+| [resources/tier_config.gd](resources/tier_config.gd) | 品级配置 | `get_tier_color`、`get_damage_multiplier`、`get_cooldown_multiplier` |
 
 ### 2.6b 魔法系统
 
@@ -143,7 +144,7 @@
 | [scripts/ui/settings_menu.gd](scripts/ui/settings_menu.gd) | 设置 | `open_menu`、`closed` |
 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | 死亡结算 | `show_result` |
 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 通关结算 | `show_result` |
-| [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | 结算面板共享 UI | `build_score_block`、`build_player_stats_block` |
+| [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | 结算面板共享 UI | `build_score_block`、`build_player_stats_block`（支持完整 stats 字典） |
 
 ### 2.8 资源与工具
 
@@ -201,6 +202,7 @@
 | scripts/ui/result_panel_shared.gd | UI | 结算共享 UI |
 | scripts/pixel_generator.gd | 工具 | 像素图生成 |
 | resources/weapon_defs.gd | 资源 | 武器定义 |
+| resources/tier_config.gd | 资源 | 品级颜色与倍率 |
 | resources/terrain_color_config.gd | 资源 | 地形色块配置脚本 |
 | resources/default_terrain_colors.gd | 资源 | 默认地形配色（flat/seaside/mountain） |
 | resources/terrain_colors.tres | 资源 | 地形色块统一入口 |

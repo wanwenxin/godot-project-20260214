@@ -15,8 +15,8 @@ var spread_degrees := 0.0
 var bullet_pierce := 0
 
 
-func configure_from_def(def: Dictionary) -> void:
-	super.configure_from_def(def)
+func configure_from_def(def: Dictionary, weapon_tier: int = 0) -> void:
+	super.configure_from_def(def, weapon_tier)
 	bullet_type = str(def.get("bullet_type", ""))
 	bullet_texture_path = str(def.get("bullet_texture_path", ""))
 	bullet_collision_radius = float(def.get("bullet_collision_radius", 3.0))

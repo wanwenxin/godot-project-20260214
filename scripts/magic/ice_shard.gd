@@ -8,10 +8,8 @@ func _init() -> void:
 	element = "ice"
 
 
-func configure_from_def(def: Dictionary) -> void:
-	mana_cost = int(def.get("mana_cost", mana_cost))
-	power = int(def.get("power", power))
-	element = str(def.get("element", element))
+func configure_from_def(def: Dictionary, tier: int = 0) -> void:
+	super.configure_from_def(def, tier)
 
 
 func cast(caster: Node2D, target_dir: Vector2) -> bool:

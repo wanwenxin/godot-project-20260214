@@ -32,6 +32,7 @@ var ranged_damage_bonus := 0  # 远程伤害加成
 var health_regen := 0.0  # 血量/秒恢复
 var lifesteal_chance := 0.0  # 吸血概率 0~1，命中时按概率恢复 1 点血
 var mana_regen := 1.0  # 魔力/秒恢复，初始 1
+var attack_speed := 1.0  # 攻击速度系数，1.0=基准，越高武器冷却越短
 var _invulnerable_timer := 0.0
 var _pending_damages: Array[int] = []  # 帧内缓冲，帧末取最大后统一结算
 var _character_data := {}
@@ -200,6 +201,8 @@ func apply_upgrade(upgrade_id: String, value: Variant = null) -> void:
 			lifesteal_chance = clampf(lifesteal_chance + float(v) if v != null else 0.03, 0.0, 1.0)
 		"mana_regen":
 			mana_regen += float(v) if v != null else 0.3
+		"attack_speed":
+			attack_speed += float(v) if v != null else 0.1
 		"fire_rate", "bullet_speed", "multi_shot", "pierce":
 			pass
 	# 将升级传递给每把武器（伤害、射速、穿透等由武器实现）。
@@ -223,13 +226,16 @@ func set_move_inertia(value: float) -> void:
 	inertia_factor = clampf(value, 0.0, 0.9)
 
 
-## 装备魔法，最多 MAX_MAGICS 个；返回是否成功。
+## 装备魔法，最多 MAX_MAGICS 个；若已装备同 id 则升级品级。返回是否成功。
 func equip_magic(magic_id: String) -> bool:
-	if _equipped_magics.size() >= MAX_MAGICS:
-		return false
 	for m in _equipped_magics:
 		if str(m.get("id", "")) == magic_id:
-			return false
+			var tier: int = int(m.get("tier", 0)) + 1
+			m["tier"] = tier
+			_apply_magic_tier_to_instance(m)
+			return true
+	if _equipped_magics.size() >= MAX_MAGICS:
+		return false
 	var def := MagicDefs.get_magic_by_id(magic_id)
 	if def.is_empty():
 		return false
@@ -242,9 +248,20 @@ func equip_magic(magic_id: String) -> bool:
 	var instance = (script_obj as GDScript).new()
 	if not (instance is MagicBase):
 		return false
-	(instance as MagicBase).configure_from_def(def)
-	_equipped_magics.append({"id": magic_id, "def": def, "instance": instance})
+	(instance as MagicBase).configure_from_def(def, 0)
+	_equipped_magics.append({"id": magic_id, "def": def, "instance": instance, "tier": 0})
 	return true
+
+
+## 按品级更新魔法实例的 power、mana_cost。
+func _apply_magic_tier_to_instance(mag: Dictionary) -> void:
+	var inst = mag.get("instance")
+	var tier_val: int = int(mag.get("tier", 0))
+	if inst == null or not (inst is MagicBase):
+		return
+	var def: Dictionary = mag.get("def", {})
+	var mult: float = TierConfig.get_item_tier_multiplier(tier_val)
+	(inst as MagicBase).configure_from_def(def, tier_val)
 
 
 func get_equipped_magic_ids() -> Array[String]:
@@ -279,12 +296,11 @@ func _try_cast_magic(_delta: float) -> void:
 	if slot < 0 or slot >= _equipped_magics.size():
 		return
 	var mag: Dictionary = _equipped_magics[slot]
-	var def: Dictionary = mag.get("def", {})
-	var cost := int(def.get("mana_cost", 0))
-	if current_mana < float(cost):
-		return
 	var instance = mag.get("instance")
 	if instance == null or not (instance is MagicBase):
+		return
+	var cost: int = int((instance as MagicBase).mana_cost)
+	if current_mana < float(cost):
 		return
 	var dir := _get_magic_aim_direction()
 	if (instance as MagicBase).cast(self, dir):
@@ -299,6 +315,11 @@ func get_melee_damage_bonus() -> int:
 ## 供武器调用：获取远程伤害加成。
 func get_ranged_damage_bonus() -> int:
 	return ranged_damage_bonus
+
+
+## 供武器调用：获取攻击速度系数，用于缩短冷却。
+func get_attack_speed() -> float:
+	return maxf(0.1, attack_speed)
 
 
 ## 供武器/子弹调用：攻击命中时按 lifesteal_chance 概率恢复 1 点血。
@@ -385,22 +406,34 @@ func _recompute_terrain_speed() -> void:
 		_terrain_speed_multiplier = minf(_terrain_speed_multiplier, float(_terrain_effects[key]))
 
 
-# 装备指定武器；返回是否成功（槽位满或已装备则失败）。
-func equip_weapon_by_id(weapon_id: String) -> bool:
-	if _equipped_weapons.size() >= GameManager.MAX_WEAPONS:
-		return false
-	if get_equipped_weapon_ids().has(weapon_id):
-		return false
-	var def := GameManager.get_weapon_def_by_id(weapon_id)
-	if def.is_empty():
-		return false
-	var instance := _create_weapon_instance(def)
-	if instance == null:
-		return false
-	instance.configure_from_def(def)
-	weapon_slots.add_child(instance)
-	_equipped_weapons.append(instance)
+# 根据 run_weapons 同步装备；清除旧武器，按 {id, tier} 重新装备。
+func sync_weapons_from_run(run_weapons_list: Array) -> void:
+	for w in _equipped_weapons:
+		if is_instance_valid(w):
+			w.queue_free()
+	_equipped_weapons.clear()
+	for w_dict in run_weapons_list:
+		var wid: String = str(w_dict.get("id", ""))
+		var wtier: int = int(w_dict.get("tier", 0))
+		var def := GameManager.get_weapon_def_by_id(wid)
+		if def.is_empty():
+			continue
+		var instance := _create_weapon_instance(def)
+		if instance == null:
+			continue
+		instance.configure_from_def(def, wtier)
+		weapon_slots.add_child(instance)
+		_equipped_weapons.append(instance)
 	_refresh_weapon_visuals()
+
+
+# 装备指定武器（兼容旧接口，内部转为 sync）；返回是否成功。
+func equip_weapon_by_id(weapon_id: String) -> bool:
+	if not GameManager.can_add_run_weapon(weapon_id):
+		return false
+	if not GameManager.add_run_weapon(weapon_id):
+		return false
+	sync_weapons_from_run(GameManager.get_run_weapons())
 	return true
 
 
@@ -411,15 +444,26 @@ func get_equipped_weapon_ids() -> Array[String]:
 	return ids
 
 
+## 检查是否已拥有某武器（任意品级）。
+func has_weapon_id(weapon_id: String) -> bool:
+	for w in GameManager.get_run_weapons():
+		if str(w.get("id", "")) == weapon_id:
+			return true
+	return false
+
+
 func get_equipped_weapon_details() -> Array[Dictionary]:
-	# 返回每把装备武器的详细数据，供暂停界面等 UI 展示。
+	# 返回每把装备武器的详细数据，供暂停界面等 UI 展示；含 tier 与 tier_color。
 	var result: Array[Dictionary] = []
 	for item in _equipped_weapons:
 		if not is_instance_valid(item):
 			continue
+		var wtier: int = int(item.tier) if "tier" in item else 0
 		var d: Dictionary = {
 			"id": str(item.weapon_id),
 			"type": str(item.weapon_type),
+			"tier": wtier,
+			"tier_color": TierConfig.get_tier_color(wtier),
 			"damage": int(item.damage),
 			"cooldown": float(item.cooldown),
 			"range": float(item.attack_range)
@@ -444,6 +488,37 @@ func get_equipped_weapon_details() -> Array[Dictionary]:
 
 func get_weapon_capacity_left() -> int:
 	return maxi(0, GameManager.MAX_WEAPONS - _equipped_weapons.size())
+
+
+## 供暂停菜单：返回完整属性、武器、道具、魔法详情。
+func get_full_stats_for_pause() -> Dictionary:
+	var weapon_details: Array = get_equipped_weapon_details()
+	var magic_details: Array = []
+	for m in _equipped_magics:
+		var mag: Dictionary = m
+		magic_details.append({
+			"id": str(mag.get("id", "")),
+			"tier": int(mag.get("tier", 0)),
+			"tier_color": TierConfig.get_tier_color(int(mag.get("tier", 0)))
+		})
+	var item_ids: Array[String] = GameManager.get_run_items()
+	return {
+		"hp_current": current_health,
+		"hp_max": max_health,
+		"max_mana": max_mana,
+		"armor": armor,
+		"speed": base_speed,
+		"inertia": inertia_factor,
+		"attack_speed": attack_speed,
+		"melee_bonus": melee_damage_bonus,
+		"ranged_bonus": ranged_damage_bonus,
+		"health_regen": health_regen,
+		"mana_regen": mana_regen,
+		"lifesteal_chance": lifesteal_chance,
+		"weapon_details": weapon_details,
+		"magic_details": magic_details,
+		"item_ids": item_ids
+	}
 
 
 # 刷新武器环布局：清除旧图标，按装备数量均匀分布槽位，更新每把武器的 set_slot_pose。

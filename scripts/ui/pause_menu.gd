@@ -59,13 +59,13 @@ func _on_language_changed(_language_code: String) -> void:
 	_apply_localized_texts()
 
 
-# 清空右侧玩家区并填充 ResultPanelShared 构建的 HP/移速/惯性/武器卡片。
-func set_player_stats_full(hp_current: int, hp_max: int, speed: float, inertia: float, weapon_details: Array) -> void:
+# 清空右侧玩家区并填充 ResultPanelShared 构建的完整属性/武器/道具/魔法。
+func set_player_stats_full(stats: Dictionary) -> void:
 	if _stats_container == null:
 		return
 	for child in _stats_container.get_children():
 		child.queue_free()
-	var block: Control = ResultPanelShared.build_player_stats_block(hp_current, hp_max, speed, inertia, weapon_details)
+	var block: Control = ResultPanelShared.build_player_stats_block(stats)
 	_stats_container.add_child(block)
 
 
@@ -161,10 +161,23 @@ func _refresh_stats_from_game() -> void:
 	var p = game.get_player_for_pause()
 	if p == null or not is_instance_valid(p):
 		return
-	var weapon_details: Array = []
-	if p.has_method("get_equipped_weapon_details"):
-		weapon_details = p.get_equipped_weapon_details()
-	set_player_stats_full(int(p.current_health), int(p.max_health), p.base_speed, p.inertia_factor, weapon_details)
+	var stats: Dictionary = {}
+	if p.has_method("get_full_stats_for_pause"):
+		stats = p.get_full_stats_for_pause()
+	else:
+		var weapon_details: Array = []
+		if p.has_method("get_equipped_weapon_details"):
+			weapon_details = p.get_equipped_weapon_details()
+		stats = {
+			"hp_current": int(p.current_health),
+			"hp_max": int(p.max_health),
+			"speed": p.base_speed,
+			"inertia": p.inertia_factor,
+			"weapon_details": weapon_details,
+			"magic_details": [],
+			"item_ids": []
+		}
+	set_player_stats_full(stats)
 
 
 func _refresh_key_hints() -> void:

@@ -23,25 +23,59 @@ static func build_score_block(wave: int, kills: int, time: float, best_wave: int
 	return vbox
 
 
-static func build_player_stats_block(hp_current: int, hp_max: int, speed: float, inertia: float, weapon_details: Array) -> Control:
+## 构建玩家信息区。stats 为 Dictionary 时用完整格式；否则兼容旧格式 (hp_current, hp_max, speed, inertia, weapon_details)。
+static func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = null, inertia_param = null, weapon_details_param = null) -> Control:
+	var stats: Dictionary
+	if stats_or_hp is Dictionary:
+		stats = stats_or_hp
+	else:
+		stats = {
+			"hp_current": int(stats_or_hp),
+			"hp_max": int(hp_max_param) if hp_max_param != null else 0,
+			"speed": float(speed_param) if speed_param != null else 0.0,
+			"inertia": float(inertia_param) if inertia_param != null else 0.0,
+			"weapon_details": weapon_details_param if weapon_details_param is Array else [],
+			"magic_details": [],
+			"item_ids": []
+		}
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 12)
-	# 玩家基础数据
+	# 玩家属性区
 	var player_section := _make_section_header(LocalizationManager.tr_key("pause.section_player"))
 	vbox.add_child(player_section)
 	var player_grid := GridContainer.new()
 	player_grid.columns = 2
 	player_grid.add_theme_constant_override("h_separation", 12)
 	player_grid.add_theme_constant_override("v_separation", 6)
-	_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_hp"), "%d / %d" % [hp_current, hp_max])
-	_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_speed"), "%.0f" % speed)
-	_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_inertia"), "%.2f" % inertia)
+	var hp_cur: int = int(stats.get("hp_current", 0))
+	var hp_mx: int = int(stats.get("hp_max", 0))
+	_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_hp"), "%d / %d" % [hp_cur, hp_mx])
+	if stats.has("max_mana"):
+		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_mana"), "%d" % int(stats.get("max_mana", 0)))
+	if stats.has("armor"):
+		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_armor"), "%d" % int(stats.get("armor", 0)))
+	_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_speed"), "%.0f" % float(stats.get("speed", 0)))
+	_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_inertia"), "%.2f" % float(stats.get("inertia", 0)))
+	if stats.has("attack_speed"):
+		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_attack_speed"), "%.2f" % float(stats.get("attack_speed", 1.0)))
+	if stats.has("melee_bonus"):
+		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_melee_bonus"), "%d" % int(stats.get("melee_bonus", 0)))
+	if stats.has("ranged_bonus"):
+		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_ranged_bonus"), "%d" % int(stats.get("ranged_bonus", 0)))
+	if stats.has("health_regen") and float(stats.get("health_regen", 0)) > 0:
+		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_health_regen"), "%.2f/s" % float(stats.get("health_regen", 0)))
+	if stats.has("mana_regen"):
+		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_mana_regen"), "%.2f/s" % float(stats.get("mana_regen", 0)))
+	if stats.has("lifesteal_chance") and float(stats.get("lifesteal_chance", 0)) > 0:
+		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_lifesteal"), "%.0f%%" % (float(stats.get("lifesteal_chance", 0)) * 100.0))
 	vbox.add_child(player_grid)
 	# 武器区
+	var weapon_details: Array = stats.get("weapon_details", [])
 	var weapon_section := _make_section_header(LocalizationManager.tr_key("pause.section_weapons"))
 	vbox.add_child(weapon_section)
-	var weapon_row := HBoxContainer.new()
-	weapon_row.add_theme_constant_override("separation", 12)
+	var weapon_row := HFlowContainer.new()
+	weapon_row.add_theme_constant_override("h_separation", 12)
+	weapon_row.add_theme_constant_override("v_separation", 12)
 	if weapon_details.is_empty():
 		var no_w := Label.new()
 		no_w.text = LocalizationManager.tr_key("pause.no_weapons")
@@ -51,7 +85,54 @@ static func build_player_stats_block(hp_current: int, hp_max: int, speed: float,
 		for w in weapon_details:
 			weapon_row.add_child(_make_weapon_card(w))
 	vbox.add_child(weapon_row)
+	# 道具区
+	var item_ids: Array = stats.get("item_ids", [])
+	if item_ids.size() > 0:
+		var item_section := _make_section_header(LocalizationManager.tr_key("pause.section_items"))
+		vbox.add_child(item_section)
+		var item_row := HFlowContainer.new()
+		item_row.add_theme_constant_override("h_separation", 8)
+		item_row.add_theme_constant_override("v_separation", 8)
+		for iid in item_ids:
+			item_row.add_child(_make_item_chip(str(iid)))
+		vbox.add_child(item_row)
+	# 魔法区
+	var magic_details: Array = stats.get("magic_details", [])
+	if magic_details.size() > 0:
+		var magic_section := _make_section_header(LocalizationManager.tr_key("pause.section_magics"))
+		vbox.add_child(magic_section)
+		var magic_row := HFlowContainer.new()
+		magic_row.add_theme_constant_override("h_separation", 8)
+		magic_row.add_theme_constant_override("v_separation", 8)
+		for m in magic_details:
+			magic_row.add_child(_make_magic_chip(m))
+		vbox.add_child(magic_row)
 	return vbox
+
+
+static func _make_item_chip(item_id: String) -> Control:
+	var lbl := Label.new()
+	var name_key := "item.unknown.name"
+	for it in ShopItemDefs.ITEM_POOL:
+		if str(it.get("id", "")) == item_id:
+			name_key = str(it.get("name_key", name_key))
+			break
+	lbl.text = LocalizationManager.tr_key(name_key)
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 1.0))
+	return lbl
+
+
+static func _make_magic_chip(m: Dictionary) -> Control:
+	var lbl := Label.new()
+	var mid := str(m.get("id", ""))
+	var name_key := "magic.%s.name" % mid
+	lbl.text = LocalizationManager.tr_key(name_key)
+	lbl.add_theme_font_size_override("font_size", 12)
+	var tier_color: Color = m.get("tier_color", Color(0.8, 0.85, 0.9, 1.0))
+	if tier_color is Color:
+		lbl.add_theme_color_override("font_color", tier_color)
+	return lbl
 
 
 static func _make_section_header(text: String) -> Label:
@@ -93,7 +174,11 @@ static func _make_weapon_card(w: Dictionary) -> Control:
 	var name_key := "weapon.%s.name" % str(w.get("id", ""))
 	name_lbl.text = LocalizationManager.tr_key(name_key)
 	name_lbl.add_theme_font_size_override("font_size", 14)
-	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.9, 0.7))
+	var tier_color: Color = w.get("tier_color", Color(0.95, 0.9, 0.7))
+	if tier_color is Color:
+		name_lbl.add_theme_color_override("font_color", tier_color)
+	else:
+		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.9, 0.7))
 	inner.add_child(name_lbl)
 	var grid := GridContainer.new()
 	grid.columns = 2

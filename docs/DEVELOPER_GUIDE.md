@@ -25,7 +25,8 @@
   - 场景切换（主菜单/角色选择/战斗）
   - 角色模板数据
   - 本局金币 `run_currency`、经验值 `run_experience`、等级 `run_level`
-  - 本局武器库存 `run_weapons`（最多 6 把）
+  - 本局武器库存 `run_weapons`（每项 `{id, tier}`，最多 6 把，2 同品级合成 1 高一品级）
+  - 本局已购道具 `run_items`（道具 id 列表）
   - 武器定义池 `weapon_defs`（近战/远程）
   - 最近战绩缓存 `last_run_result`
   - 设置应用入口（窗口模式/按键映射/敌人血条显隐）
@@ -169,7 +170,7 @@
 - `scripts/ui/result_panel_shared.gd`（Autoload）
   - 结算/死亡/通关界面共享 UI 构建逻辑
   - `build_score_block(wave, kills, time, best_wave, best_time)`：得分区（波次、击杀、时间、新纪录标记）
-  - `build_player_stats_block(hp_current, hp_max, speed, inertia, weapon_details)`：玩家信息区（HP、移速、惯性、武器卡片）
+  - `build_player_stats_block(stats)`：玩家信息区，stats 为 Dictionary 时展示完整属性/武器/道具/魔法；兼容旧格式 (hp_current, hp_max, speed, inertia, weapon_details)
   - 供 pause_menu、game_over_screen、victory_screen 复用
 
 - `scripts/ui/game_over_screen.gd` + `scenes/ui/game_over_screen.tscn`
@@ -199,6 +200,8 @@
 - 命中反馈：击退（`enemy_base.apply_knockback`）、命中闪烁（颜色与子弹一致）
 - 武器数值集中配置于：`resources/weapon_defs.gd`，远程武器需配置 `bullet_type`
 - 玩家默认最多持有 6 把武器，并在玩家周围显示色块
+- **品级系统**：`run_weapons` 每项为 `{id, tier}`；2 把同 id 同 tier 自动合成 1 把高一品级；品级越高伤害越高、冷却越短；武器名按品级着色（`resources/tier_config.gd`）
+- **攻击速度**：玩家属性 `attack_speed`，系数越高武器冷却越短
 - 流程：
   1. 开局默认装备短刃（blade_short）直接开始波次
   2. 每波结算先升级（4 选 1，免费，可金币刷新），再进入商店（武器+道具+魔法，购买后刷新或点下一波）
@@ -220,12 +223,12 @@
 
 - `scripts/ui/pause_menu.gd`
   - 暂停按钮逻辑
-  - 全屏左右分栏布局：左侧系统信息（标题、按键提示、继续/主菜单），右侧玩家信息（调用 `ResultPanelShared.build_player_stats_block` 构建 HP、移速、惯性、装备武器）
+  - 全屏左右分栏布局：左侧系统信息（标题、按键提示、继续/主菜单），右侧玩家信息（调用 `ResultPanelShared.build_player_stats_block` 构建完整属性）
   - Root 设置为 `MOUSE_FILTER_IGNORE`，避免吞掉 HUD 点击
   - 暂停层新增全屏纯色不透明 backdrop
   - 面板样式强制不透明，保证暂停文本可读
   - 显示当前可操作按键（随改键同步）
-  - 显示玩家当前 HP、移速、惯性及装备武器详情（每把武器的伤害、冷却、范围及近战/远程专属属性）；武器卡片在 HBox 中横向排列
+  - 显示玩家完整属性（HP、魔力、护甲、移速、惯性、攻速、近战/远程加成、恢复、吸血）、装备武器（含品级着色）、已购道具、装备魔法
 
 - `scripts/ui/settings_menu.gd`
   - 全屏展示布局（与暂停页类似）：Panel 铺满、OuterMargin 边距、CenterContainer 居中内容
@@ -386,7 +389,15 @@ flowchart TD
 - 使用单层 TileMapLayer（Godot 4.6）：`_terrain_layer` 先铺满默认地形，再覆盖草/水/障碍
 - `_spawn_walkable_floor` 优先使用 TileMapLayer 像素图，按 `default_terrain_type` 选择 atlas 行；无 TileMapLayer 时回退 Polygon2D
 
-### 4.8 武器配置
+### 4.8 品级配置
+
+- `resources/tier_config.gd`：品级颜色、伤害倍率、冷却倍率、道具/魔法品级倍率
+  - `get_tier_color(tier)`：0=灰白、1=绿、2=蓝、3=紫、4+=金
+  - `get_damage_multiplier(tier)`：1.0 + tier * 0.2
+  - `get_cooldown_multiplier(tier)`：1.0 - tier * 0.1，最小 0.5
+  - `get_item_tier_multiplier(tier)`：1.0 + tier * 0.15
+
+### 4.9 武器配置
 
 - `resources/weapon_defs.gd::WEAPON_DEFS` 字段说明：
   - `id`, `type`, `name_key`, `desc_key`, `cost`, `color`
@@ -396,7 +407,7 @@ flowchart TD
   - `bullet_texture_path`、`bullet_collision_radius`（远程子弹，仅远程）
   - `stats`（示例：`damage`, `cooldown`, `range`, `touch_interval`, `swing_duration`, `swing_degrees`, `swing_reach`, `hitbox_radius`, `bullet_speed`, `pellet_count`, `spread_degrees`, `bullet_pierce`）
 
-### 4.9 多语言配置
+### 4.10 多语言配置
 
 - 语言文件：
   - `i18n/zh-CN.json`
@@ -408,7 +419,7 @@ flowchart TD
 - 运行时刷新：
   - 各 UI 监听 `LocalizationManager.language_changed` 并重绘文本
 
-### 4.10 设置结构（SaveManager）
+### 4.11 设置结构（SaveManager）
 
 `save.json.settings` 当前结构：
 

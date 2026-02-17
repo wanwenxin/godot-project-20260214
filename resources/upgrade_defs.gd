@@ -15,6 +15,7 @@ const UPGRADE_POOL := [
 	{"id": "health_regen", "title_key": "upgrade.health_regen.title", "desc_key": "upgrade.health_regen.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_regen.png", "base_value": 0.5, "level_scale": 0.15},
 	{"id": "lifesteal_chance", "title_key": "upgrade.lifesteal.title", "desc_key": "upgrade.lifesteal.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_lifesteal.png", "base_value": 0.03, "level_scale": 0.01},
 	{"id": "mana_regen", "title_key": "upgrade.mana_regen.title", "desc_key": "upgrade.mana_regen.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_mana_regen.png", "base_value": 0.3, "level_scale": 0.08},
+	{"id": "attack_speed", "title_key": "upgrade.attack_speed.title", "desc_key": "upgrade.attack_speed.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_ranged.png", "base_value": 0.1, "level_scale": 0.02},
 	{"id": "damage", "title_key": "upgrade.damage.title", "desc_key": "upgrade.damage.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_melee.png", "base_value": 2, "level_scale": 0.5},
 	{"id": "fire_rate", "title_key": "upgrade.fire_rate.title", "desc_key": "upgrade.fire_rate.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_ranged.png", "base_value": 1, "level_scale": 0},
 	{"id": "bullet_speed", "title_key": "upgrade.bullet_speed.title", "desc_key": "upgrade.bullet_speed.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_ranged.png", "base_value": 60, "level_scale": 5.0},
@@ -30,6 +31,6 @@ static func get_reward_value(upgrade: Dictionary, level: int) -> Variant:
 	var raw: float = float(base_val) + float(level) * scale_val
 	var id := str(upgrade.get("id", ""))
 	# 浮点类属性
-	if id in ["health_regen", "lifesteal_chance", "mana_regen"]:
+	if id in ["health_regen", "lifesteal_chance", "mana_regen", "attack_speed"]:
 		return raw
 	return int(round(raw))
