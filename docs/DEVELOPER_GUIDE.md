@@ -47,6 +47,11 @@
   - 从 `i18n/*.json` 读取文案 key
   - 提供 `tr_key(key, params)` 与 `language_changed` 信号
 
+- `scripts/autoload/log_manager.gd`
+  - 将调试器面板的报错与警告输出到 `user://logs/game_errors.log`
+  - 捕获 `push_error`、`push_warning`、`printerr`、GDScript 运行时错误
+  - 依赖 Godot 4.5+ 的 `OS.add_logger` / `Logger` 接口
+
 ### 2.2 战斗核心
 
 - `scripts/game.gd`
@@ -429,7 +434,13 @@ flowchart TD
 - 运行时刷新：
   - 各 UI 监听 `LocalizationManager.language_changed` 并重绘文本
 
-### 4.11 设置结构（SaveManager）
+### 4.11 日志与排障
+
+- **内置文件日志**：`project.godot` 中 `[debug]` 启用 `file_logging`，引擎将 `print`、`push_error`、`push_warning` 等输出到 `user://logs/godot.log`
+- **错误专用日志**：`LogManager` autoload 将错误/警告写入 `user://logs/game_errors.log`，便于快速定位问题
+- **日志路径**：通过 Godot 菜单「项目 → 打开项目数据文件夹」可找到 `user://` 对应目录，其下 `logs/` 为日志文件
+
+### 4.12 设置结构（SaveManager）
 
 `save.json.settings` 当前结构：
 
