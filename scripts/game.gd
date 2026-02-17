@@ -446,7 +446,14 @@ func _on_upgrade_selected(upgrade_id: String) -> void:
 		return
 	_upgrade_selected = true
 	var reward_val = target.get("reward_value")
-	player.apply_upgrade(upgrade_id, reward_val)
+	# 武器相关升级：加入 run_weapon_upgrades 并传递给每把武器；玩家相关：加入 run_upgrades 由词条系统聚合。
+	const WEAPON_UPGRADE_IDS := ["fire_rate", "bullet_speed", "multi_shot", "pierce"]
+	if upgrade_id in WEAPON_UPGRADE_IDS:
+		GameManager.add_run_weapon_upgrade(upgrade_id)
+		player.apply_upgrade(upgrade_id, reward_val)
+	else:
+		GameManager.add_run_upgrade(upgrade_id, reward_val)
+		AffixManager.refresh_player(player)
 	hud.hide_upgrade_options()
 	_open_shop_after_upgrade()
 
@@ -524,17 +531,9 @@ func _on_weapon_shop_selected(weapon_id: String) -> void:
 		return
 	var item_type := str(picked.get("type", "weapon"))
 	if item_type == "attribute":
-		var attr := str(picked.get("attr", ""))
-		var base_val = picked.get("base_value")
-		var tier_val: int = int(picked.get("tier", 0))
-		var mult: float = TierConfig.get_item_tier_multiplier(tier_val)
-		var val
-		if base_val is float:
-			val = base_val * mult
-		else:
-			val = int(float(base_val) * mult)
-		player.apply_upgrade(attr, val)
+		# 购买道具：仅加入 run_items，效果由词条系统聚合；刷新后应用。
 		GameManager.add_run_item(str(picked.get("id", "")))
+		AffixManager.refresh_player(player)
 	elif item_type == "magic":
 		if not player.equip_magic(weapon_id):
 			GameManager.add_currency(cost)

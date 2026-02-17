@@ -29,13 +29,16 @@ var current_health := 100
 var current_mana := 50.0  # 当前魔力
 var move_input := Vector2.ZERO
 # 扩展属性：伤害加成、恢复、吸血
-var melee_damage_bonus := 0  # 近战伤害加成
-var ranged_damage_bonus := 0  # 远程伤害加成
-var health_regen := 0.0  # 血量/秒恢复
-var lifesteal_chance := 0.0  # 吸血概率 0~1，命中时按概率恢复 1 点血
-var mana_regen := 1.0  # 魔力/秒恢复，初始 1
-var attack_speed := 1.0  # 攻击速度系数，1.0=基准，越高武器冷却越短
-var spell_speed := 1.0  # 施法速度系数，1.0=基准，越大冷却越快
+var melee_damage_bonus := 0  # 近战伤害加成（由词条系统聚合）
+var ranged_damage_bonus := 0  # 远程伤害加成（由词条系统聚合）
+var health_regen := 0.0  # 血量/秒恢复（由词条系统聚合）
+var lifesteal_chance := 0.0  # 吸血概率 0~1（由词条系统聚合）
+var mana_regen := 1.0  # 魔力/秒恢复，基准 1.0 + 词条
+var attack_speed := 1.0  # 攻击速度系数（由词条系统聚合）
+var spell_speed := 1.0  # 施法速度系数（由词条系统聚合）
+var _base_max_health := 100  # 角色基础血量上限，供词条叠加
+var _base_max_mana := 50  # 角色基础魔力上限，供词条叠加
+var _base_speed := 160.0  # 角色基础移速，供词条叠加
 var _magic_cooldowns: Dictionary = {}  # magic_id -> 剩余冷却秒数
 var _invulnerable_timer := 0.0
 var _pending_damages: Array[int] = []  # 帧内缓冲，帧末取最大后统一结算
@@ -97,11 +100,17 @@ func set_character_data(data: Dictionary) -> void:
 	var base_hp := int(_character_data.get("max_health", 100))
 	var base_spd := float(_character_data.get("speed", 160.0))
 	var base_mana := int(_character_data.get("max_mana", 50))
-	max_health = int(float(base_hp) * _character_traits.get_max_health_multiplier())
-	max_mana = base_mana
-	base_speed = base_spd * _character_traits.get_speed_multiplier()
+	_base_max_health = int(float(base_hp) * _character_traits.get_max_health_multiplier())
+	_base_max_mana = base_mana
+	_base_speed = base_spd * _character_traits.get_speed_multiplier()
+	# 先设基准，再由词条系统刷新（若有 run_items/run_upgrades）
+	max_health = _base_max_health
+	max_mana = _base_max_mana
+	base_speed = _base_speed
 	current_health = max_health
 	current_mana = float(max_mana)
+	if AffixManager:
+		AffixManager.refresh_player(self)
 	_update_sprite(int(_character_data.get("color_scheme", 0)))
 	emit_signal("health_changed", current_health, max_health)
 
@@ -186,40 +195,31 @@ func heal(amount: int) -> void:
 	emit_signal("health_changed", current_health, max_health)
 
 
+## 供 AffixManager 调用：将聚合后的词条效果应用到玩家。
+func _apply_affix_aggregated(agg: Dictionary) -> void:
+	var old_max_hp := max_health
+	max_health = _base_max_health + int(agg.get("max_health", 0))
+	max_mana = _base_max_mana + int(agg.get("max_mana", 0))
+	armor = int(agg.get("armor", 0))
+	base_speed = _base_speed + float(agg.get("speed", 0))
+	melee_damage_bonus = int(agg.get("melee_damage_bonus", 0))
+	ranged_damage_bonus = int(agg.get("ranged_damage_bonus", 0))
+	health_regen = float(agg.get("health_regen", 0))
+	lifesteal_chance = clampf(float(agg.get("lifesteal_chance", 0)), 0.0, 1.0)
+	mana_regen = 1.0 + float(agg.get("mana_regen", 0))  # 基准 1.0
+	attack_speed = 1.0 + float(agg.get("attack_speed", 0))  # 基准 1.0
+	spell_speed = 1.0 + float(agg.get("spell_speed", 0))  # 基准 1.0
+	# 血量上限增加时顺带恢复
+	if max_health > old_max_hp:
+		current_health = mini(current_health + (max_health - old_max_hp), max_health)
+		emit_signal("health_changed", current_health, max_health)
+	current_mana = minf(current_mana, float(max_mana))
+
+
 # 应用升级到玩家与所有装备武器；value 为 UpgradeDefs 计算的奖励值，null 时用默认增量。
-func apply_upgrade(upgrade_id: String, value: Variant = null) -> void:
-	var v = value
-	match upgrade_id:
-		"max_health":
-			var amount: int = int(v) if v != null else 20
-			max_health += amount
-			current_health = mini(current_health + amount, max_health)
-			emit_signal("health_changed", current_health, max_health)
-		"max_mana":
-			var mana_amt: int = int(v) if v != null else 10
-			max_mana += mana_amt
-			current_mana = minf(current_mana + float(mana_amt), float(max_mana))
-		"armor":
-			armor += int(v) if v != null else 2
-		"speed":
-			base_speed += float(v) if v != null else 20.0
-		"melee_damage", "melee_damage_bonus", "damage":
-			melee_damage_bonus += int(v) if v != null else 3
-		"ranged_damage", "ranged_damage_bonus":
-			ranged_damage_bonus += int(v) if v != null else 3
-		"health_regen":
-			health_regen += float(v) if v != null else 0.5
-		"lifesteal_chance":
-			lifesteal_chance = clampf(lifesteal_chance + float(v) if v != null else 0.03, 0.0, 1.0)
-		"mana_regen":
-			mana_regen += float(v) if v != null else 0.3
-		"attack_speed":
-			attack_speed += float(v) if v != null else 0.1
-		"spell_speed":
-			spell_speed += float(v) if v != null else 0.1
-		"fire_rate", "bullet_speed", "multi_shot", "pierce":
-			pass
-	# 将升级传递给每把武器（伤害、射速、穿透等由武器实现）。
+# 注意：玩家相关升级已迁移至词条系统，此处仅处理武器相关升级的传递。
+func apply_upgrade(upgrade_id: String, _value: Variant = null) -> void:
+	# 仅将武器相关升级传递给每把武器；玩家相关升级由词条系统处理。
 	for weapon in _equipped_weapons:
 		if weapon.has_method("apply_upgrade"):
 			weapon.apply_upgrade(upgrade_id)
@@ -478,6 +478,7 @@ func _recompute_terrain_speed() -> void:
 
 
 # 根据 run_weapons 同步装备；清除旧武器，按 {id, tier} 重新装备。
+# 同步后对每把武器应用 run_weapon_upgrades。
 func sync_weapons_from_run(run_weapons_list: Array) -> void:
 	for w in _equipped_weapons:
 		if is_instance_valid(w):
@@ -493,6 +494,9 @@ func sync_weapons_from_run(run_weapons_list: Array) -> void:
 		if instance == null:
 			continue
 		instance.configure_from_def(def, wtier)
+		for u_id in GameManager.get_run_weapon_upgrades():
+			if instance.has_method("apply_upgrade"):
+				instance.apply_upgrade(u_id)
 		weapon_slots.add_child(instance)
 		_equipped_weapons.append(instance)
 	_refresh_weapon_visuals()
@@ -573,6 +577,10 @@ func get_full_stats_for_pause() -> Dictionary:
 			"tier_color": TierConfig.get_tier_color(int(mag.get("tier", 0)))
 		})
 	var item_ids: Array[String] = GameManager.get_run_items()
+	var visible_affixes: Array = []
+	if AffixManager:
+		var affixes := AffixManager.collect_affixes_from_player(self)
+		visible_affixes = AffixManager.get_visible_affixes(affixes)
 	return {
 		"hp_current": current_health,
 		"hp_max": max_health,
@@ -588,7 +596,8 @@ func get_full_stats_for_pause() -> Dictionary:
 		"lifesteal_chance": lifesteal_chance,
 		"weapon_details": weapon_details,
 		"magic_details": magic_details,
-		"item_ids": item_ids
+		"item_ids": item_ids,
+		"visible_affixes": visible_affixes
 	}
 
 

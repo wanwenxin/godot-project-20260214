@@ -1,6 +1,6 @@
 # Developer Guide
 
-本文件面向维护该 Demo 的开发者，覆盖当前版本（含升级系统、地形系统、掉落、Boss、触控与音频）的架构说明与排障建议。按业务流程与功能模块组织的代码索引见 [CODE_INDEX.md](CODE_INDEX.md)。
+本文件面向维护该 Demo 的开发者，覆盖当前版本（含升级系统、地形系统、掉落、Boss、触控与音频）的架构说明与排障建议。按业务流程与功能模块组织的代码索引见 [CODE_INDEX.md](CODE_INDEX.md)。词条完整列表见 [AFFIX_CATALOG.md](AFFIX_CATALOG.md)。
 
 ## 1. 技术栈与项目约定
 
@@ -27,6 +27,8 @@
   - 本局金币 `run_currency`（新游戏/继续默认 500）、经验值 `run_experience`、等级 `run_level`
   - 本局武器库存 `run_weapons`（每项 `{id, tier}`，最多 6 把，2 同品级合成 1 高一品级）
   - 本局已购道具 `run_items`（道具 id 列表）
+  - 本局玩家相关升级 `run_upgrades`（每项 `{id, value}`，供词条系统聚合）
+  - 本局武器相关升级 `run_weapon_upgrades`（升级 id 列表，同步武器时应用）
   - 武器定义池 `weapon_defs`（近战/远程）
   - 最近战绩缓存 `last_run_result`
   - 设置应用入口（窗口模式/按键映射/敌人血条显隐）
@@ -46,6 +48,14 @@
   - 管理当前语言（`zh-CN` / `en-US`）
   - 从 `i18n/*.json` 读取文案 key
   - 提供 `tr_key(key, params)` 与 `language_changed` 信号
+
+- `scripts/autoload/affix_manager.gd`
+  - 词条系统：从 run_items、run_upgrades 收集词条，聚合效果并应用到玩家
+  - `collect_affixes_from_player(player)`：按类型分组收集
+  - `get_aggregated_effects(affixes)`：按 effect_type 聚合
+  - `refresh_player(player)`：收集、聚合、应用
+  - `get_visible_affixes(affixes)`：供 UI 展示可见词条
+  - `check_combos(affixes)`：预留组合效果扩展点
 
 - `scripts/autoload/log_manager.gd`
   - 将调试器面板的报错与警告输出到 `user://logs/game_errors.log`
@@ -69,9 +79,9 @@
   - 支持可配置移动惯性（`inertia_factor`）
   - 自动索敌与开火
   - 无敌帧/受伤/死亡
-  - 扩展属性：血量上限、魔力上限、护甲、近战/远程伤害加成、血量/魔力恢复、吸血概率
+  - 扩展属性：血量上限、魔力上限、护甲、近战/远程伤害加成、血量/魔力恢复、吸血概率（由词条系统聚合）
   - 魔法槽（最多 3 个），按 Q/E/R 释放
-  - 升级应用（伤害、射速、穿透、多弹等）
+  - 升级应用：玩家相关升级走词条系统，武器相关升级传递至每把武器
   - 地形减速效果合并
   - 持有 `CharacterTraitsBase`，通过 `get_final_damage`、`get_elemental_enchantment` 供武器参与数值计算
 
@@ -213,7 +223,17 @@
 - 远程子弹从武器节点位置发射，不再固定从玩家中心出生
 - 子弹按 `bullet_type` 区分：pistol（手枪 4x4）、shotgun（霰弹 6x6）、rifle（机枪 8x2）、laser（法杖 12x2），颜色取自武器 `color`
 - 分类型射击音效：`AudioManager.play_shoot_by_type(type)` 对应不同音高与时长
-- 命中反馈：击退（`enemy_base.apply_knockback`）、命中闪烁（颜色与子弹一致）
+  - 命中反馈：击退（`enemy_base.apply_knockback`）、命中闪烁（颜色与子弹一致）
+
+### 2.7 词条系统
+
+- 词条附着于武器、魔法、道具，用于限定范围、批量应用效果，使效果与具体物体解耦
+- 类层次：`AffixBase`（基类）→ `WeaponAffix`、`MagicAffix`、`ItemAffix`（三子类）
+- 词条库：`resources/item_affix_defs.gd`、`weapon_affix_defs.gd`、`magic_affix_defs.gd`，互不干涉
+- 物体定义可带 `affix_ids: []`，运行时（商店购买、升级选择）可追加
+- 词条分可见/不可见，可见词条在暂停菜单、结算面板展示
+- 效果应用流程：`AffixManager.collect_affixes_from_player` → `get_aggregated_effects` → `_apply_affix_aggregated` 写入玩家
+- 组合效果扩展：`resources/affix_combo_defs.gd` 配置，`AffixManager.check_combos` 检测
 - 武器数值集中配置于：`resources/weapon_defs.gd`，远程武器需配置 `bullet_type`
 - 玩家默认最多持有 6 把武器，并在玩家周围显示色块
 - **品级系统**：`run_weapons` 每项为 `{id, tier}`；2 把同 id 同 tier 自动合成 1 把高一品级；品级越高伤害越高、冷却越短；武器名按品级着色（`resources/tier_config.gd`）
@@ -464,9 +484,17 @@ flowchart TD
 
 ### 5.1 新增升级项
 
-1. 在 `game.gd::_upgrade_pool` 增加条目
-2. 在 `player.gd::apply_upgrade()` 实现对应分支
-3. 若需要新 UI 文案，可直接改 `hud.gd::show_upgrade_options()`
+1. 在 `resources/upgrade_defs.gd` 的 `UPGRADE_POOL` 增加条目
+2. 玩家相关升级：由词条系统聚合，无需改 `player.gd`；若需新 effect_type，在 `item_affix_defs.gd` 与 `affix_manager._UPGRADE_TO_EFFECT` 中补充
+3. 武器相关升级：在 `game.gd::WEAPON_UPGRADE_IDS` 中加入 id，在武器 `apply_upgrade` 中实现
+4. 若需要新 UI 文案，在 `i18n/*.json` 与 `hud.gd` 中补充
+
+### 5.1b 新增词条
+
+1. 在对应词条库（`item_affix_defs.gd` / `weapon_affix_defs.gd` / `magic_affix_defs.gd`）增加定义：`id`、`visible`、`effect_type`、`base_value`、`name_key`
+2. 道具：在 `shop_item_defs.gd` 的 item 中增加 `affix_ids: ["xxx"]`
+3. 武器/魔法：在 def 中增加 `affix_ids: []`（可选）
+4. 若 effect_type 为新类型，在 `player._apply_affix_aggregated` 或对应效果应用处补充处理
 
 ### 5.2 新增敌人
 

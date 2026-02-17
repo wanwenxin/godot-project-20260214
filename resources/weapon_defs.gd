@@ -1,6 +1,7 @@
 # 武器统一配置：
 # - 集中维护所有武器数值与脚本映射
 # - 便于统一平衡与扩展新武器
+# - 可选 affix_ids: [] 用于武器词条，运行时也可追加
 extends RefCounted
 class_name WeaponDefs
 

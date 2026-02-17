@@ -58,6 +58,7 @@
 
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
+| [scripts/autoload/affix_manager.gd](scripts/autoload/affix_manager.gd) | 词条收集、聚合、效果应用 | `collect_affixes_from_player`、`refresh_player`、`get_visible_affixes` |
 | [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | 场景切换、角色/武器配置、本局金币与武器库存 | `change_scene`、`get_character_data`、`run_currency` |
 | [scripts/autoload/save_manager.gd](scripts/autoload/save_manager.gd) | 存档读写、设置持久化、统计聚合 | `load_game`、`set_settings`、`has_save` |
 | [scripts/autoload/audio_manager.gd](scripts/autoload/audio_manager.gd) | 合成音效与 BGM | `play_shoot_by_type`、`play_menu_bgm`、`play_game_bgm` |
@@ -139,6 +140,19 @@
 | [resources/upgrade_defs.gd](resources/upgrade_defs.gd) | 升级配置（含 spell_speed） |
 | [resources/shop_item_defs.gd](resources/shop_item_defs.gd) | 商店道具配置 |
 
+### 2.6c 词条系统
+
+| 文件 | 职责 | 关键导出/信号 |
+|------|------|---------------|
+| [scripts/affix/affix_base.gd](scripts/affix/affix_base.gd) | 词条基类 | `id`、`visible`、`params`、`get_display_name` |
+| [scripts/affix/weapon_affix.gd](scripts/affix/weapon_affix.gd) | 武器词条 | 继承 AffixBase |
+| [scripts/affix/magic_affix.gd](scripts/affix/magic_affix.gd) | 魔法词条 | 继承 AffixBase |
+| [scripts/affix/item_affix.gd](scripts/affix/item_affix.gd) | 道具词条 | 继承 AffixBase |
+| [resources/item_affix_defs.gd](resources/item_affix_defs.gd) | 道具词条库 | `ITEM_AFFIX_POOL` |
+| [resources/weapon_affix_defs.gd](resources/weapon_affix_defs.gd) | 武器词条库 | `WEAPON_AFFIX_POOL` |
+| [resources/magic_affix_defs.gd](resources/magic_affix_defs.gd) | 魔法词条库 | `MAGIC_AFFIX_POOL` |
+| [resources/affix_combo_defs.gd](resources/affix_combo_defs.gd) | 词条组合效果配置 | `COMBO_POOL` |
+
 ### 2.7 UI 层
 
 | 文件 | 职责 | 关键导出/信号 |
@@ -170,6 +184,7 @@
 
 | 文件路径 | 模块 | 职责摘要 |
 |----------|------|----------|
+| scripts/autoload/affix_manager.gd | 全局管理 | 词条收集、聚合、效果应用 |
 | scripts/autoload/game_manager.gd | 全局管理 | 场景切换、角色/武器配置、本局状态 |
 | scripts/autoload/save_manager.gd | 全局管理 | 存档读写、设置持久化 |
 | scripts/autoload/audio_manager.gd | 全局管理 | 音效与 BGM |
@@ -221,3 +236,11 @@
 | resources/texture_path_config.gd | 资源 | 纹理路径配置脚本 |
 | resources/texture_paths.tres | 资源 | 人物/敌人/武器纹理统一入口 |
 | resources/character_data.gd | 资源 | 角色数据 |
+| scripts/affix/affix_base.gd | 词条 | 词条基类 |
+| scripts/affix/weapon_affix.gd | 词条 | 武器词条 |
+| scripts/affix/magic_affix.gd | 词条 | 魔法词条 |
+| scripts/affix/item_affix.gd | 词条 | 道具词条 |
+| resources/item_affix_defs.gd | 资源 | 道具词条库 |
+| resources/weapon_affix_defs.gd | 资源 | 武器词条库 |
+| resources/magic_affix_defs.gd | 资源 | 魔法词条库 |
+| resources/affix_combo_defs.gd | 资源 | 词条组合效果配置 |

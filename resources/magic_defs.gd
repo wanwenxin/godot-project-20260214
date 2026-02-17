@@ -2,6 +2,7 @@ extends RefCounted
 class_name MagicDefs
 
 # 魔法定义：魔力消耗、威力、元素、图标、脚本
+# 可选 affix_ids: [] 用于魔法词条，运行时也可追加
 # cast_mode: "projectile" 弹道型 | "area" 区域型
 # effect_type: "shockwave" 一次性伤害 | "burn" 持续伤害（仅 area）
 # cooldown: 冷却时间（秒），施法速度会缩短

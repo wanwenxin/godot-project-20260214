@@ -118,6 +118,18 @@ func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = nu
 		for iid in item_ids:
 			item_row.add_child(_make_item_chip(str(iid)))
 		vbox.add_child(item_row)
+	# 可见词条区
+	var visible_affixes: Array = stats.get("visible_affixes", [])
+	if visible_affixes.size() > 0:
+		var affix_section := _make_section_header(LocalizationManager.tr_key("pause.section_affixes"))
+		vbox.add_child(affix_section)
+		var affix_row := HFlowContainer.new()
+		affix_row.add_theme_constant_override("h_separation", 8)
+		affix_row.add_theme_constant_override("v_separation", 8)
+		for affix in visible_affixes:
+			if affix is AffixBase:
+				affix_row.add_child(_make_affix_chip(affix as AffixBase))
+		vbox.add_child(affix_row)
 	# 魔法区
 	var magic_details: Array = stats.get("magic_details", [])
 	if magic_details.size() > 0:
@@ -142,6 +154,14 @@ static func _make_item_chip(item_id: String) -> Control:
 	lbl.text = LocalizationManager.tr_key(name_key)
 	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 1.0))
+	return lbl
+
+
+static func _make_affix_chip(affix: AffixBase) -> Control:
+	var lbl := Label.new()
+	lbl.text = affix.get_display_name()
+	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	lbl.add_theme_color_override("font_color", Color(0.75, 0.9, 0.85, 1.0))
 	return lbl
 
 

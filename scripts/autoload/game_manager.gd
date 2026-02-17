@@ -70,6 +70,8 @@ var enemy_healthbar_visible := true  # 敌人血条显隐
 var move_inertia_factor := 0.0  # 玩家移动惯性，0~0.9
 var run_weapons: Array = []  # 本局武器列表，每项为 {id, tier}；2 同品级合成 1 高一品级
 var run_items: Array[String] = []  # 本局已购买道具 id 列表（固化配置，品级固定）
+var run_upgrades: Array = []  # 本局玩家相关升级，每项为 {id, value}，供词条系统聚合
+var run_weapon_upgrades: Array[String] = []  # 本局武器相关升级 id 列表，同步武器时应用
 
 
 func _ready() -> void:
@@ -411,6 +413,8 @@ func get_weapon_def_by_id(weapon_id: String) -> Dictionary:
 func reset_run_weapons() -> void:
 	run_weapons.clear()
 	run_items.clear()
+	run_upgrades.clear()
+	run_weapon_upgrades.clear()
 
 
 func add_run_item(item_id: String) -> void:
@@ -420,6 +424,23 @@ func add_run_item(item_id: String) -> void:
 
 func get_run_items() -> Array[String]:
 	return run_items.duplicate()
+
+
+func add_run_upgrade(upgrade_id: String, value: Variant) -> void:
+	run_upgrades.append({"id": upgrade_id, "value": value})
+
+
+func get_run_upgrades() -> Array:
+	return run_upgrades.duplicate()
+
+
+func add_run_weapon_upgrade(upgrade_id: String) -> void:
+	if not run_weapon_upgrades.has(upgrade_id):
+		run_weapon_upgrades.append(upgrade_id)
+
+
+func get_run_weapon_upgrades() -> Array[String]:
+	return run_weapon_upgrades.duplicate()
 
 
 ## 返回本局武器列表，每项为 {id, tier}。
