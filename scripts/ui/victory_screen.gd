@@ -5,7 +5,9 @@ extends CanvasLayer
 
 var _backdrop: ColorRect
 var _panel: Panel
-var _content_container: VBoxContainer
+var _tab_container: TabContainer
+var _score_tab_container: VBoxContainer
+var _stats_tab_container: Control
 var _menu_btn: Button
 
 
@@ -19,22 +21,24 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 	# 清空旧内容并重建（保留 _menu_btn 引用，不销毁）
 	if _menu_btn.get_parent():
 		_menu_btn.get_parent().remove_child(_menu_btn)
-	for child in _content_container.get_children():
+	for child in _score_tab_container.get_children():
+		child.queue_free()
+	for child in _stats_tab_container.get_children():
 		child.queue_free()
 	var save_data := SaveManager.load_game()
 	var best_wave := int(save_data.get("best_wave", 0))
 	var best_time := float(save_data.get("best_survival_time", 0.0))
-	# 标题
+	# 得分 Tab：标题 + 得分区 + 返回主菜单
 	var title := Label.new()
 	title.text = LocalizationManager.tr_key("result.title_victory")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
-	_content_container.add_child(title)
-	# 得分区
+	_score_tab_container.add_child(title)
 	var score_block: Control = ResultPanelShared.build_score_block(wave, kills, time, best_wave, best_time)
-	_content_container.add_child(score_block)
-	# 玩家信息区
+	_score_tab_container.add_child(score_block)
+	_score_tab_container.add_child(_menu_btn)
+	# 角色信息 Tab
 	var stats: Dictionary = {}
 	if is_instance_valid(player_node) and player_node.has_method("get_full_stats_for_pause"):
 		stats = player_node.get_full_stats_for_pause()
@@ -53,9 +57,7 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 				weapon_details = player_node.get_equipped_weapon_details()
 		stats = {"hp_current": hp_current, "hp_max": hp_max, "speed": speed, "inertia": inertia, "weapon_details": weapon_details, "magic_details": [], "item_ids": []}
 	var player_block: Control = ResultPanelShared.build_player_stats_block(stats)
-	_content_container.add_child(player_block)
-	# 返回主菜单按钮
-	_content_container.add_child(_menu_btn)
+	_stats_tab_container.add_child(player_block)
 	visible = true
 
 
@@ -91,15 +93,30 @@ func _build_ui() -> void:
 	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_bottom", 24)
 	_panel.add_child(margin)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	margin.add_child(scroll)
-	_content_container = VBoxContainer.new()
-	_content_container.add_theme_constant_override("separation", 16)
-	_content_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	_content_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_content_container)
+	_tab_container = TabContainer.new()
+	_tab_container.tabs_position = TabContainer.TabPosition.POSITION_BOTTOM
+	margin.add_child(_tab_container)
+	# Tab 0：得分
+	var score_tab := ScrollContainer.new()
+	score_tab.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	score_tab.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_score_tab_container = VBoxContainer.new()
+	_score_tab_container.add_theme_constant_override("separation", 16)
+	_score_tab_container.alignment = BoxContainer.ALIGNMENT_CENTER
+	_score_tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	score_tab.add_child(_score_tab_container)
+	_tab_container.add_child(score_tab)
+	_tab_container.set_tab_title(0, LocalizationManager.tr_key("result.tab_score"))
+	# Tab 1：角色信息
+	var stats_scroll := ScrollContainer.new()
+	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_stats_tab_container = VBoxContainer.new()
+	_stats_tab_container.add_theme_constant_override("separation", 12)
+	_stats_tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_scroll.add_child(_stats_tab_container)
+	_tab_container.add_child(stats_scroll)
+	_tab_container.set_tab_title(1, LocalizationManager.tr_key("result.tab_stats"))
 	_menu_btn = Button.new()
 	_menu_btn.name = "MenuButton"
 	_menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
@@ -120,3 +137,6 @@ func _on_menu_pressed() -> void:
 func _on_language_changed(_code: String) -> void:
 	if _menu_btn:
 		_menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
+	if _tab_container:
+		_tab_container.set_tab_title(0, LocalizationManager.tr_key("result.tab_score"))
+		_tab_container.set_tab_title(1, LocalizationManager.tr_key("result.tab_stats"))

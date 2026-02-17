@@ -18,6 +18,41 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-17：hud.gd get_viewport_rect 未找到
+
+- **现象**：`res://scripts/ui/hud.gd` 第 699 行报错 `Function "get_viewport_rect()" not found in base self`
+- **原因**：HUD 继承 `CanvasLayer`（继承 `Node`），`get_viewport_rect()` 为 `Viewport`/`Control` 方法，Node 无此方法
+- **修复**：改为 `get_viewport().get_visible_rect().size` 获取视口尺寸
+- **预防**：在非 Control 节点中获取视口尺寸时，使用 `get_viewport().get_visible_rect().size`
+
+### 2026-02-17：商店背包 Tab 空白
+
+- **现象**：商店内背包 Tab 仅有一个「打开背包」按钮，点击后打开覆盖层；用户反馈「背包页里什么都没有」
+- **原因**：背包 Tab 仅有一个按钮，未在 Tab 内直接展示背包内容；用户期望在 Tab 内直接看到背包
+- **修复**：背包 Tab 内嵌 `BackpackPanel`（与暂停菜单相同），替代单一按钮；`ScrollContainer` + `BackpackPanel`，`show_weapon_shop` 时调用 `_shop_backpack_panel.set_stats(stats, true)` 刷新；背包 Tab 内直接展示武器/魔法/道具，售卖/合并按钮仅在 shop_context 时显示
+- **预防**：商店与暂停菜单的背包展示需用 shop_context 区分；BackpackPanel 需在加入场景树后调用 set_stats
+
+### 2026-02-17：武器合并索引不匹配、无法合并
+
+- **现象**：商店背包内点击合成后选择素材，合并不生效
+- **原因**：`get_equipped_weapon_details()` 在 `sync_weapons_from_run` 跳过无效武器时 `continue`，返回的 weapon_details 长度小于 run_weapons，索引不对应；`merge_run_weapons(base_index, material_index)` 期望 run_weapons 索引
+- **修复**：(1) `sync_weapons_from_run` 失败项 append null，保证 _equipped_weapons 与 run_weapons 索引 1:1；(2) `get_equipped_weapon_details` 按 run_list 遍历，有效则取详情，null 则用 run 数据构建占位 dict；(3) 迭代 _equipped_weapons 处增加 null 判断
+- **预防**：合并等依赖索引的 UI 操作，需保证数据源与 run_weapons 索引一致
+
+### 2026-02-17：商店背包覆盖层 set_stats 时 get_tree 为 null
+
+- **现象**：商店内点击「背包」后报错 `Parameter "data.tree" is null`、`Invalid access to property or key 'root' on a base object of type 'null instance'`，backtrace 指向 backpack_panel.set_stats
+- **原因**：`_show_backpack_from_shop` 在 overlay 加入场景树之前就调用了 `backpack_panel.set_stats`，此时节点尚未入树，`get_tree()` 与 `_find_canvas_layer()` 均不可用
+- **修复**：将 `hud.add_child(overlay)` 提前到 `set_stats` 之前执行，确保覆盖层已入树再调用 set_stats
+- **预防**：对尚未入树的节点调用依赖 `get_tree()` 或父链遍历的方法前，需先将其加入场景树
+
+### 2026-02-17：新游戏商店优先与背包售卖
+
+- **现象**：新游戏默认装备短刀并直接开始波次 1；商店内无法打开背包；背包无法售卖武器；暂停菜单中不应显示售卖/合并按钮
+- **原因**：game.gd 在 _ready 中直接装备武器并 setup 波次；商店面板无背包入口；BackpackPanel 无 shop_context 区分
+- **修复**：(1) 移除默认武器，_ready 末尾调用 _open_start_shop 显示开局商店（波次 0），首次关闭商店时再 wave_manager.setup；(2) HUD 武器商店增加「背包」按钮，发出 backpack_requested；(3) Game 新增 show_backpack_from_shop，创建背包覆盖层并 set_stats(stats, true)；(4) BackpackPanel.set_stats 增加 shop_context，仅 shop_context=true 时显示售卖/合并；(5) BackpackTooltipPopup 增加售卖按钮与 sell_requested 信号；(6) GameManager 新增 remove_run_weapon；(7) i18n 新增 backpack.sell、backpack.open
+- **预防**：商店与暂停菜单的背包展示需用 shop_context 区分；售卖价格 = base_cost * (1+wave*0.15) * 0.3
+
 ### 2026-02-17：词条独立面板、图鉴武器词条细分
 
 - **现象**：词条悬浮面板为主 tooltip 子节点，非独立；词条仅显示名称；图鉴词条缺武器-类型、武器-主题子标签

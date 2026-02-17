@@ -6,6 +6,7 @@ class_name BackpackTooltipPopup
 # 武器 tooltip 可含「合成」按钮，点击后发出 synthesize_requested 信号。
 
 signal synthesize_requested(weapon_index: int)
+signal sell_requested(weapon_index: int)
 const TOOLTIP_FONT_SIZE := 17
 const TOOLTIP_WIDTH := 340  # 主 tooltip 固定宽度
 const TOOLTIP_MAX_HEIGHT := 280  # 主 tooltip 最大高度
@@ -198,14 +199,19 @@ func _build_structured_content(data: Dictionary) -> void:
 		eff_lbl.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
 		eff_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 		vbox.add_child(eff_lbl)
+	# 售卖按钮（仅 show_sell 时，位于合成按钮上方）
+	var weapon_idx: int = int(data.get("weapon_index", -1))
+	if bool(data.get("show_sell", false)) and weapon_idx >= 0:
+		var sell_btn := Button.new()
+		sell_btn.text = LocalizationManager.tr_key("backpack.sell")
+		sell_btn.pressed.connect(_on_sell_pressed.bind(weapon_idx))
+		vbox.add_child(sell_btn)
 	# 合成按钮（仅武器且 show_synthesize 为 true 时）
-	if bool(data.get("show_synthesize", false)):
-		var weapon_idx: int = int(data.get("weapon_index", -1))
-		if weapon_idx >= 0:
-			var synth_btn := Button.new()
-			synth_btn.text = LocalizationManager.tr_key("backpack.synthesize")
-			synth_btn.pressed.connect(_on_synthesize_pressed.bind(weapon_idx))
-			vbox.add_child(synth_btn)
+	if bool(data.get("show_synthesize", false)) and weapon_idx >= 0:
+		var synth_btn := Button.new()
+		synth_btn.text = LocalizationManager.tr_key("backpack.synthesize")
+		synth_btn.pressed.connect(_on_synthesize_pressed.bind(weapon_idx))
+		vbox.add_child(synth_btn)
 	_content = vbox
 	_scroll.add_child(_content)
 
@@ -313,6 +319,10 @@ func _hide_tooltip_affix() -> void:
 
 func _on_synthesize_pressed(weapon_index: int) -> void:
 	synthesize_requested.emit(weapon_index)
+
+
+func _on_sell_pressed(weapon_index: int) -> void:
+	sell_requested.emit(weapon_index)
 
 
 func _on_self_mouse_entered() -> void:

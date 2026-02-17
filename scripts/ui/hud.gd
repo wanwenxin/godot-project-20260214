@@ -10,6 +10,9 @@ signal start_weapon_selected(weapon_id: String)
 signal weapon_shop_selected(weapon_id: String)
 signal weapon_shop_refresh_requested  # 商店刷新
 signal weapon_shop_closed  # 下一波，关闭商店
+signal backpack_requested  # 商店内请求打开背包（可选全屏入口）
+signal backpack_sell_requested(weapon_index: int)  # 商店背包 Tab 内售卖武器
+signal backpack_merge_completed  # 商店背包 Tab 内合并完成，需刷新
 signal mobile_move_changed(direction: Vector2)
 signal pause_pressed
 
@@ -40,8 +43,11 @@ var _weapon_title_label: Label
 var _weapon_tip_label: Label
 var _weapon_buttons: Array[Button] = []
 var _weapon_icons: Array[TextureRect] = []
-var _shop_refresh_btn: Button
+var _shop_refresh_btn: Button  # 商店 Tab 内刷新按钮
+var _shop_backpack_panel: VBoxContainer  # 背包 Tab 内嵌 BackpackPanel
 var _shop_next_btn: Button
+var _shop_tab_container: TabContainer  # 商店/背包/角色信息 Tab
+var _shop_stats_container: Control  # 角色信息 Tab 内容容器，用于刷新
 var _modal_backdrop: ColorRect  # 全屏遮罩，升级/商店时显示
 var _weapon_mode := ""  # "start" 或 "shop"，区分开局选择与波次商店
 var _touch_panel: Control  # 触控按钮容器
@@ -406,15 +412,20 @@ func show_start_weapon_pick(options: Array[Dictionary]) -> void:
 	_show_modal_backdrop(true)
 	_weapon_panel.visible = true
 	_weapon_title_label.text = LocalizationManager.tr_key("weapon.pick_start_title")
-	_weapon_tip_label.text = LocalizationManager.tr_key("weapon.pick_start_tip")
+	_weapon_tip_label.text = "  " + LocalizationManager.tr_key("weapon.pick_start_tip")  # 首行缩进 2 格
 	_fill_weapon_buttons(options, false, 0, 0)
+	if _shop_tab_container:
+		_shop_tab_container.set_tab_hidden(1, true)
+		_shop_tab_container.set_tab_hidden(2, true)
 	if _shop_refresh_btn:
 		_shop_refresh_btn.visible = false
 	if _shop_next_btn:
 		_shop_next_btn.visible = false
+	if _shop_tab_container:
+		_shop_tab_container.current_tab = 0
 
 
-func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_left: int, completed_wave: int = 0) -> void:
+func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_left: int, completed_wave: int = 0, stats: Dictionary = {}) -> void:
 	_weapon_mode = "shop"
 	_show_modal_backdrop(true)
 	_weapon_panel.visible = true
@@ -422,12 +433,22 @@ func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_le
 		_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title_wave", {"wave": completed_wave})
 	else:
 		_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title")
-	_weapon_tip_label.text = LocalizationManager.tr_key("weapon.shop_tip", {"gold": current_gold, "capacity": capacity_left})
+	_weapon_tip_label.text = "  " + LocalizationManager.tr_key("weapon.shop_tip", {"gold": current_gold, "capacity": capacity_left})  # 首行缩进 2 格
 	_fill_weapon_buttons(options, true, current_gold, capacity_left)
+	if _shop_tab_container:
+		_shop_tab_container.set_tab_hidden(1, false)
+		_shop_tab_container.set_tab_hidden(2, false)
 	if _shop_refresh_btn:
 		_shop_refresh_btn.visible = true
+		_update_shop_refresh_btn(completed_wave)
 	if _shop_next_btn:
 		_shop_next_btn.visible = true
+		_shop_next_btn.text = LocalizationManager.tr_key("weapon.shop_next_wave")
+	if _shop_backpack_panel and _shop_backpack_panel.has_method("set_stats"):
+		_shop_backpack_panel.set_stats(stats, true)
+	_update_shop_stats_tab(stats)
+	if _shop_tab_container:
+		_shop_tab_container.current_tab = 0
 
 
 func hide_weapon_panel() -> void:
@@ -436,12 +457,49 @@ func hide_weapon_panel() -> void:
 	_show_modal_backdrop(false)
 
 
+## 更新商店 Tab 内刷新按钮的文案与可用状态。
+func _update_shop_refresh_btn(wave: int) -> void:
+	if not _shop_refresh_btn:
+		return
+	var cost: int = GameManager.get_shop_refresh_cost(wave)
+	var can_afford: bool = GameManager.run_currency >= cost
+	_shop_refresh_btn.text = LocalizationManager.tr_key("shop.refresh_cost", {"cost": cost})
+	_shop_refresh_btn.disabled = not can_afford
+
+
+## 商店背包 Tab 内售卖/合并后刷新。由 game 在完成售卖或合并后调用。
+func refresh_shop_backpack(stats: Dictionary) -> void:
+	if _shop_backpack_panel and _shop_backpack_panel.has_method("set_stats"):
+		_shop_backpack_panel.set_stats(stats, true)
+	_update_shop_stats_tab(stats)
+
+
+func _on_shop_backpack_sell_requested(weapon_index: int) -> void:
+	emit_signal("backpack_sell_requested", weapon_index)
+
+
+func _on_shop_backpack_merge_completed() -> void:
+	emit_signal("backpack_merge_completed")
+
+
+## 更新角色信息 Tab 内容。
+func _update_shop_stats_tab(stats: Dictionary) -> void:
+	if not _shop_stats_container:
+		return
+	for c in _shop_stats_container.get_children():
+		c.queue_free()
+	var block: Control = ResultPanelShared.build_player_stats_block(stats, null, null, null, null, true)
+	_shop_stats_container.add_child(block)
+
+
 # 运行时构建：金币、间隔/波次倒计时、波次横幅、升级面板、武器面板、全屏遮罩。
 func _build_runtime_ui() -> void:
 	var root := $Root
 	_modal_backdrop = ColorRect.new()
 	_modal_backdrop.anchors_preset = Control.PRESET_FULL_RECT
-	_modal_backdrop.color = _get_ui_theme().modal_backdrop
+	var backdrop_color: Color = _get_ui_theme().modal_backdrop
+	backdrop_color.a = 1.0  # 强制不透明，避免半透明穿透
+	_modal_backdrop.color = backdrop_color
 	_modal_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(_modal_backdrop)
 	# 置于最底层，避免遮挡结算/升级/商店等面板的按钮
@@ -631,10 +689,31 @@ func _build_runtime_ui() -> void:
 	weapon_margin.add_theme_constant_override("margin_right", 0)
 	weapon_margin.add_theme_constant_override("margin_bottom", 0)
 	_weapon_panel.add_child(weapon_margin)
+	var shop_center := CenterContainer.new()
+	shop_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shop_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	weapon_margin.add_child(shop_center)
+	var main_vbox := VBoxContainer.new()
+	main_vbox.add_theme_constant_override("separation", 12)
+	main_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var viewport_size := get_viewport().get_visible_rect().size
+	main_vbox.custom_minimum_size = viewport_size * 0.7  # 设计 1280×720 下约 896×504
+	shop_center.add_child(main_vbox)
+
+	# TabContainer：商店 / 背包 / 角色信息，Tab 置于顶部
+	_shop_tab_container = TabContainer.new()
+	_shop_tab_container.tabs_position = TabContainer.TabPosition.POSITION_TOP
+	_shop_tab_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_shop_tab_container.custom_minimum_size = Vector2(896, 400)  # 与 main_vbox 70% 一致，保证 Tab 内容区可见
+	main_vbox.add_child(_shop_tab_container)
+
+	# Tab 0 - 商店：武器选项 + 刷新按钮
+	var shop_tab := VBoxContainer.new()
+	shop_tab.add_theme_constant_override("separation", 14)
 	var weapon_center := CenterContainer.new()
 	weapon_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	weapon_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	weapon_margin.add_child(weapon_center)
+	shop_tab.add_child(weapon_center)
 	var weapon_box := VBoxContainer.new()
 	weapon_box.add_theme_constant_override("separation", 14)
 	weapon_center.add_child(weapon_box)
@@ -647,7 +726,7 @@ func _build_runtime_ui() -> void:
 	_weapon_title_label = weapon_title
 
 	var weapon_tip := Label.new()
-	weapon_tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	weapon_tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT  # 描述左对齐，首行缩进由文案前空格实现
 	weapon_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	weapon_tip.text = ""
 	weapon_tip.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
@@ -681,19 +760,43 @@ func _build_runtime_ui() -> void:
 		weapon_card.add_child(weapon_btn)
 		_weapon_buttons.append(weapon_btn)
 
-	var shop_btn_row := HBoxContainer.new()
-	shop_btn_row.add_theme_constant_override("separation", 12)
 	var shop_refresh := Button.new()
-	shop_refresh.text = "Refresh"
 	shop_refresh.pressed.connect(func() -> void: emit_signal("weapon_shop_refresh_requested"))
-	shop_btn_row.add_child(shop_refresh)
+	weapon_box.add_child(shop_refresh)
 	_shop_refresh_btn = shop_refresh
+
+	# Tab 1 - 背包：内嵌 BackpackPanel，shop_context=true 时显示售卖/合并
+	var backpack_scroll := ScrollContainer.new()
+	backpack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	backpack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_shop_backpack_panel = (load("res://scripts/ui/backpack_panel.gd") as GDScript).new()
+	_shop_backpack_panel.name = "ShopBackpackPanel"
+	_shop_backpack_panel.add_theme_constant_override("separation", 12)
+	_shop_backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_shop_backpack_panel.sell_requested.connect(_on_shop_backpack_sell_requested)
+	_shop_backpack_panel.merge_completed.connect(_on_shop_backpack_merge_completed)
+	backpack_scroll.add_child(_shop_backpack_panel)
+
+	# Tab 2 - 角色信息
+	var stats_scroll := ScrollContainer.new()
+	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_shop_stats_container = VBoxContainer.new()
+	_shop_stats_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_scroll.add_child(_shop_stats_container)
+
+	_shop_tab_container.add_child(shop_tab)
+	_shop_tab_container.add_child(backpack_scroll)
+	_shop_tab_container.add_child(stats_scroll)
+	_shop_tab_container.set_tab_title(0, LocalizationManager.tr_key("shop.tab_shop"))
+	_shop_tab_container.set_tab_title(1, LocalizationManager.tr_key("shop.tab_backpack"))
+	_shop_tab_container.set_tab_title(2, LocalizationManager.tr_key("shop.tab_stats"))
+
+	# 下一波按钮，始终在底部
 	var shop_next := Button.new()
-	shop_next.text = "Next Wave"
 	shop_next.pressed.connect(func() -> void: emit_signal("weapon_shop_closed"))
-	shop_btn_row.add_child(shop_next)
+	main_vbox.add_child(shop_next)
 	_shop_next_btn = shop_next
-	weapon_box.add_child(shop_btn_row)
 
 
 # 触控设备下创建 L/R/U/D 移动键与暂停键，通过 mobile_move_changed 回传方向。
@@ -788,6 +891,12 @@ func _apply_upgrade_weapon_tip_texts() -> void:
 		_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title")
 	if _pause_touch_btn:
 		_pause_touch_btn.text = LocalizationManager.tr_key("hud.pause_button")
+	if _shop_tab_container:
+		_shop_tab_container.set_tab_title(0, LocalizationManager.tr_key("shop.tab_shop"))
+		_shop_tab_container.set_tab_title(1, LocalizationManager.tr_key("shop.tab_backpack"))
+		_shop_tab_container.set_tab_title(2, LocalizationManager.tr_key("shop.tab_stats"))
+	if _shop_next_btn:
+		_shop_next_btn.text = LocalizationManager.tr_key("weapon.shop_next_wave")
 
 
 func _on_language_changed(_language_code: String) -> void:
@@ -884,7 +993,9 @@ func _add_opaque_backdrop_to_panel(panel: Control, pass_input := false) -> void:
 	backdrop.offset_top = 0
 	backdrop.offset_right = 0
 	backdrop.offset_bottom = 0
-	backdrop.color = _get_ui_theme().modal_backdrop
+	var bcolor: Color = _get_ui_theme().modal_backdrop
+	bcolor.a = 1.0  # 强制不透明
+	backdrop.color = bcolor
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE if pass_input else Control.MOUSE_FILTER_STOP
 	panel.add_child(backdrop)
 	panel.move_child(backdrop, 0)

@@ -74,6 +74,8 @@ var _pending_shop_weapon_options: Array[Dictionary] = []  # 波次后商店武�
 var _waves_initialized := false  # 波次管理器是否已 setup
 var _ui_modal_active := false  # 升级/商店等模态面板是否打开
 var _pending_area_slot := -1  # 区域施法时暂存槽位，确认/取消后清除
+var _backpack_overlay: Control = null  # 商店内背包覆盖层
+var _backpack_overlay_panel: Control = null  # 覆盖层内的 BackpackPanel，售卖后刷新用
 # 触控方向缓存（由 HUD 虚拟按键驱动）。
 var _mobile_move := Vector2.ZERO
 
@@ -106,6 +108,9 @@ func _ready() -> void:
 	hud.weapon_shop_selected.connect(_on_weapon_shop_selected)
 	hud.weapon_shop_refresh_requested.connect(_on_shop_refresh_requested)
 	hud.weapon_shop_closed.connect(_on_shop_closed)
+	hud.backpack_requested.connect(_on_backpack_requested)
+	hud.backpack_sell_requested.connect(_on_weapon_sell_requested)
+	hud.backpack_merge_completed.connect(_on_shop_backpack_merge_completed)
 	hud.mobile_move_changed.connect(_on_mobile_move_changed)
 	hud.pause_pressed.connect(_toggle_pause)
 
@@ -118,11 +123,10 @@ func _ready() -> void:
 	hud.set_armor(player.armor)
 	hud.set_currency(GameManager.run_currency)
 
-	# 进入游戏默认隐藏暂停菜单。商店仅在波次完成后出现，开局装备默认武器后直接开始波次。
+	# 进入游戏默认隐藏暂停菜单。新游戏取消默认武器，先进入开局商店，购买后点击下一波再开始波次。
 	pause_menu.set_visible_menu(false)
-	_equip_weapon_to_player("blade_short", false)
-	_waves_initialized = true
-	wave_manager.setup(player)
+	player.input_enabled = false
+	_open_start_shop()
 	# 背景随视口尺寸变化，避免全屏/缩放时画面只占一小块。z_index 确保背景在地形之后绘制。
 	world_background.z_index = -200
 	call_deferred("_resize_world_background")
@@ -458,21 +462,148 @@ func _on_upgrade_selected(upgrade_id: String) -> void:
 	_open_shop_after_upgrade()
 
 
+func _open_start_shop() -> void:
+	# 开局商店：波次 0，玩家购买后点击下一波再开始波次 1
+	_pending_shop_weapon_options = _roll_shop_items(4)
+	_set_ui_modal_active(true)
+	var stats: Dictionary = player.get_full_stats_for_pause() if is_instance_valid(player) and player.has_method("get_full_stats_for_pause") else {}
+	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), 0, stats)
+
+
 func _open_shop_after_upgrade() -> void:
 	_pending_shop_weapon_options = _roll_shop_items(4)
 	_set_ui_modal_active(true)
-	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave)
+	var stats: Dictionary = player.get_full_stats_for_pause() if is_instance_valid(player) and player.has_method("get_full_stats_for_pause") else {}
+	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave, stats)
 
 
 func _on_shop_refresh_requested() -> void:
+	var wave: int = wave_manager.current_wave
+	if not GameManager.try_spend_shop_refresh(wave):
+		return
 	_pending_shop_weapon_options = _roll_shop_items(4)
-	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave)
+	var stats: Dictionary = player.get_full_stats_for_pause() if is_instance_valid(player) and player.has_method("get_full_stats_for_pause") else {}
+	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave, stats)
 
 
 func _on_shop_closed() -> void:
 	_set_ui_modal_active(false)
 	hud.hide_weapon_panel()
-	_finish_wave_settlement()
+	if not _waves_initialized:
+		# 开局商店关闭：开始波次 1
+		_waves_initialized = true
+		player.input_enabled = true
+		wave_manager.setup(player)
+	else:
+		_finish_wave_settlement()
+
+
+func _on_backpack_requested() -> void:
+	_show_backpack_from_shop()
+
+
+## 商店内打开背包覆盖层，shop_context=true 时显示售卖/合并按钮。
+func _show_backpack_from_shop() -> void:
+	var overlay := Panel.new()
+	overlay.name = "BackpackOverlay"
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var theme_style := StyleBoxFlat.new()
+	theme_style.bg_color = Color(0.05, 0.05, 0.08, 0.92)
+	theme_style.set_border_width_all(0)
+	overlay.add_theme_stylebox_override("panel", theme_style)
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 48)
+	margin.add_theme_constant_override("margin_top", 48)
+	margin.add_theme_constant_override("margin_right", 48)
+	margin.add_theme_constant_override("margin_bottom", 48)
+	overlay.add_child(margin)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	margin.add_child(vbox)
+	var close_btn := Button.new()
+	close_btn.text = LocalizationManager.tr_key("common.close")
+	close_btn.pressed.connect(_on_backpack_overlay_closed.bind(overlay))
+	vbox.add_child(close_btn)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 400)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vbox.add_child(scroll)
+	var backpack_panel: VBoxContainer = (load("res://scripts/ui/backpack_panel.gd") as GDScript).new()
+	backpack_panel.name = "BackpackPanel"
+	backpack_panel.add_theme_constant_override("separation", 12)
+	backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(backpack_panel)
+	_backpack_overlay = overlay
+	_backpack_overlay_panel = backpack_panel
+	hud.add_child(overlay)
+	# 置于最上层
+	hud.move_child(overlay, hud.get_child_count() - 1)
+	# set_stats 需在加入场景树后调用（内部会 get_tree / _find_canvas_layer）
+	var stats: Dictionary = {}
+	if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
+		stats = player.get_full_stats_for_pause()
+	backpack_panel.set_stats(stats, true)
+	backpack_panel.sell_requested.connect(_on_weapon_sell_requested)
+	backpack_panel.merge_completed.connect(_on_backpack_overlay_merge_completed)
+
+
+func _on_backpack_overlay_closed(overlay: Control) -> void:
+	if overlay != null and is_instance_valid(overlay):
+		overlay.queue_free()
+	if _backpack_overlay == overlay:
+		_backpack_overlay = null
+		_backpack_overlay_panel = null
+
+
+## 商店背包 Tab 内嵌面板合并成功后刷新。
+func _on_shop_backpack_merge_completed() -> void:
+	var stats: Dictionary = {}
+	if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
+		stats = player.get_full_stats_for_pause()
+	if hud.has_method("refresh_shop_backpack"):
+		hud.refresh_shop_backpack(stats)
+
+
+## 商店背包覆盖层内合并成功后刷新显示。
+func _on_backpack_overlay_merge_completed() -> void:
+	if _backpack_overlay_panel == null or not is_instance_valid(_backpack_overlay_panel):
+		return
+	var stats: Dictionary = {}
+	if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
+		stats = player.get_full_stats_for_pause()
+	_backpack_overlay_panel.set_stats(stats, true)
+
+
+func _on_weapon_sell_requested(weapon_index: int) -> void:
+	var run_weapons := GameManager.get_run_weapons()
+	if weapon_index < 0 or weapon_index >= run_weapons.size():
+		return
+	var w: Dictionary = run_weapons[weapon_index]
+	var wid: String = str(w.get("id", ""))
+	var def := GameManager.get_weapon_def_by_id(wid)
+	if def.is_empty():
+		return
+	var base_cost: int = int(def.get("cost", 5))
+	var wave: int = wave_manager.current_wave
+	var wave_coef: float = 1.0 + float(wave) * 0.15
+	var sell_price: int = maxi(1, int(float(base_cost) * wave_coef * 0.3))
+	if not GameManager.remove_run_weapon(weapon_index):
+		return
+	GameManager.add_currency(sell_price)
+	if is_instance_valid(player):
+		player.sync_weapons_from_run(GameManager.get_run_weapons())
+	hud.set_currency(GameManager.run_currency)
+	# 刷新背包覆盖层与商店 Tab 内嵌背包
+	var stats: Dictionary = {}
+	if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
+		stats = player.get_full_stats_for_pause()
+	if _backpack_overlay_panel != null and is_instance_valid(_backpack_overlay_panel) and _backpack_overlay_panel.has_method("set_stats"):
+		_backpack_overlay_panel.set_stats(stats, true)
+	if hud.has_method("refresh_shop_backpack"):
+		hud.refresh_shop_backpack(stats)
 
 
 func _on_intermission_started(duration: float) -> void:
@@ -549,7 +680,8 @@ func _on_weapon_shop_selected(weapon_id: String) -> void:
 	# 全部购买完则自动刷新；否则刷新显示
 	if _pending_shop_weapon_options.is_empty():
 		_pending_shop_weapon_options = _roll_shop_items(4)
-	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave)
+	var stats: Dictionary = player.get_full_stats_for_pause() if is_instance_valid(player) and player.has_method("get_full_stats_for_pause") else {}
+	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave, stats)
 
 
 # 从武器定义中排除已装备的，随机抽取 count 项作为开局武器候选。

@@ -69,6 +69,7 @@ var run_level := 1  # 本局等级
 var enemy_healthbar_visible := true  # 敌人血条显隐
 var move_inertia_factor := 0.0  # 玩家移动惯性，0~0.9
 var run_weapons: Array = []  # 本局武器列表，每项为 {id, tier}；2 同品级合成 1 高一品级
+var shop_refresh_count := 0  # 本局商店刷新次数，用于计算刷新费用，新游戏/继续时重置
 var run_items: Array[String] = []  # 本局已购买道具 id 列表（固化配置，品级固定）
 var run_upgrades: Array = []  # 本局玩家相关升级，每项为 {id, value}，供词条系统聚合
 var run_weapon_upgrades: Array[String] = []  # 本局武器相关升级 id 列表，同步武器时应用
@@ -412,9 +413,26 @@ func get_weapon_def_by_id(weapon_id: String) -> Dictionary:
 
 func reset_run_weapons() -> void:
 	run_weapons.clear()
+	shop_refresh_count = 0
 	run_items.clear()
 	run_upgrades.clear()
 	run_weapon_upgrades.clear()
+
+
+## 商店刷新费用：1 + refresh_count * (1 + wave * 0.15)
+func get_shop_refresh_cost(wave: int) -> int:
+	var wave_coef: float = 1.0 + float(wave) * 0.15
+	return maxi(1, int(1.0 + float(shop_refresh_count) * wave_coef))
+
+
+## 尝试消耗金币执行商店刷新，成功则 shop_refresh_count +1 并返回 true。
+func try_spend_shop_refresh(wave: int) -> bool:
+	var cost: int = get_shop_refresh_cost(wave)
+	if run_currency < cost:
+		return false
+	run_currency -= cost
+	shop_refresh_count += 1
+	return true
 
 
 func add_run_item(item_id: String) -> void:
@@ -459,6 +477,14 @@ func add_run_weapon(weapon_id: String, random_affix_ids: Array = []) -> bool:
 	if run_weapons.size() >= MAX_WEAPONS:
 		return false
 	run_weapons.append({"id": weapon_id, "tier": 0, "random_affix_ids": random_affix_ids.duplicate()})
+	return true
+
+
+## 移除指定索引的武器，用于售卖。返回是否成功。
+func remove_run_weapon(index: int) -> bool:
+	if index < 0 or index >= run_weapons.size():
+		return false
+	run_weapons.remove_at(index)
 	return true
 
 

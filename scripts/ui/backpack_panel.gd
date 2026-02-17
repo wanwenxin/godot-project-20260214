@@ -2,7 +2,9 @@ extends VBoxContainer
 
 # 背包面板：按武器、魔法、道具分栏展示，每项为图标槽，悬浮显示名称、词条、效果。
 # 接收 stats 字典（weapon_details、magic_details、item_ids），构建三区。
-# 武器支持手动合成：点击合成按钮进入合并模式，选择素材完成合并。
+# 武器支持手动合成、售卖；售卖/合并按钮仅在 shop_context 时显示（商店内打开背包）。
+signal sell_requested(weapon_index: int)
+signal merge_completed  # 合并成功后发出，供商店覆盖层刷新
 const BASE_FONT_SIZE := 18
 const SEP := "────"  # 分割线，无空行
 
@@ -31,12 +33,16 @@ func hide_tooltip() -> void:
 		_tooltip_popup.hide_tooltip()
 
 
-## 根据 stats 刷新背包内容。
-func set_stats(stats: Dictionary) -> void:
+var _shop_context := false  # 是否从商店打开，仅此时显示售卖/合并按钮
+
+## 根据 stats 刷新背包内容。shop_context=true 时显示售卖/合并按钮。
+func set_stats(stats: Dictionary, shop_context: bool = false) -> void:
+	_shop_context = shop_context
 	_exit_merge_mode()
 	if _tooltip_popup == null:
 		_tooltip_popup = BackpackTooltipPopup.new()
 		_tooltip_popup.synthesize_requested.connect(_on_synthesize_requested)
+		_tooltip_popup.sell_requested.connect(_on_sell_requested)
 		var layer := _find_canvas_layer()
 		if layer != null:
 			layer.add_child(_tooltip_popup)
@@ -204,17 +210,20 @@ func _build_weapon_tooltip_data(w: Dictionary, weapon_upgrades: Array, weapon_in
 				"value": base_val,
 				"value_fmt": value_fmt
 			})
-	# 合成按钮：非最高品级且存在同名同品级其他武器时显示
-	var wid: String = str(w.get("id", ""))
-	var wtier: int = int(w.get("tier", 0))
-	var max_tier: int = TierConfig.TIER_COLORS.size() - 1
-	var candidate_count: int = 0
-	for j in weapon_details.size():
-		if j != weapon_index:
-			var ow: Dictionary = weapon_details[j]
-			if str(ow.get("id", "")) == wid and int(ow.get("tier", 0)) == wtier:
-				candidate_count += 1
-	var show_synthesize: bool = wtier < max_tier and candidate_count > 0
+	# 售卖/合成按钮：仅在 shop_context 时显示
+	var show_sell: bool = _shop_context
+	var show_synthesize: bool = false
+	if _shop_context:
+		var wid: String = str(w.get("id", ""))
+		var wtier: int = int(w.get("tier", 0))
+		var max_tier: int = TierConfig.TIER_COLORS.size() - 1
+		var candidate_count: int = 0
+		for j in weapon_details.size():
+			if j != weapon_index:
+				var ow: Dictionary = weapon_details[j]
+				if str(ow.get("id", "")) == wid and int(ow.get("tier", 0)) == wtier:
+					candidate_count += 1
+		show_synthesize = wtier < max_tier and candidate_count > 0
 	# 效果区
 	var effect_parts: Array[String] = []
 	effect_parts.append(LocalizationManager.tr_key("pause.stat_damage") + ": %d" % int(w.get("damage", 0)))
@@ -228,6 +237,7 @@ func _build_weapon_tooltip_data(w: Dictionary, weapon_upgrades: Array, weapon_in
 		"title": LocalizationManager.tr_key(name_key),
 		"affixes": affixes,
 		"effects": ", ".join(effect_parts),
+		"show_sell": show_sell,
 		"show_synthesize": show_synthesize,
 		"weapon_index": weapon_index
 	}
@@ -357,6 +367,10 @@ func _on_synthesize_requested(weapon_index: int) -> void:
 		_do_merge(weapon_index, candidate_indices[0])
 
 
+func _on_sell_requested(weapon_index: int) -> void:
+	sell_requested.emit(weapon_index)
+
+
 func _on_weapon_slot_clicked(weapon_index: int) -> void:
 	if not _merge_mode or _merge_base_index < 0:
 		return
@@ -383,6 +397,7 @@ func _do_merge(base_index: int, material_index: int) -> void:
 			if p != null and p.has_method("sync_weapons_from_run"):
 				p.sync_weapons_from_run(GameManager.get_run_weapons())
 		_exit_merge_mode()
+		merge_completed.emit()
 		# 刷新暂停菜单显示
 		var pause = _find_pause_menu()
 		if pause != null and pause.has_method("_refresh_stats_from_game"):

@@ -52,14 +52,15 @@ func _on_menu_pressed() -> void:
 
 
 func _apply_localized_texts() -> void:
-	var title := panel.get_node_or_null("OuterMargin/MainLayout/LeftWrapper/LeftColumn/MarginContainer/InnerVBox/TitleLabel")
+	var title := panel.get_node_or_null("OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/TitleLabel")
 	if title is Label:
 		title.text = LocalizationManager.tr_key("pause.title")
 	_resume_btn.text = LocalizationManager.tr_key("pause.resume")
 	_menu_btn.text = LocalizationManager.tr_key("pause.main_menu")
 	if _tab_container != null:
-		_tab_container.set_tab_title(0, LocalizationManager.tr_key("pause.tab_stats"))
+		_tab_container.set_tab_title(0, LocalizationManager.tr_key("pause.tab_system"))
 		_tab_container.set_tab_title(1, LocalizationManager.tr_key("pause.tab_backpack"))
+		_tab_container.set_tab_title(2, LocalizationManager.tr_key("pause.tab_stats"))
 	_refresh_key_hints()
 
 
@@ -92,34 +93,55 @@ func _build_main_layout() -> void:
 	main.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	main.add_theme_constant_override("separation", 32)
 	outer.add_child(main)
-	# 左侧：系统信息水平居中
-	var left_wrapper := CenterContainer.new()
-	left_wrapper.name = "LeftWrapper"
-	left_wrapper.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	left_wrapper.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	left_wrapper.custom_minimum_size.x = 280
-	main.add_child(left_wrapper)
-	var left := _build_left_column()
-	left_wrapper.add_child(left)
-	# 右侧：占满剩余空间，内容居中，无需滚动
-	var right_wrapper := CenterContainer.new()
-	right_wrapper.name = "RightWrapper"
-	right_wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_wrapper.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main.add_child(right_wrapper)
-	right_wrapper.add_child(_build_right_column())
+	# TabContainer：系统 / 背包 / 角色信息，Tab 置于底部
+	var tab_wrapper := CenterContainer.new()
+	tab_wrapper.name = "TabWrapper"
+	tab_wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tab_wrapper.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main.add_child(tab_wrapper)
+	_tab_container = TabContainer.new()
+	_tab_container.name = "PauseTabs"
+	_tab_container.tabs_position = TabContainer.TabPosition.POSITION_BOTTOM
+	_tab_container.custom_minimum_size = Vector2(320, 400)
+	tab_wrapper.add_child(_tab_container)
+	# Tab 0：系统（标题、按键提示、继续、主菜单）
+	var system_tab := _build_system_tab()
+	_tab_container.add_child(system_tab)
+	_tab_container.set_tab_title(0, LocalizationManager.tr_key("pause.tab_system"))
+	# Tab 1：背包
+	var backpack_scroll := ScrollContainer.new()
+	backpack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	backpack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_backpack_panel = (preload("res://scripts/ui/backpack_panel.gd") as GDScript).new()
+	_backpack_panel.name = "BackpackPanel"
+	_backpack_panel.add_theme_constant_override("separation", 12)
+	_backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	backpack_scroll.add_child(_backpack_panel)
+	_tab_container.add_child(backpack_scroll)
+	_tab_container.set_tab_title(1, LocalizationManager.tr_key("pause.tab_backpack"))
+	# Tab 2：角色信息
+	var stats_scroll := ScrollContainer.new()
+	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_stats_container = VBoxContainer.new()
+	_stats_container.name = "StatsContainer"
+	_stats_container.add_theme_constant_override("separation", 12)
+	_stats_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_scroll.add_child(_stats_container)
+	_tab_container.add_child(stats_scroll)
+	_tab_container.set_tab_title(2, LocalizationManager.tr_key("pause.tab_stats"))
 
 
-func _build_left_column() -> VBoxContainer:
-	var left := VBoxContainer.new()
-	left.name = "LeftColumn"
-	left.add_theme_constant_override("separation", 16)
+func _build_system_tab() -> VBoxContainer:
+	var system_tab := VBoxContainer.new()
+	system_tab.name = "SystemTab"
+	system_tab.add_theme_constant_override("separation", 16)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 32)
 	margin.add_theme_constant_override("margin_top", 32)
 	margin.add_theme_constant_override("margin_right", 16)
 	margin.add_theme_constant_override("margin_bottom", 32)
-	left.add_child(margin)
+	system_tab.add_child(margin)
 	var inner := VBoxContainer.new()
 	inner.name = "InnerVBox"
 	inner.add_theme_constant_override("separation", 16)
@@ -142,44 +164,7 @@ func _build_left_column() -> VBoxContainer:
 	_menu_btn = Button.new()
 	_menu_btn.name = "MainMenuButton"
 	inner.add_child(_menu_btn)
-	return left
-
-
-func _build_right_column() -> Control:
-	# 右侧：TabContainer（属性 + 背包），内容超出时显示垂直滚动条
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_bottom", 24)
-	_tab_container = TabContainer.new()
-	_tab_container.name = "PauseTabs"
-	_tab_container.custom_minimum_size = Vector2(320, 400)
-	var tabs := _tab_container
-	# Tab 1：属性
-	var stats_scroll := ScrollContainer.new()
-	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_stats_container = VBoxContainer.new()
-	_stats_container.name = "StatsContainer"
-	_stats_container.add_theme_constant_override("separation", 12)
-	_stats_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stats_scroll.add_child(_stats_container)
-	tabs.add_child(stats_scroll)
-	tabs.set_tab_title(0, LocalizationManager.tr_key("pause.tab_stats"))
-	# Tab 2：背包
-	var backpack_scroll := ScrollContainer.new()
-	backpack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	backpack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_backpack_panel = (preload("res://scripts/ui/backpack_panel.gd") as GDScript).new()
-	_backpack_panel.name = "BackpackPanel"
-	_backpack_panel.add_theme_constant_override("separation", 12)
-	_backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	backpack_scroll.add_child(_backpack_panel)
-	tabs.add_child(backpack_scroll)
-	tabs.set_tab_title(1, LocalizationManager.tr_key("pause.tab_backpack"))
-	margin.add_child(tabs)
-	return margin
+	return system_tab
 
 
 func _refresh_stats_from_game() -> void:

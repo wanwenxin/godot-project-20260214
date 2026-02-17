@@ -26,6 +26,7 @@
   - 角色模板数据
   - 本局金币 `run_currency`（新游戏/继续默认 500）、经验值 `run_experience`、等级 `run_level`
   - 本局武器库存 `run_weapons`（每项 `{id, tier, random_affix_ids}`，最多 6 把；手动合成，`merge_run_weapons`）
+  - 商店刷新次数 `shop_refresh_count`（新游戏/继续重置）；刷新费用 `get_shop_refresh_cost(wave)`，`try_spend_shop_refresh(wave)` 扣费并 +1
   - 本局已购道具 `run_items`（道具 id 列表）
   - 本局玩家相关升级 `run_upgrades`（每项 `{id, value}`，供词条系统聚合）
   - 本局武器相关升级 `run_weapon_upgrades`（升级 id 列表，同步武器时应用）
@@ -185,7 +186,7 @@
   - 各模块独立背景（PanelContainer + StyleBoxTexture 程序生成纹理，九宫格拉伸）
   - 升级/商店卡片间距 24、统一基准字号 18
   - 升级四选一面板（可金币刷新，等级越高奖励越多）
-  - 商店（武器+道具+魔法，4 件，购买后刷新，价格随波次上涨）
+  - 商店：TabContainer（商店 / 背包 / 角色信息），Tab 置于底部；商店 Tab 含武器 4 件 + 刷新按钮（刷新费用 1+refresh_count*(1+wave*0.15)）；背包 Tab 打开背包覆盖层；角色信息 Tab 展示 build_player_stats_block(stats_only=true)
   - 升级/商店结算层使用全屏纯色不透明 backdrop
   - 触控按钮（移动 + 暂停）
 
@@ -199,13 +200,11 @@
 
 - `scripts/ui/game_over_screen.gd` + `scenes/ui/game_over_screen.tscn`
   - 死亡结算界面：CanvasLayer layer=100，全屏遮罩 + 居中 Panel
-  - 展示标题「游戏结束」、得分区、玩家信息区、仅「返回主菜单」按钮
-  - 内容区使用 ScrollContainer，内容超出时显示垂直滚动条
+  - TabContainer（得分 / 角色信息），Tab 置于底部；得分 Tab 含标题、得分区、返回主菜单；角色信息 Tab 展示完整玩家信息
   - 接口：`show_result(wave, kills, time, player_node)`
 
 - `scripts/ui/victory_screen.gd` + `scenes/ui/victory_screen.tscn`
-  - 通关结算界面：布局与死亡界面一致，标题「通关」
-  - 内容区使用 ScrollContainer，内容超出时显示垂直滚动条
+  - 通关结算界面：布局与死亡界面一致，TabContainer（得分 / 角色信息）
   - 接口：`show_result(wave, kills, time, player_node)`
 
 ### 2.6 武器系统
@@ -273,9 +272,10 @@
 
 - `scripts/ui/pause_menu.gd`
   - 暂停按钮逻辑
-  - 全屏左右分栏布局：左侧系统信息（标题、按键提示、继续/主菜单），右侧 TabContainer（属性 Tab + 背包 Tab）
-  - 属性 Tab：调用 `ResultPanelShared.build_player_stats_block(stats, ..., true)` 仅构建角色属性区（HP、魔力、护甲、移速等）
+  - TabContainer（系统 / 背包 / 角色信息），Tab 置于底部
+  - 系统 Tab：标题、按键提示、继续、主菜单
   - 背包 Tab：`BackpackPanel` 展示装备武器、魔法、道具的图标网格（图标 + 名称，名称按品级着色），悬浮显示背包悬浮面板
+  - 角色信息 Tab：调用 `ResultPanelShared.build_player_stats_block(stats, ..., true)` 仅构建角色属性区（HP、魔力、护甲、移速等）
   - 右侧内容区使用 ScrollContainer，内容超出时显示垂直滚动条
   - Root 设置为 `MOUSE_FILTER_IGNORE`，避免吞掉 HUD 点击
   - 暂停层新增全屏纯色不透明 backdrop

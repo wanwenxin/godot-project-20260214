@@ -52,7 +52,7 @@ var _cached_nearest_enemy: Node2D
 # 多地形叠加时记录每个 zone 的速度系数，取最慢值。
 var _terrain_effects: Dictionary = {}
 var _terrain_speed_multiplier := 1.0
-var _equipped_weapons: Array[Node2D] = []  # 已装备武器节点，最多 MAX_WEAPONS 把
+var _equipped_weapons: Array = []  # 已装备武器节点或 null（失败项），与 run_weapons 索引 1:1
 var _equipped_magics: Array = []  # 已装备魔法，最多 3 个，每项为 {def, instance}
 var _current_magic_index := 0  # 当前选中的魔法槽位，左右方向键切换
 const MAX_MAGICS := 3
@@ -162,7 +162,7 @@ func _physics_process(delta: float) -> void:
 	var nearest_enemy := _cached_nearest_enemy
 	if nearest_enemy != null and not _equipped_weapons.is_empty():
 		for item in _equipped_weapons:
-			if item.has_method("tick_and_try_attack"):
+			if item != null and is_instance_valid(item) and item.has_method("tick_and_try_attack"):
 				item.tick_and_try_attack(self, nearest_enemy, delta)
 
 	# 帧末结算缓冲伤害：多伤害源只取最大。
@@ -221,7 +221,7 @@ func _apply_affix_aggregated(agg: Dictionary) -> void:
 func apply_upgrade(upgrade_id: String, _value: Variant = null) -> void:
 	# 仅将武器相关升级传递给每把武器；玩家相关升级由词条系统处理。
 	for weapon in _equipped_weapons:
-		if weapon.has_method("apply_upgrade"):
+		if weapon != null and is_instance_valid(weapon) and weapon.has_method("apply_upgrade"):
 			weapon.apply_upgrade(upgrade_id)
 
 
@@ -478,10 +478,10 @@ func _recompute_terrain_speed() -> void:
 
 
 # 根据 run_weapons 同步装备；清除旧武器，按 {id, tier, random_affix_ids} 重新装备。
-# 同步后对每把武器应用 run_weapon_upgrades 与 random_affix_ids。
+# 失败项 append null，保证 _equipped_weapons 与 run_weapons 索引 1:1 对应，供合并逻辑使用。
 func sync_weapons_from_run(run_weapons_list: Array) -> void:
 	for w in _equipped_weapons:
-		if is_instance_valid(w):
+		if w != null and is_instance_valid(w):
 			w.queue_free()
 	_equipped_weapons.clear()
 	for w_dict in run_weapons_list:
@@ -490,9 +490,11 @@ func sync_weapons_from_run(run_weapons_list: Array) -> void:
 		var random_affix_ids: Array = w_dict.get("random_affix_ids", [])
 		var def := GameManager.get_weapon_def_by_id(wid)
 		if def.is_empty():
+			_equipped_weapons.append(null)
 			continue
 		var instance := _create_weapon_instance(def)
 		if instance == null:
+			_equipped_weapons.append(null)
 			continue
 		instance.configure_from_def(def, wtier)
 		for u_id in GameManager.get_run_weapon_upgrades():
@@ -523,7 +525,8 @@ func equip_weapon_by_id(weapon_id: String, random_affix_ids: Array = []) -> bool
 func get_equipped_weapon_ids() -> Array[String]:
 	var ids: Array[String] = []
 	for item in _equipped_weapons:
-		ids.append(str(item.weapon_id))
+		if item != null and is_instance_valid(item):
+			ids.append(str(item.weapon_id))
 	return ids
 
 
@@ -536,47 +539,66 @@ func has_weapon_id(weapon_id: String) -> bool:
 
 
 func get_equipped_weapon_details() -> Array[Dictionary]:
-	# 返回每把装备武器的详细数据，供暂停界面等 UI 展示；含 tier、type_affix、theme_affix、random_affix_ids。
+	# 按 run_weapons 索引 1:1 返回，保证 weapon_details[i] 对应 run_weapons[i]，供合并逻辑使用。
 	var result: Array[Dictionary] = []
 	var run_list: Array = GameManager.get_run_weapons()
-	for idx in range(_equipped_weapons.size()):
-		var item = _equipped_weapons[idx]
+	for idx in range(run_list.size()):
 		var w_run: Dictionary = run_list[idx] if idx < run_list.size() else {}
-		if not is_instance_valid(item):
-			continue
-		var def := GameManager.get_weapon_def_by_id(str(item.weapon_id))
-		var wtier: int = int(item.tier) if "tier" in item else 0
-		var color_hint_any = item.color_hint if "color_hint" in item else Color(0.8, 0.8, 0.8, 1.0)
-		var color_hint: Color = color_hint_any if color_hint_any is Color else Color(0.8, 0.8, 0.8, 1.0)
-		var d: Dictionary = {
-			"id": str(item.weapon_id),
-			"type": str(item.weapon_type),
-			"tier": wtier,
-			"tier_color": TierConfig.get_tier_color(wtier),
-			"icon_path": str(item.icon_path) if "icon_path" in item else "",
-			"color_hint": color_hint,
-			"damage": int(item.damage),
-			"cooldown": float(item.cooldown),
-			"range": float(item.attack_range),
-			"type_affix_id": str(def.get("type_affix_id", "")),
-			"theme_affix_id": str(def.get("theme_affix_id", "")),
-			"random_affix_ids": w_run.get("random_affix_ids", []).duplicate()
-		}
-		if item is WeaponMeleeBase:
-			var melee_item: WeaponMeleeBase = item
-			d["touch_interval"] = float(melee_item.touch_interval)
-			d["swing_duration"] = float(melee_item.swing_duration)
-			d["swing_degrees"] = float(melee_item.swing_degrees)
-			d["swing_reach"] = float(melee_item.swing_reach)
-			d["hitbox_radius"] = float(melee_item.hitbox_radius)
-		elif item is WeaponRangedBase:
-			var ranged_item: WeaponRangedBase = item
-			d["bullet_speed"] = float(ranged_item.bullet_speed)
-			d["pellet_count"] = int(ranged_item.pellet_count)
-			d["spread_degrees"] = float(ranged_item.spread_degrees)
-			d["bullet_pierce"] = int(ranged_item.bullet_pierce)
-			d["bullet_type"] = str(ranged_item.bullet_type)
-		result.append(d)
+		var item = _equipped_weapons[idx] if idx < _equipped_weapons.size() else null
+		if item != null and is_instance_valid(item):
+			var def := GameManager.get_weapon_def_by_id(str(item.weapon_id))
+			var wtier: int = int(item.tier) if "tier" in item else 0
+			var color_hint_any = item.color_hint if "color_hint" in item else Color(0.8, 0.8, 0.8, 1.0)
+			var color_hint: Color = color_hint_any if color_hint_any is Color else Color(0.8, 0.8, 0.8, 1.0)
+			var d: Dictionary = {
+				"id": str(item.weapon_id),
+				"type": str(item.weapon_type),
+				"tier": wtier,
+				"tier_color": TierConfig.get_tier_color(wtier),
+				"icon_path": str(item.icon_path) if "icon_path" in item else "",
+				"color_hint": color_hint,
+				"damage": int(item.damage),
+				"cooldown": float(item.cooldown),
+				"range": float(item.attack_range),
+				"type_affix_id": str(def.get("type_affix_id", "")),
+				"theme_affix_id": str(def.get("theme_affix_id", "")),
+				"random_affix_ids": w_run.get("random_affix_ids", []).duplicate()
+			}
+			if item is WeaponMeleeBase:
+				var melee_item: WeaponMeleeBase = item
+				d["touch_interval"] = float(melee_item.touch_interval)
+				d["swing_duration"] = float(melee_item.swing_duration)
+				d["swing_degrees"] = float(melee_item.swing_degrees)
+				d["swing_reach"] = float(melee_item.swing_reach)
+				d["hitbox_radius"] = float(melee_item.hitbox_radius)
+			elif item is WeaponRangedBase:
+				var ranged_item: WeaponRangedBase = item
+				d["bullet_speed"] = float(ranged_item.bullet_speed)
+				d["pellet_count"] = int(ranged_item.pellet_count)
+				d["spread_degrees"] = float(ranged_item.spread_degrees)
+				d["bullet_pierce"] = int(ranged_item.bullet_pierce)
+				d["bullet_type"] = str(ranged_item.bullet_type)
+			result.append(d)
+		else:
+			# 占位：从 run 数据构建最小 dict，保证索引对齐
+			var wid: String = str(w_run.get("id", ""))
+			var wtier: int = int(w_run.get("tier", 0))
+			var def := GameManager.get_weapon_def_by_id(wid)
+			var d: Dictionary = {
+				"id": wid,
+				"type": str(def.get("type", "melee")),
+				"tier": wtier,
+				"tier_color": TierConfig.get_tier_color(wtier),
+				"icon_path": "",
+				"color_hint": Color(0.8, 0.8, 0.8, 1.0),
+				"damage": 0,
+				"cooldown": 0.0,
+				"range": 0.0,
+				"type_affix_id": str(def.get("type_affix_id", "")),
+				"theme_affix_id": str(def.get("theme_affix_id", "")),
+				"random_affix_ids": w_run.get("random_affix_ids", []).duplicate()
+			}
+			result.append(d)
 	return result
 
 
@@ -636,10 +658,12 @@ func _refresh_weapon_visuals() -> void:
 		return
 	var radius := 26.0
 	for i in range(count):
+		var weapon_node = _equipped_weapons[i]
+		if weapon_node == null or not is_instance_valid(weapon_node):
+			continue
 		var ratio := float(i) / float(count)
 		var angle := ratio * TAU - PI * 0.5
 		var slot_pos := Vector2(cos(angle), sin(angle)) * radius
-		var weapon_node := _equipped_weapons[i]
 		var icon := Sprite2D.new()
 		var color_hint_any = weapon_node.color_hint
 		var color_hint: Color = color_hint_any if color_hint_any is Color else Color(0.8, 0.8, 0.8, 1.0)
