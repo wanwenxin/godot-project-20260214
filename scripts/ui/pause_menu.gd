@@ -125,7 +125,7 @@ func _build_left_column() -> VBoxContainer:
 	_key_hints_label = Label.new()
 	_key_hints_label.name = "KeyHintsLabel"
 	_key_hints_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_key_hints_label.add_theme_font_size_override("font_size", 13)
+	_key_hints_label.add_theme_font_size_override("font_size", 18)
 	_key_hints_label.add_theme_color_override("font_color", Color(0.75, 0.78, 0.82))
 	inner.add_child(_key_hints_label)
 	_resume_btn = Button.new()
@@ -138,19 +138,22 @@ func _build_left_column() -> VBoxContainer:
 
 
 func _build_right_column() -> Control:
-	# 右侧占满剩余空间，内容在 CenterContainer 中居中，无滚动条
+	# 右侧占满剩余空间，内容超出时显示垂直滚动条
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 24)
 	margin.add_theme_constant_override("margin_top", 24)
 	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_bottom", 24)
-	var right_vbox := VBoxContainer.new()
-	right_vbox.add_theme_constant_override("separation", 12)
-	margin.add_child(right_vbox)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.custom_minimum_size = Vector2(320, 400)
+	margin.add_child(scroll)
 	_stats_container = VBoxContainer.new()
 	_stats_container.name = "StatsContainer"
 	_stats_container.add_theme_constant_override("separation", 12)
-	right_vbox.add_child(_stats_container)
+	_stats_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_stats_container)
 	return margin
 
 
@@ -187,40 +190,16 @@ func _refresh_key_hints() -> void:
 		_key_hints_label.text = ""
 		return
 	_key_hints_label.text = "\n".join([
-		LocalizationManager.tr_key("pause.key_hint.move", {"keys": _action_to_text(["move_up", "move_down", "move_left", "move_right"])}),
-		LocalizationManager.tr_key("pause.key_hint.pause", {"key": _action_to_text(["pause"])}),
-		LocalizationManager.tr_key("pause.key_hint.enemy_hp", {"key": _action_to_text(["toggle_enemy_hp"])})
+		LocalizationManager.tr_key("pause.key_hint.move", {"keys": ResultPanelShared.action_to_text(["move_up", "move_down", "move_left", "move_right"])}),
+		LocalizationManager.tr_key("pause.key_hint.pause", {"key": ResultPanelShared.action_to_text(["pause"])}),
+		LocalizationManager.tr_key("pause.key_hint.camera_zoom", {"keys": ResultPanelShared.action_to_text(["camera_zoom_in", "camera_zoom_out"])}),
+		LocalizationManager.tr_key("pause.key_hint.magic", {"keys": ResultPanelShared.action_to_text(["cast_magic_1", "cast_magic_2", "cast_magic_3"])}),
+		LocalizationManager.tr_key("pause.key_hint.enemy_hp", {"key": ResultPanelShared.action_to_text(["toggle_enemy_hp"])})
 	])
 
 
-func _action_to_text(actions: Array[StringName]) -> String:
-	var result: Array[String] = []
-	for action in actions:
-		var events := InputMap.action_get_events(action)
-		if events.is_empty():
-			continue
-		var event := events[0]
-		if event is InputEventKey:
-			result.append(OS.get_keycode_string(event.keycode))
-	if result.is_empty():
-		return "-"
-	return "/".join(result)
-
-
 func _apply_panel_style() -> void:
-	var theme := UiThemeConfig.load_theme()
-	var style := StyleBoxFlat.new()
-	style.bg_color = theme.modal_panel_bg
-	style.border_color = theme.modal_panel_border
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UiThemeConfig.load_theme().get_modal_panel_stylebox())
 
 
 func _ensure_fullscreen_backdrop() -> void:

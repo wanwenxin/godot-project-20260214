@@ -15,7 +15,9 @@ signal pause_pressed
 
 @onready var health_label: Label = $Root/TopRow/HealthBox/HealthLabel
 @onready var exp_bar: ProgressBar = $Root/TopRow/HealthBox/ExpBar
+@onready var mana_bar: ProgressBar = $Root/TopRow/HealthBox/ManaBar
 @onready var level_label: Label = $Root/TopRow/HealthBox/LevelLabel
+@onready var armor_label: Label = $Root/TopRow/HealthBox/ArmorLabel
 @onready var wave_label: Label = $Root/TopRow/WaveLabel
 @onready var kill_label: Label = $Root/TopRow/KillLabel
 @onready var timer_label: Label = $Root/TopRow/TimerLabel
@@ -58,6 +60,11 @@ var _last_wave := 1
 var _last_kills := 0
 var _last_time := 0.0
 var _last_currency := 0
+var _last_mana_current := 0
+var _last_mana_max := 1
+var _last_armor := 0
+
+const HUD_FONT_SIZE := 18  # 统一基准字号，便于阅读
 
 
 func _ready() -> void:
@@ -72,11 +79,110 @@ func _ready() -> void:
 	set_currency(0)
 	set_experience(0, GameManager.get_level_up_threshold())
 	set_level(GameManager.run_level)
+	set_mana(0, 1)
+	set_armor(0)
 	_intermission_label.visible = false
 	_wave_banner.visible = false
 	_upgrade_panel.visible = false
 	_weapon_panel.visible = false
 	_modal_backdrop.visible = false
+	_apply_hud_font_sizes()
+	_apply_hud_module_backgrounds()
+
+
+func _apply_hud_module_backgrounds() -> void:
+	# TopRow 用 PanelContainer 包裹，半透明背景
+	var top_row := $Root/TopRow
+	var top_parent := top_row.get_parent()
+	var idx := top_row.get_index()
+	top_row.reparent(null)
+	var top_panel := PanelContainer.new()
+	top_panel.name = "TopRowPanel"
+	top_panel.offset_left = 12
+	top_panel.offset_top = 12
+	top_panel.offset_right = 860
+	top_panel.offset_bottom = 72
+	top_panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
+	top_panel.add_child(top_row)
+	top_parent.add_child(top_panel)
+	top_parent.move_child(top_panel, idx)
+	# 金币、间隔倒计时、波次倒计时、波次横幅、按键提示各自用 Panel 包裹
+	_wrap_label_in_panel(_currency_label, Vector2(900, 12), Vector2(120, 24))
+	_wrap_label_in_panel(_intermission_label, Vector2(12, 82), Vector2(180, 28))
+	_wrap_label_in_panel(pause_hint, Vector2(12, 52), Vector2(248, 90))
+	# _wave_countdown_label 和 _wave_banner 使用锚点，需单独处理
+	_wrap_anchored_label_in_panel(_wave_countdown_label)
+	_wrap_anchored_label_in_panel(_wave_banner)
+
+
+func _make_hud_panel_style() -> StyleBox:
+	var tex := VisualAssetRegistry.make_panel_frame_texture(
+		Vector2i(48, 48),
+		Color(0.08, 0.09, 0.12, 0.85),
+		Color(0.25, 0.26, 0.30, 0.9),
+		2,
+		6
+	)
+	var style := StyleBoxTexture.new()
+	style.texture = tex
+	style.expand_margin_left = 6
+	style.expand_margin_right = 6
+	style.expand_margin_top = 6
+	style.expand_margin_bottom = 6
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	return style
+
+
+func _wrap_label_in_panel(lbl: Label, pos: Vector2, min_size: Vector2) -> void:
+	if lbl == null:
+		return
+	var parent := lbl.get_parent()
+	var idx := lbl.get_index()
+	lbl.reparent(null)
+	var panel := PanelContainer.new()
+	panel.offset_left = pos.x
+	panel.offset_top = pos.y
+	panel.offset_right = pos.x + min_size.x
+	panel.offset_bottom = pos.y + min_size.y
+	panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
+	panel.add_child(lbl)
+	parent.add_child(panel)
+	parent.move_child(panel, idx)
+
+
+func _wrap_anchored_label_in_panel(lbl: Label) -> void:
+	if lbl == null:
+		return
+	var parent := lbl.get_parent()
+	var idx := lbl.get_index()
+	lbl.reparent(null)
+	var panel := PanelContainer.new()
+	panel.anchors_preset = lbl.anchors_preset
+	panel.anchor_left = lbl.anchor_left
+	panel.anchor_right = lbl.anchor_right
+	panel.anchor_top = lbl.anchor_top
+	panel.anchor_bottom = lbl.anchor_bottom
+	panel.offset_left = lbl.offset_left
+	panel.offset_right = lbl.offset_right
+	panel.offset_top = lbl.offset_top
+	panel.offset_bottom = lbl.offset_bottom
+	panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
+	panel.add_child(lbl)
+	parent.add_child(panel)
+	parent.move_child(panel, idx)
+
+
+func _apply_hud_font_sizes() -> void:
+	for lbl in [health_label, level_label, armor_label, wave_label, kill_label, timer_label, pause_hint]:
+		if lbl is Label:
+			lbl.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
+	if _currency_label:
+		_currency_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
+	if _intermission_label:
+		_intermission_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 
 
 func set_health(current: int, max_value: int) -> void:
@@ -124,6 +230,21 @@ func set_level(level: int) -> void:
 		level_label.text = LocalizationManager.tr_key("hud.level", {"value": level})
 
 
+func set_mana(current: float, max_value: float) -> void:
+	_last_mana_current = current
+	_last_mana_max = maxf(max_value, 1.0)
+	if mana_bar:
+		mana_bar.min_value = 0.0
+		mana_bar.max_value = _last_mana_max
+		mana_bar.value = current
+
+
+func set_armor(value: int) -> void:
+	_last_armor = value
+	if armor_label:
+		armor_label.text = LocalizationManager.tr_key("hud.armor", {"value": value})
+
+
 func set_intermission_countdown(seconds_left: float) -> void:
 	if seconds_left <= 0.0:
 		_intermission_label.visible = false
@@ -140,12 +261,22 @@ func set_wave_countdown(seconds_left: float) -> void:
 	_wave_countdown_label.text = LocalizationManager.tr_key("hud.wave_countdown", {"value": "%.0f" % seconds_left})
 
 
+## 为波次横幅与倒计时 Label 应用描边与字号，使更醒目。
+func _apply_wave_label_effects(lbl: Label) -> void:
+	lbl.add_theme_color_override("font_outline_color", Color(0.1, 0.1, 0.15, 1.0))
+	lbl.add_theme_constant_override("outline_size", 4)
+	lbl.add_theme_font_size_override("font_size", 22)
+
+
 func show_wave_banner(wave: int) -> void:
 	_wave_banner.visible = true
 	_wave_banner.text = LocalizationManager.tr_key("hud.wave_banner", {"wave": wave})
-	var tween := create_tween()
 	_wave_banner.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	_wave_banner.scale = Vector2(1.2, 1.2)
+	var tween := create_tween()
+	tween.set_parallel(true)
 	tween.tween_property(_wave_banner, "modulate", Color(1.0, 1.0, 1.0, 0.0), 1.0)
+	tween.tween_property(_wave_banner, "scale", Vector2(1.0, 1.0), 0.4).set_ease(Tween.EASE_OUT)
 	tween.finished.connect(func() -> void: _wave_banner.visible = false)
 
 
@@ -260,6 +391,7 @@ func _build_runtime_ui() -> void:
 	_wave_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_wave_countdown_label.text = ""
 	_wave_countdown_label.visible = false
+	_apply_wave_label_effects(_wave_countdown_label)
 	root.add_child(_wave_countdown_label)
 
 	_wave_banner = Label.new()
@@ -272,6 +404,7 @@ func _build_runtime_ui() -> void:
 	_wave_banner.offset_bottom = 120
 	_wave_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_wave_banner.text = "WAVE 1"
+	_apply_wave_label_effects(_wave_banner)
 	root.add_child(_wave_banner)
 
 	_upgrade_panel = Panel.new()
@@ -304,25 +437,26 @@ func _build_runtime_ui() -> void:
 	var title := Label.new()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.text = "Choose Upgrade"
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", 22)
 	box.add_child(title)
 	_upgrade_title_label = title
 	var tip := Label.new()
 	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tip.text = ""
+	tip.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 	box.add_child(tip)
 	_upgrade_tip_label = tip
 
 	var upgrade_row := HBoxContainer.new()
 	upgrade_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	upgrade_row.add_theme_constant_override("separation", 16)
+	upgrade_row.add_theme_constant_override("separation", 24)
 	box.add_child(upgrade_row)
 
 	for i in range(4):
 		var card := VBoxContainer.new()
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.custom_minimum_size = Vector2(180, 200)
+		card.custom_minimum_size = Vector2(160, 200)
 		card.add_theme_constant_override("separation", 8)
 		upgrade_row.add_child(card)
 		var icon := TextureRect.new()
@@ -333,6 +467,7 @@ func _build_runtime_ui() -> void:
 		_upgrade_icons.append(icon)
 		var btn := Button.new()
 		btn.text = "Upgrade"
+		btn.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 		btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		btn.custom_minimum_size = Vector2(0, 120)
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -344,12 +479,14 @@ func _build_runtime_ui() -> void:
 	btn_row.add_theme_constant_override("separation", 12)
 	var refresh_btn := Button.new()
 	refresh_btn.text = "Refresh"
+	refresh_btn.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 	refresh_btn.custom_minimum_size = Vector2(100, 40)
 	refresh_btn.pressed.connect(func() -> void: emit_signal("upgrade_refresh_requested"))
 	btn_row.add_child(refresh_btn)
 	_upgrade_refresh_btn = refresh_btn
 	var skip_btn := Button.new()
 	skip_btn.text = "Skip"
+	skip_btn.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 	skip_btn.custom_minimum_size = Vector2(100, 40)
 	skip_btn.pressed.connect(func() -> void: emit_signal("upgrade_selected", "skip"))
 	btn_row.add_child(skip_btn)
@@ -385,7 +522,7 @@ func _build_runtime_ui() -> void:
 	var weapon_title := Label.new()
 	weapon_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	weapon_title.text = "Weapon"
-	weapon_title.add_theme_font_size_override("font_size", 20)
+	weapon_title.add_theme_font_size_override("font_size", 22)
 	weapon_box.add_child(weapon_title)
 	_weapon_title_label = weapon_title
 
@@ -393,18 +530,19 @@ func _build_runtime_ui() -> void:
 	weapon_tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	weapon_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	weapon_tip.text = ""
+	weapon_tip.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 	weapon_box.add_child(weapon_tip)
 	_weapon_tip_label = weapon_tip
 
 	var weapon_row := HBoxContainer.new()
 	weapon_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	weapon_row.add_theme_constant_override("separation", 16)
+	weapon_row.add_theme_constant_override("separation", 24)
 	weapon_box.add_child(weapon_row)
 
 	for i in range(4):
 		var weapon_card := VBoxContainer.new()
 		weapon_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		weapon_card.custom_minimum_size = Vector2(200, 240)
+		weapon_card.custom_minimum_size = Vector2(180, 240)
 		weapon_card.add_theme_constant_override("separation", 8)
 		weapon_row.add_child(weapon_card)
 		var weapon_icon := TextureRect.new()
@@ -415,6 +553,7 @@ func _build_runtime_ui() -> void:
 		_weapon_icons.append(weapon_icon)
 		var weapon_btn := Button.new()
 		weapon_btn.text = "WeaponOption"
+		weapon_btn.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 		weapon_btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		weapon_btn.custom_minimum_size = Vector2(0, 160)
 		weapon_btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -505,9 +644,24 @@ func _on_weapon_button_pressed(btn: Button) -> void:
 
 
 func _apply_localized_static_texts() -> void:
-	pause_hint.text = LocalizationManager.tr_key("hud.pause_hint")
+	pause_hint.text = _build_key_hints_text()
 	if _upgrade_title_label:
 		_upgrade_title_label.text = LocalizationManager.tr_key("hud.upgrade_title")
+	_apply_upgrade_weapon_tip_texts()
+
+
+## 构建多行按键提示文本，供 HUD 左下角显示。
+func _build_key_hints_text() -> String:
+	return "\n".join([
+		LocalizationManager.tr_key("pause.key_hint.move", {"keys": ResultPanelShared.action_to_text(["move_up", "move_down", "move_left", "move_right"])}),
+		LocalizationManager.tr_key("pause.key_hint.pause", {"key": ResultPanelShared.action_to_text(["pause"])}),
+		LocalizationManager.tr_key("pause.key_hint.camera_zoom", {"keys": ResultPanelShared.action_to_text(["camera_zoom_in", "camera_zoom_out"])}),
+		LocalizationManager.tr_key("pause.key_hint.magic", {"keys": ResultPanelShared.action_to_text(["cast_magic_1", "cast_magic_2", "cast_magic_3"])}),
+		LocalizationManager.tr_key("pause.key_hint.enemy_hp", {"key": ResultPanelShared.action_to_text(["toggle_enemy_hp"])})
+	])
+
+
+func _apply_upgrade_weapon_tip_texts() -> void:
 	if _upgrade_tip_label:
 		_upgrade_tip_label.text = LocalizationManager.tr_key("hud.upgrade_tip", {"gold": _last_currency})
 	if _weapon_title_label and _weapon_mode == "":
@@ -521,6 +675,8 @@ func _on_language_changed(_language_code: String) -> void:
 	set_health(_last_health_current, _last_health_max)
 	set_experience(_last_exp_current, _last_exp_threshold)
 	set_level(_last_level)
+	set_mana(_last_mana_current, _last_mana_max)
+	set_armor(_last_armor)
 	set_wave(_last_wave)
 	set_kills(_last_kills)
 	set_survival_time(_last_time)
@@ -595,19 +751,7 @@ func _build_item_stats_text(option: Dictionary) -> String:
 
 
 func _apply_modal_panel_style(panel: Panel) -> void:
-	var theme := _get_ui_theme()
-	var style := StyleBoxFlat.new()
-	style.bg_color = theme.modal_panel_bg
-	style.border_color = theme.modal_panel_border
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", _get_ui_theme().get_modal_panel_stylebox())
 
 
 func _add_opaque_backdrop_to_panel(panel: Control, pass_input := false) -> void:

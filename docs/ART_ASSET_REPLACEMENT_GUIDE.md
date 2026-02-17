@@ -110,11 +110,19 @@
 | 类型 | 用途 | 当前实现 | 说明 |
 |------|------|----------|------|
 | 模态背景 | 升级/商店遮罩 | 纯色 | `ui.modal_backdrop` |
-| 面板背景 | 弹窗背景 | 纯色 | `ui.modal_panel_bg` |
-| 面板边框 | 弹窗边框 | 纯色 | `ui.modal_panel_border` |
+| 面板背景 | 弹窗背景 | 程序生成纹理 | `VisualAssetRegistry.make_panel_frame_texture()` |
+| 面板边框 | 弹窗边框 | 同上 | 九宫格拉伸，`UiThemeConfig.get_modal_panel_stylebox()` |
 | 升级图标 | 升级三选一 | 96×96 色块 | `upgrade.icon.damage` 等 |
 
-UI 颜色在 `visual_asset_registry.gd` 的 `COLOR_MAP` 中定义；升级图标若未配置纹理，会 fallback 到色块。如需图标，需在 `texture_path_config.gd` 中增加 `upgrade_icon_*` 等字段并配置路径。
+UI 颜色在 `resources/ui_theme.tres` 中配置；面板背景由 `VisualAssetRegistry.make_panel_frame_texture()` 程序生成，配合 `StyleBoxTexture` 的 `expand_margin` 实现九宫格拉伸。升级图标若未配置纹理，会 fallback 到色块。
+
+### 2.7 面板背景图替换
+
+HUD 小模块（TopRow、金币、倒计时、按键提示、波次横幅）与模态弹窗（升级/商店、暂停、设置、结算）均使用程序生成的九宫格纹理。若需替换为美术资源：
+
+1. **九宫格规格**：建议 48×48 或 64×64，边框区域（expand_margin）6~8 像素，中间区域可拉伸
+2. **替换入口**：在 `UiThemeConfig` 或 `VisualAssetRegistry` 中增加 `@export var panel_texture_path: String`，当路径非空时优先 `load()` 纹理，否则回退到 `make_panel_frame_texture()`
+3. **StyleBoxTexture 配置**：`expand_margin_left/top/right/bottom` 需与图片的九宫格切分一致
 
 ---
 

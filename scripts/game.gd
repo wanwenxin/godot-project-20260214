@@ -112,6 +112,8 @@ func _ready() -> void:
 	hud.set_survival_time(0.0)
 	hud.set_pause_hint(true)
 	hud.set_health(int(player.current_health), int(player.max_health))
+	hud.set_mana(player.current_mana, float(player.max_mana))
+	hud.set_armor(player.armor)
 	hud.set_currency(GameManager.run_currency)
 
 	# 进入游戏默认隐藏暂停菜单。商店仅在波次完成后出现，开局装备默认武器后直接开始波次。
@@ -150,6 +152,9 @@ func _process(delta: float) -> void:
 	hud.set_currency(GameManager.run_currency)
 	hud.set_experience(GameManager.run_experience, GameManager.get_level_up_threshold())
 	hud.set_level(GameManager.run_level)
+	if is_instance_valid(player):
+		hud.set_mana(player.current_mana, float(player.max_mana))
+		hud.set_armor(player.armor)
 
 	if intermission_left > 0.0:
 		intermission_left = maxf(intermission_left - delta, 0.0)

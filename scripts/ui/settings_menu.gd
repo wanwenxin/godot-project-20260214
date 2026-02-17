@@ -250,16 +250,4 @@ func _ensure_fullscreen_backdrop() -> void:
 
 func _apply_panel_style() -> void:
 	# 设置菜单固定使用不透明背景，避免底层场景干扰阅读。
-	var style := StyleBoxFlat.new()
-	var theme := UiThemeConfig.load_theme()
-	style.bg_color = theme.modal_panel_bg
-	style.border_color = theme.modal_panel_border
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UiThemeConfig.load_theme().get_modal_panel_stylebox())

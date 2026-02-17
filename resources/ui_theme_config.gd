@@ -15,3 +15,21 @@ static func load_theme() -> UiThemeConfig:
 		if t != null:
 			return t
 	return UiThemeConfig.new()
+
+
+## 返回模态面板用的 StyleBoxTexture（程序生成纹理），供暂停、设置、结算等界面复用。
+func get_modal_panel_stylebox() -> StyleBox:
+	var tex := VisualAssetRegistry.make_panel_frame_texture(
+		Vector2i(64, 64),
+		modal_panel_bg,
+		modal_panel_border,
+		2,
+		8
+	)
+	var style := StyleBoxTexture.new()
+	style.texture = tex
+	style.expand_margin_left = 8
+	style.expand_margin_right = 8
+	style.expand_margin_top = 8
+	style.expand_margin_bottom = 8
+	return style

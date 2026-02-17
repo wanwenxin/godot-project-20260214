@@ -91,10 +91,15 @@ func _build_ui() -> void:
 	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_bottom", 24)
 	_panel.add_child(margin)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	margin.add_child(scroll)
 	_content_container = VBoxContainer.new()
 	_content_container.add_theme_constant_override("separation", 16)
 	_content_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	margin.add_child(_content_container)
+	_content_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_content_container)
 	_menu_btn = Button.new()
 	_menu_btn.name = "MenuButton"
 	_menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
@@ -103,19 +108,7 @@ func _build_ui() -> void:
 
 
 func _apply_panel_style() -> void:
-	var style := StyleBoxFlat.new()
-	var theme := UiThemeConfig.load_theme()
-	style.bg_color = theme.modal_panel_bg
-	style.border_color = theme.modal_panel_border
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	_panel.add_theme_stylebox_override("panel", style)
+	_panel.add_theme_stylebox_override("panel", UiThemeConfig.load_theme().get_modal_panel_stylebox())
 
 
 func _on_menu_pressed() -> void:

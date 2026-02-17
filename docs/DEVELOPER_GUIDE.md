@@ -160,8 +160,13 @@
 ### 2.5 HUD 与菜单
 
 - `scripts/ui/hud.gd`
-  - 战斗信息（血量/经验条/等级/波次/击杀/时间/金币）
+  - 战斗信息（血量/魔力条/护甲/经验条/等级/波次/击杀/时间/金币）
+  - 魔力条与护甲由 `game.gd` 在 `_process` 中从 player 读取并调用 `set_mana`、`set_armor`
+  - 多行按键提示：移动、暂停、镜头缩放、魔法、敌人血条（复用 `ResultPanelShared.action_to_text`）
   - 波次倒计时（正上方）、间隔倒计时与波次横幅
+  - 波次横幅与倒计时文字特效：描边、缩放动画
+  - 各模块独立背景（PanelContainer + StyleBoxTexture 程序生成纹理，九宫格拉伸）
+  - 升级/商店卡片间距 24、统一基准字号 18
   - 升级四选一面板（可金币刷新，等级越高奖励越多）
   - 商店（武器+道具+魔法，4 件，购买后刷新，价格随波次上涨）
   - 升级/商店结算层使用全屏纯色不透明 backdrop
@@ -169,17 +174,21 @@
 
 - `scripts/ui/result_panel_shared.gd`（Autoload）
   - 结算/死亡/通关界面共享 UI 构建逻辑
+  - `action_to_text(actions)`：将 InputMap 动作名转为按键字符串，供 HUD、暂停菜单按键提示复用
   - `build_score_block(wave, kills, time, best_wave, best_time)`：得分区（波次、击杀、时间、新纪录标记）
   - `build_player_stats_block(stats)`：玩家信息区，stats 为 Dictionary 时展示完整属性/武器/道具/魔法；兼容旧格式 (hp_current, hp_max, speed, inertia, weapon_details)
+  - 统一基准字号 `BASE_FONT_SIZE`（18）
   - 供 pause_menu、game_over_screen、victory_screen 复用
 
 - `scripts/ui/game_over_screen.gd` + `scenes/ui/game_over_screen.tscn`
   - 死亡结算界面：CanvasLayer layer=100，全屏遮罩 + 居中 Panel
   - 展示标题「游戏结束」、得分区、玩家信息区、仅「返回主菜单」按钮
+  - 内容区使用 ScrollContainer，内容超出时显示垂直滚动条
   - 接口：`show_result(wave, kills, time, player_node)`
 
 - `scripts/ui/victory_screen.gd` + `scenes/ui/victory_screen.tscn`
   - 通关结算界面：布局与死亡界面一致，标题「通关」
+  - 内容区使用 ScrollContainer，内容超出时显示垂直滚动条
   - 接口：`show_result(wave, kills, time, player_node)`
 
 ### 2.6 武器系统
@@ -224,10 +233,11 @@
 - `scripts/ui/pause_menu.gd`
   - 暂停按钮逻辑
   - 全屏左右分栏布局：左侧系统信息（标题、按键提示、继续/主菜单），右侧玩家信息（调用 `ResultPanelShared.build_player_stats_block` 构建完整属性）
+  - 右侧内容区使用 ScrollContainer，内容超出时显示垂直滚动条
   - Root 设置为 `MOUSE_FILTER_IGNORE`，避免吞掉 HUD 点击
   - 暂停层新增全屏纯色不透明 backdrop
   - 面板样式强制不透明，保证暂停文本可读
-  - 显示当前可操作按键（随改键同步）
+  - 按键提示：移动、暂停、镜头缩放、魔法、敌人血条（随改键同步）
   - 显示玩家完整属性（HP、魔力、护甲、移速、惯性、攻速、近战/远程加成、恢复、吸血）、装备武器（含品级着色）、已购道具、装备魔法
 
 - `scripts/ui/settings_menu.gd`
@@ -380,7 +390,7 @@ flowchart TD
 - **武器图标**：weapon_defs 的 `icon_path`，HUD/player 从 option 或 weapon 节点读取
 - **掉落物**：`pickup.gd` 的 `@export_file texture_coin`、`texture_heal`
 - **升级图标**：`_upgrade_pool` 的 `icon_path`，HUD 从 option 读取
-- **VisualAssetRegistry**：仅保留 `make_color_texture(color, size)` 作为纯色贴图工具
+- **VisualAssetRegistry**：`make_color_texture(color, size)` 纯色贴图；`make_panel_frame_texture(size, bg_color, border_color, border_width, corner_radius)` 生成九宫格面板框纹理
 
 ### 4.7 默认地形与像素图
 

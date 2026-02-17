@@ -1,7 +1,28 @@
 extends Node
 
 # 结算/死亡/通关界面共享 UI 构建逻辑
+const BASE_FONT_SIZE := 18  # 统一基准字号
+
+
 # 供 pause_menu、game_over_screen、victory_screen 复用得分区与玩家信息区
+# 提供 action_to_text 供 HUD、暂停菜单等按键提示复用
+
+
+## 将 InputMap 动作名数组转为按键字符串，如 "WASD" 或 "P"。
+static func action_to_text(actions: Array) -> String:
+	var result: Array[String] = []
+	for action in actions:
+		var events := InputMap.action_get_events(StringName(str(action)))
+		if events.is_empty():
+			continue
+		var event := events[0]
+		if event is InputEventKey:
+			result.append(OS.get_keycode_string(event.keycode))
+	if result.is_empty():
+		return "-"
+	return "/".join(result)
+
+
 static func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_time: float) -> Control:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 8)
@@ -18,7 +39,7 @@ static func build_score_block(wave: int, kills: int, time: float, best_wave: int
 	lbl.text = score_text
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	vbox.add_child(lbl)
 	return vbox
 
@@ -79,7 +100,7 @@ static func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_par
 	if weapon_details.is_empty():
 		var no_w := Label.new()
 		no_w.text = LocalizationManager.tr_key("pause.no_weapons")
-		no_w.add_theme_font_size_override("font_size", 13)
+		no_w.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 		weapon_row.add_child(no_w)
 	else:
 		for w in weapon_details:
@@ -118,7 +139,7 @@ static func _make_item_chip(item_id: String) -> Control:
 			name_key = str(it.get("name_key", name_key))
 			break
 	lbl.text = LocalizationManager.tr_key(name_key)
-	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 1.0))
 	return lbl
 
@@ -128,7 +149,7 @@ static func _make_magic_chip(m: Dictionary) -> Control:
 	var mid := str(m.get("id", ""))
 	var name_key := "magic.%s.name" % mid
 	lbl.text = LocalizationManager.tr_key(name_key)
-	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	var tier_color: Color = m.get("tier_color", Color(0.8, 0.85, 0.9, 1.0))
 	if tier_color is Color:
 		lbl.add_theme_color_override("font_color", tier_color)
@@ -138,7 +159,7 @@ static func _make_magic_chip(m: Dictionary) -> Control:
 static func _make_section_header(text: String) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 15)
+	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	lbl.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
 	return lbl
 
@@ -146,11 +167,11 @@ static func _make_section_header(text: String) -> Label:
 static func _add_stat_row(grid: GridContainer, label_text: String, value_text: String) -> void:
 	var lbl := Label.new()
 	lbl.text = label_text + ": "
-	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	grid.add_child(lbl)
 	var val := Label.new()
 	val.text = value_text
-	val.add_theme_font_size_override("font_size", 13)
+	val.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	val.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	grid.add_child(val)
 
@@ -173,7 +194,7 @@ static func _make_weapon_card(w: Dictionary) -> Control:
 	var name_lbl := Label.new()
 	var name_key := "weapon.%s.name" % str(w.get("id", ""))
 	name_lbl.text = LocalizationManager.tr_key(name_key)
-	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	var tier_color: Color = w.get("tier_color", Color(0.95, 0.9, 0.7))
 	if tier_color is Color:
 		name_lbl.add_theme_color_override("font_color", tier_color)
