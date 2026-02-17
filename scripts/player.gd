@@ -260,7 +260,7 @@ func _apply_magic_tier_to_instance(mag: Dictionary) -> void:
 	if inst == null or not (inst is MagicBase):
 		return
 	var def: Dictionary = mag.get("def", {})
-	var mult: float = TierConfig.get_item_tier_multiplier(tier_val)
+	var _mult: float = TierConfig.get_item_tier_multiplier(tier_val)
 	(inst as MagicBase).configure_from_def(def, tier_val)
 
 
@@ -371,7 +371,7 @@ func _update_direction_sprite() -> void:
 	# 行走时在行 1、2 间交替（约 150ms 一帧）
 	var row := 0
 	if velocity.length_squared() > 16.0:
-		row = 1 + (int(Time.get_ticks_msec() / 150) % 2)
+		row = 1 + (int(Time.get_ticks_msec() / 150.0) % 2)
 	sprite.region_rect = Rect2(_last_direction_index * frame_w, row * frame_h, frame_w, frame_h)
 
 

@@ -15,12 +15,6 @@ run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
-[debug]
-
-file_logging/enable_file_logging=true
-file_logging/log_path="user://logs/godot.log"
-file_logging/max_log_files=5
-
 [autoload]
 
 LogManager="*res://scripts/autoload/log_manager.gd"
@@ -31,12 +25,20 @@ AudioManager="*res://scripts/autoload/audio_manager.gd"
 VisualAssetRegistry="*res://scripts/autoload/visual_asset_registry.gd"
 ResultPanelShared="*res://scripts/ui/result_panel_shared.gd"
 
+[debug]
+
+file_logging/enable_file_logging=true
+
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="ignore"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/editor_logger/plugin.cfg")
 
 [input]
 

@@ -437,7 +437,9 @@ flowchart TD
 ### 4.11 日志与排障
 
 - **内置文件日志**：`project.godot` 中 `[debug]` 启用 `file_logging`，引擎将 `print`、`push_error`、`push_warning` 等输出到 `user://logs/godot.log`
-- **错误专用日志**：`LogManager` autoload 将错误/警告写入 `user://logs/game_errors.log`，便于快速定位问题
+- **统一日志**：`LogManager`（游戏）与 `addons/editor_logger`（编辑器）均写入 `user://logs/game_errors.log`，前缀 `[GAME]` / `[EDITOR]` 区分
+- **GDScript::reload 补充**：脚本重载时的解析错误（UNUSED_PARAMETER 等）可能不经过 `OS.add_logger`。EditorLogger 定时从 `godot.log` 与 Output 面板双路中继到 `game_errors.log`，前缀 `[EDITOR][RELAY]` / `[EDITOR][OUTPUT]`
+- **插件验证**：启动编辑器后，若 `game_errors.log` 出现 `[EditorLogger] 插件已加载`，说明插件生效；若无，检查「项目 → 项目设置 → 插件」中 Editor Logger 是否启用
 - **日志路径**：通过 Godot 菜单「项目 → 打开项目数据文件夹」可找到 `user://` 对应目录，其下 `logs/` 为日志文件
 
 ### 4.12 设置结构（SaveManager）

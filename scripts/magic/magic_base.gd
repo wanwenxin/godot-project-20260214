@@ -20,6 +20,6 @@ func configure_from_def(def: Dictionary, tier: int = 0) -> void:
 	magic_id = str(def.get("id", magic_id))
 
 
-func cast(caster: Node2D, target_dir: Vector2) -> bool:
+func cast(_caster: Node2D, _target_dir: Vector2) -> bool:
 	# 子类 override：生成弹道/范围效果，命中敌人时调用 enemy.take_damage(power, element)
 	return false

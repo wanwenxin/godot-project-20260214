@@ -116,7 +116,7 @@ func _update_direction_sprite() -> void:
 	# 行走时在行 1、2 间交替（约 150ms 一帧）
 	var row := 0
 	if velocity.length_squared() > 16.0:
-		row = 1 + (int(Time.get_ticks_msec() / 150) % 2)
+		row = 1 + (int(Time.get_ticks_msec() / 150.0) % 2)
 	sprite.region_rect = Rect2(_last_direction_index * frame_w, row * frame_h, frame_w, frame_h)
 
 
@@ -125,8 +125,8 @@ func apply_knockback(dir: Vector2, force: float) -> void:
 	_knockback_velocity += dir.normalized() * force
 
 
-## 受到伤害；elemental 为元素类型（如 "fire"），预留抗性/DOT 扩展。
-func take_damage(amount: int, elemental: String = "") -> void:
+## 受到伤害；_elemental 为元素类型（如 "fire"），预留抗性/DOT 扩展，基类暂未使用
+func take_damage(amount: int, _elemental: String = "") -> void:
 	current_health -= amount
 	_refresh_health_bar()
 	if current_health <= 0:

@@ -60,8 +60,8 @@ var _last_wave := 1
 var _last_kills := 0
 var _last_time := 0.0
 var _last_currency := 0
-var _last_mana_current := 0
-var _last_mana_max := 1
+var _last_mana_current := 0.0
+var _last_mana_max := 1.0
 var _last_armor := 0
 
 const HUD_FONT_SIZE := 18  # 统一基准字号，便于阅读
@@ -95,7 +95,6 @@ func _apply_hud_module_backgrounds() -> void:
 	var top_row := $Root/TopRow
 	var top_parent := top_row.get_parent()
 	var idx := top_row.get_index()
-	top_row.reparent(null)
 	var top_panel := PanelContainer.new()
 	top_panel.name = "TopRowPanel"
 	top_panel.offset_left = 12
@@ -103,7 +102,7 @@ func _apply_hud_module_backgrounds() -> void:
 	top_panel.offset_right = 860
 	top_panel.offset_bottom = 72
 	top_panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
-	top_panel.add_child(top_row)
+	top_row.reparent(top_panel)  # 重父到新 Panel，不可用 reparent(null)
 	top_parent.add_child(top_panel)
 	top_parent.move_child(top_panel, idx)
 	# 金币、间隔倒计时、波次倒计时、波次横幅、按键提示各自用 Panel 包裹
@@ -141,14 +140,13 @@ func _wrap_label_in_panel(lbl: Label, pos: Vector2, min_size: Vector2) -> void:
 		return
 	var parent := lbl.get_parent()
 	var idx := lbl.get_index()
-	lbl.reparent(null)
 	var panel := PanelContainer.new()
 	panel.offset_left = pos.x
 	panel.offset_top = pos.y
 	panel.offset_right = pos.x + min_size.x
 	panel.offset_bottom = pos.y + min_size.y
 	panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
-	panel.add_child(lbl)
+	lbl.reparent(panel)  # 重父到新 Panel，不可用 reparent(null)
 	parent.add_child(panel)
 	parent.move_child(panel, idx)
 
@@ -158,7 +156,6 @@ func _wrap_anchored_label_in_panel(lbl: Label) -> void:
 		return
 	var parent := lbl.get_parent()
 	var idx := lbl.get_index()
-	lbl.reparent(null)
 	var panel := PanelContainer.new()
 	panel.anchors_preset = lbl.anchors_preset
 	panel.anchor_left = lbl.anchor_left
@@ -170,7 +167,7 @@ func _wrap_anchored_label_in_panel(lbl: Label) -> void:
 	panel.offset_top = lbl.offset_top
 	panel.offset_bottom = lbl.offset_bottom
 	panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
-	panel.add_child(lbl)
+	lbl.reparent(panel)  # 重父到新 Panel，不可用 reparent(null)
 	parent.add_child(panel)
 	parent.move_child(panel, idx)
 
@@ -684,7 +681,7 @@ func _on_language_changed(_language_code: String) -> void:
 
 
 # 填充商店/开局按钮：支持武器与道具；is_shop 时道具不检查槽位，武器检查 capacity_left。
-func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gold: int, capacity_left: int) -> void:
+func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gold: int, _capacity_left: int) -> void:
 	var button_index := 0
 	for option in options:
 		if button_index >= _weapon_buttons.size():

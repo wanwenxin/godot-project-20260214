@@ -371,10 +371,10 @@ func _format_upgrade_reward(upgrade_id: String, value: Variant) -> String:
 	if value == null:
 		return ""
 	if value is float:
-		var v: float = value
+		var v_float: float = value
 		if upgrade_id == "lifesteal_chance":
-			return "+%.0f%%" % (v * 100.0)
-		return "+%.1f" % v
+			return "+%.0f%%" % (v_float * 100.0)
+		return "+%.1f" % v_float
 	var v: int = int(value)
 	if upgrade_id == "max_health":
 		return "+%d HP" % v

@@ -16,8 +16,8 @@ func get_elemental_enchantment() -> String:
 	return ""
 
 
-## 指定武器的额外伤害加成，默认 0
-func get_weapon_damage_bonus(weapon_id: String) -> float:
+## 指定武器的额外伤害加成，默认 0；子类可重写并利用 _weapon_id 做武器专属加成
+func get_weapon_damage_bonus(_weapon_id: String) -> float:
 	return 0.0
 
 
@@ -34,8 +34,8 @@ func get_max_health_multiplier() -> float:
 ## 获取最终伤害（供武器/子弹调用）
 ## base_damage: 武器基础伤害
 ## weapon_id: 武器 id，用于武器专属加成
-## context: 扩展上下文，可传 attack_type、is_melee 等
-func get_final_damage(base_damage: int, weapon_id: String, context: Dictionary = {}) -> int:
+## _context: 扩展上下文，可传 attack_type、is_melee 等，子类重写时可使用
+func get_final_damage(base_damage: int, weapon_id: String, _context: Dictionary = {}) -> int:
 	var mult := get_damage_multiplier()
 	var bonus := get_weapon_damage_bonus(weapon_id)
 	return maxi(1, int(float(base_damage) * mult + bonus))

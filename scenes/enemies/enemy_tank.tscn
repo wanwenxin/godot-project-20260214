@@ -1,6 +1,6 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://jnrx0ckgumme"]
 
-[ext_resource type="Script" path="res://scripts/enemy_tank.gd" id="1"]
+[ext_resource type="Script" uid="uid://dop3fv6bxobqi" path="res://scripts/enemy_tank.gd" id="1"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 15.0
@@ -8,27 +8,25 @@ radius = 15.0
 [sub_resource type="CircleShape2D" id="CircleShape2D_2"]
 radius = 21.0
 
-[node name="EnemyTank" type="CharacterBody2D"]
+[node name="EnemyTank" type="CharacterBody2D" unique_id=1314803386]
 script = ExtResource("1")
-texture_sheet = "res://assets/enemies/enemy_tank_sheet.png"
-texture_single = "res://assets/enemies/enemy_tank.png"
 max_health = 80
 speed = 62.0
 exp_value = 12
 contact_damage = 14
+texture_sheet = "res://assets/enemies/enemy_tank_sheet.png"
+texture_single = "res://assets/enemies/enemy_tank.png"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1191141860]
 shape = SubResource("CircleShape2D_1")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1000917522]
 
-[node name="HurtArea" type="Area2D" parent="."]
-monitoring = true
-monitorable = true
+[node name="HurtArea" type="Area2D" parent="." unique_id=486852437]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="HurtArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HurtArea" unique_id=1277777682]
 shape = SubResource("CircleShape2D_2")
 
-[node name="ContactDamageTimer" type="Timer" parent="."]
+[node name="ContactDamageTimer" type="Timer" parent="." unique_id=2051734774]
 wait_time = 0.65
 one_shot = true

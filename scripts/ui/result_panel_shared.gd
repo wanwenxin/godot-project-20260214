@@ -9,7 +9,8 @@ const BASE_FONT_SIZE := 18  # 统一基准字号
 
 
 ## 将 InputMap 动作名数组转为按键字符串，如 "WASD" 或 "P"。
-static func action_to_text(actions: Array) -> String:
+## 非 static，因 autoload 单例调用时 static 会触发 STATIC_CALLED_ON_INSTANCE 警告
+func action_to_text(actions: Array) -> String:
 	var result: Array[String] = []
 	for action in actions:
 		var events := InputMap.action_get_events(StringName(str(action)))
@@ -23,7 +24,7 @@ static func action_to_text(actions: Array) -> String:
 	return "/".join(result)
 
 
-static func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_time: float) -> Control:
+func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_time: float) -> Control:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 8)
 	var wave_flag := LocalizationManager.tr_key("hud.new_record") if wave >= best_wave else ""
@@ -45,7 +46,7 @@ static func build_score_block(wave: int, kills: int, time: float, best_wave: int
 
 
 ## 构建玩家信息区。stats 为 Dictionary 时用完整格式；否则兼容旧格式 (hp_current, hp_max, speed, inertia, weapon_details)。
-static func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = null, inertia_param = null, weapon_details_param = null) -> Control:
+func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = null, inertia_param = null, weapon_details_param = null) -> Control:
 	var stats: Dictionary
 	if stats_or_hp is Dictionary:
 		stats = stats_or_hp

@@ -2,9 +2,10 @@ extends Node
 ## LogManager：将 Godot 调试器面板的报错与警告输出到日志文件
 ##
 ## 功能：
-## - 捕获 push_error、push_warning、printerr、GDScript 运行时错误
+## - 捕获 push_error、push_warning、printerr、GDScript 运行时错误（_log_error）
+## - 捕获 print、引擎内部 WARNING 等全部输出（_log_message，含 stdout/stderr）
 ## - 写入 user://logs/game_errors.log
-## - 与引擎内置 godot.log 互补（本文件仅记录错误/警告，便于排查）
+## - 若仍有遗漏，可查看引擎内置 user://logs/godot.log
 ##
 ## 依赖：Godot 4.5+ 的 OS.add_logger / Logger 接口
 ## 说明：user:// 在编辑器与导出版本均可写；通过「项目 → 打开项目数据文件夹」可找到 logs
@@ -21,13 +22,11 @@ class FileErrorLogger extends Logger:
 		_log_path = log_path
 		_mutex = Mutex.new()
 
-	## 接收 print/printerr 等消息；error=true 表示 stderr（错误/警告流），error=false 表示 stdout
-	## 错误、警告、以及 stdout 中疑似警告的消息均写入文件
+	## 接收 print/printerr 及引擎内部输出；error=true 表示 stderr，error=false 表示 stdout
+	## 引擎内部 WARNING 可能走任一流；全部记录以确保控制台警告均落盘（stdout 含普通 print 会略增体积）
 	func _log_message(message: String, error: bool) -> void:
-		if error:
-			_write_line("[STDERR] %s" % message)
-		elif message.to_lower().contains("warn") or message.to_lower().contains("warning"):
-			_write_line("[WARNING] %s" % message)
+		var prefix := "[GAME][STDERR] " if error else "[GAME][STDOUT] "
+		_write_line("%s%s" % [prefix, message])
 
 	## 接收 GDScript 运行时错误、push_error、push_warning 等
 	func _log_error(
@@ -43,7 +42,7 @@ class FileErrorLogger extends Logger:
 		var type_str := _error_type_to_string(error_type)
 		var loc := "%s:%d in %s()" % [file, line, _function]
 		var body: String = rationale if rationale.length() > 0 else code
-		var line_text := "[%s] %s | %s" % [type_str, loc, body]
+		var line_text := "[GAME][%s] %s | %s" % [type_str, loc, body]
 		_write_line(line_text)
 		# 若有脚本回溯，追加到日志
 		for bt in script_backtraces:
@@ -63,7 +62,10 @@ class FileErrorLogger extends Logger:
 		var dir := _log_path.get_base_dir()
 		if not DirAccess.dir_exists_absolute(dir):
 			DirAccess.make_dir_recursive_absolute(dir)
+		# READ_WRITE 在文件不存在时返回 null，需先用 WRITE 创建
 		var f := FileAccess.open(_log_path, FileAccess.READ_WRITE)
+		if f == null:
+			f = FileAccess.open(_log_path, FileAccess.WRITE)
 		if f:
 			f.seek_end()
 			var timestamp := Time.get_datetime_string_from_system()

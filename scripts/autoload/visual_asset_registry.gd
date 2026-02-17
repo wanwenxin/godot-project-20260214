@@ -18,12 +18,12 @@ func make_panel_frame_texture(
 	bg_color: Color = Color(0.08, 0.09, 0.12, 0.85),
 	border_color: Color = Color(0.25, 0.26, 0.30, 1.0),
 	border_width: int = 2,
-	corner_radius: int = 6
+	_corner_radius: int = 6
 ) -> Texture2D:
 	var w := maxi(32, size.x)
 	var h := maxi(32, size.y)
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	var bw := mini(border_width, mini(w, h) / 2)
+	var bw := mini(border_width, int(mini(w, h) / 2.0))
 	# 先填充背景色
 	img.fill(bg_color)
 	# 绘制矩形边框（九宫格拉伸时边角保持，中间拉伸）

@@ -157,8 +157,8 @@ func _start_next_wave() -> void:
 		position_batches.append({"position": _random_spawn_position(), "spawns": []})
 	for i in range(land_orders.size()):
 		var o: Dictionary = land_orders[i]
-		var idx := i % pos_count
-		position_batches[idx].spawns.append(o)
+		var pos_idx := i % pos_count
+		position_batches[pos_idx].spawns.append(o)
 	# 水生敌人：每个有独立水域位置，各成一批。
 	for o in aquatic_orders:
 		position_batches.append({"position": o.pos_override, "spawns": [o]})
@@ -166,7 +166,7 @@ func _start_next_wave() -> void:
 	_pending_spawn_batches.clear()
 	_batch_index = 0
 	var temporal_count := maxi(1, spawn_batch_count)
-	var per_temporal := int(position_batches.size() / temporal_count)
+	var per_temporal := int(float(position_batches.size()) / float(temporal_count))
 	var remainder := position_batches.size() % temporal_count
 	var idx := 0
 	for t in range(temporal_count):
