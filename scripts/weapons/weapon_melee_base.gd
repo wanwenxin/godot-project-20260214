@@ -139,6 +139,7 @@ func _build_swing_visual() -> void:
 	var spr := Sprite2D.new()
 	spr.name = "SwingVisual"
 	var tex: Texture2D = null
+	# 动态加载：swing_texture_path 来自 @export 或 def，ResourceLoader.exists 校验后 load()，失败则用色块
 	if swing_texture_path != "" and ResourceLoader.exists(swing_texture_path):
 		tex = load(swing_texture_path) as Texture2D
 	if tex == null:

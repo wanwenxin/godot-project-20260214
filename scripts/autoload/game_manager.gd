@@ -76,6 +76,7 @@ var run_upgrades: Array = []  # 本局玩家相关升级，每项为 {id, value}
 var run_weapon_upgrades: Array[String] = []  # 本局武器相关升级 id 列表，同步武器时应用
 
 
+## [系统] 节点入树时调用，加载武器定义、读取存档、应用设置并连接窗口缩放。
 func _ready() -> void:
 	# 启动时读取上次选择的角色，保证“继续游戏”体验一致。
 	for item in WEAPON_DEFS_RESOURCE.WEAPON_DEFS:
@@ -88,6 +89,7 @@ func _ready() -> void:
 	call_deferred("_connect_window_resize")
 
 
+## [自定义] 返回角色配置字典。character_id < 0 时返回当前选中角色；深拷贝防篡改。
 func get_character_data(character_id: int = -1) -> Dictionary:
 	# character_id < 0 时返回当前选中角色。
 	var target_id := selected_character_id if character_id < 0 else character_id
@@ -98,14 +100,18 @@ func get_character_data(character_id: int = -1) -> Dictionary:
 	return characters[0].duplicate(true)
 
 
+## [自定义] 设置当前选中的角色 id。
 func set_selected_character(character_id: int) -> void:
 	selected_character_id = character_id
 
 
+## [自定义] 设置当前选中的关卡预设 id，并 clamp 到有效范围。
 func set_selected_preset_id(preset_id: int) -> void:
 	selected_preset_id = clampi(preset_id, 0, LEVEL_PRESET_PATHS.size() - 1)
 
 
+## [自定义] 动态加载关卡预设列表。路径来自 LEVEL_PRESET_PATHS 常量；ResourceLoader.exists 校验后 load()，
+## 失败路径跳过；返回 Resource 数组供角色选择页展示。
 func get_level_presets() -> Array:
 	var result: Array = []
 	for path in LEVEL_PRESET_PATHS:
@@ -114,6 +120,8 @@ func get_level_presets() -> Array:
 	return result
 
 
+## [自定义] 根据 preset_id 加载关卡预设并填充 current_level_sequence。路径来自 LEVEL_PRESET_PATHS[preset_id]，
+## 运行时 load()；preset 无效或 level_configs 为空时 sequence 为空；仅追加 LevelConfig 类型。
 func load_level_sequence_from_preset(preset_id: int) -> void:
 	set_selected_preset_id(preset_id)
 	current_level_sequence.clear()
@@ -126,18 +134,21 @@ func load_level_sequence_from_preset(preset_id: int) -> void:
 				current_level_sequence.append(cfg)
 
 
+## [自定义] 返回指定波次对应的关卡配置；wave 越界时返回 null。
 func get_current_level_config(wave: int) -> LevelConfig:
 	if wave < 1 or wave > current_level_sequence.size():
 		return null
 	return current_level_sequence[wave - 1] as LevelConfig
 
 
+## [自定义] 返回通关波次（关卡数量）；无配置时默认 5。
 func get_victory_wave() -> int:
 	if current_level_sequence.is_empty():
 		return 5
 	return current_level_sequence.size()
 
 
+## [自定义] 开始新游戏：设置角色、加载预设、重置本局资源、切到战斗场景。
 func start_new_game(character_id: int) -> void:
 	# 新游戏前先落当前角色选择。
 	set_selected_character(character_id)
@@ -149,6 +160,7 @@ func start_new_game(character_id: int) -> void:
 	get_tree().change_scene_to_file(SCENE_GAME)
 
 
+## [自定义] 继续游戏（沿用角色重新开一局）：加载预设、重置本局资源、切到战斗场景。
 func continue_game() -> void:
 	# continue_game 当前语义是“沿用角色重新开一局”。
 	load_level_sequence_from_preset(selected_preset_id)
@@ -158,14 +170,17 @@ func continue_game() -> void:
 	get_tree().change_scene_to_file(SCENE_GAME)
 
 
+## [自定义] 切换到角色选择场景。
 func open_character_select() -> void:
 	get_tree().change_scene_to_file(SCENE_CHARACTER_SELECT)
 
 
+## [自定义] 切换到主菜单场景。
 func open_main_menu() -> void:
 	get_tree().change_scene_to_file(SCENE_MAIN_MENU)
 
 
+## [自定义] 保存本局战绩到内存与本地存档。
 func save_run_result(wave: int, kills: int, survival_time: float) -> void:
 	# 同时更新内存中的最近战绩和本地存档统计。
 	last_run_result = {
@@ -176,11 +191,12 @@ func save_run_result(wave: int, kills: int, survival_time: float) -> void:
 	SaveManager.update_run_result(wave, survival_time, kills, selected_character_id)
 
 
+## [自定义] 增加本局金币，不低于 0。
 func add_currency(amount: int) -> void:
 	run_currency = maxi(run_currency + amount, 0)
 
 
-## 记录本局对敌人造成的伤害，供结算界面展示总伤害。
+## [自定义] 记录本局对敌人造成的伤害，供结算界面展示总伤害。
 func add_record_damage_dealt(amount: int) -> void:
 	if amount > 0:
 		run_total_damage += amount
@@ -192,6 +208,7 @@ const XP_BASE := 50
 const XP_CURVE := 1.2
 
 
+## [自定义] 增加经验值，循环检查升级（可能连升多级）。
 func add_experience(amount: int) -> void:
 	if amount <= 0:
 		return
@@ -202,15 +219,18 @@ func add_experience(amount: int) -> void:
 		run_level += 1
 
 
+## [自定义] 返回当前等级升级所需经验值。
 func get_level_up_threshold() -> int:
 	return int(float(XP_BASE) * pow(float(run_level), XP_CURVE))
 
 
+## [自定义] 重置经验与等级为初始值。
 func reset_run_experience() -> void:
 	run_experience = 0
 	run_level = 1
 
 
+## [自定义] 消耗金币，不足时返回 false。
 func spend_currency(amount: int) -> bool:
 	if run_currency < amount:
 		return false
@@ -218,7 +238,7 @@ func spend_currency(amount: int) -> bool:
 	return true
 
 
-# 从 SaveManager 读取设置并应用到音量、窗口、按键、血条、惯性。
+## [自定义] 从 SaveManager 读取设置并应用到音量、窗口、按键、血条、惯性。
 func apply_saved_settings() -> void:
 	var settings := SaveManager.get_settings()
 	var system_cfg: Dictionary = settings.get("system", {})
@@ -237,11 +257,13 @@ func apply_saved_settings() -> void:
 	move_inertia_factor = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, 0.9)
 
 
+## [自定义] 应用窗口模式（全屏/百分比/自定义尺寸），deferred 执行避免与设置菜单冲突。
 func _apply_window_mode(value: String) -> void:
 	# 使用 call_deferred 确保在帧末执行，避免设置菜单打开时窗口操作被吞掉
 	call_deferred("_do_apply_window_mode", value)
 
 
+## [自定义] 实际执行窗口模式切换：全屏/百分比/自定义分辨率，并设置 content_scale_size。
 func _do_apply_window_mode(value: String) -> void:
 	# 支持百分比窗口与全屏；同时将 content_scale_size 设为窗口尺寸，使画面填满
 	var scale_factor := 1.0
@@ -282,26 +304,31 @@ func _do_apply_window_mode(value: String) -> void:
 	_apply_content_scale_to_window(DESIGN_VIEWPORT)
 
 
+## [自定义] 将根窗口的 content_scale_size 设为 DESIGN_VIEWPORT，实现等比例缩放。
 func _apply_content_scale_to_window(_size: Vector2i) -> void:
 	var root := Engine.get_main_loop().root as Window
 	if root:
 		root.content_scale_size = DESIGN_VIEWPORT
 
 
+## [自定义] 全屏切换后延迟一帧应用 content_scale，此时窗口尺寸已更新。
 func _deferred_apply_content_scale_after_fullscreen() -> void:
 	_apply_content_scale_to_window(DisplayServer.window_get_size())
 
 
+## [自定义] 连接根窗口 size_changed 信号，窗口缩放时同步 content_scale。
 func _connect_window_resize() -> void:
 	var root := Engine.get_main_loop().root as Window
 	if root and not root.size_changed.is_connected(_on_root_size_changed):
 		root.size_changed.connect(_on_root_size_changed)
 
 
+## [系统] 根窗口 size_changed 信号回调，窗口缩放时重新应用 content_scale。
 func _on_root_size_changed() -> void:
 	_apply_content_scale_to_window(DisplayServer.window_get_size())
 
 
+## [自定义] 应用预设按键（wasd/arrows）。
 func _apply_key_preset(preset: String) -> void:
 	if preset == "arrows":
 		_set_action_single_key("move_left", "Left")
@@ -323,7 +350,7 @@ const BINDABLE_ACTIONS := [
 ]
 
 
-## 应用完整按键绑定；冲突时后绑定的覆盖先绑定的。
+## [自定义] 应用完整按键绑定；冲突时后绑定的覆盖先绑定的。
 func _apply_key_bindings(bindings: Dictionary) -> void:
 	# 先清除所有动作的键位，避免同一键被多动作共享
 	var key_to_action: Dictionary = {}
@@ -343,6 +370,7 @@ func _apply_key_bindings(bindings: Dictionary) -> void:
 			_set_action_single_key(StringName(action), key_name)
 
 
+## [自定义] 清除指定动作的所有按键绑定。
 func _clear_action_events(action: StringName) -> void:
 	if not InputMap.has_action(action):
 		return
@@ -350,6 +378,7 @@ func _clear_action_events(action: StringName) -> void:
 		InputMap.action_erase_event(action, event)
 
 
+## [自定义] 将指定动作绑定为单一按键；key_name 无效时跳过。
 func _set_action_single_key(action: StringName, key_name: String) -> void:
 	if not InputMap.has_action(action):
 		InputMap.add_action(action)
@@ -363,7 +392,7 @@ func _set_action_single_key(action: StringName, key_name: String) -> void:
 	InputMap.action_add_event(action, event_key)
 
 
-## 获取当前按键绑定（从 InputMap 或设置），供设置页显示。
+## [自定义] 获取当前按键绑定（从 InputMap 或设置），供设置页显示。
 func get_key_bindings() -> Dictionary:
 	var settings := SaveManager.get_settings()
 	var game_cfg: Dictionary = settings.get("game", {})
@@ -404,6 +433,7 @@ func get_key_bindings() -> Dictionary:
 	return bindings
 
 
+## [自定义] 返回武器定义池的深拷贝。
 func get_weapon_defs() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for item in weapon_defs:
@@ -411,6 +441,7 @@ func get_weapon_defs() -> Array[Dictionary]:
 	return result
 
 
+## [自定义] 按 id 查找武器定义，未找到返回空字典。
 func get_weapon_def_by_id(weapon_id: String) -> Dictionary:
 	for item in weapon_defs:
 		if str(item.get("id", "")) == weapon_id:
@@ -418,6 +449,7 @@ func get_weapon_def_by_id(weapon_id: String) -> Dictionary:
 	return {}
 
 
+## [自定义] 清空本局武器、道具、升级、总伤害等，新游戏/继续时调用。
 func reset_run_weapons() -> void:
 	run_weapons.clear()
 	run_total_damage = 0
@@ -427,13 +459,13 @@ func reset_run_weapons() -> void:
 	run_weapon_upgrades.clear()
 
 
-## 商店刷新费用：1 + refresh_count * (1 + wave * 0.15)
+## [自定义] 商店刷新费用：1 + refresh_count * (1 + wave * 0.15)。
 func get_shop_refresh_cost(wave: int) -> int:
 	var wave_coef: float = 1.0 + float(wave) * 0.15
 	return maxi(1, int(1.0 + float(shop_refresh_count) * wave_coef))
 
 
-## 尝试消耗金币执行商店刷新，成功则 shop_refresh_count +1 并返回 true。
+## [自定义] 尝试消耗金币执行商店刷新，成功则 shop_refresh_count +1 并返回 true。
 func try_spend_shop_refresh(wave: int) -> bool:
 	var cost: int = get_shop_refresh_cost(wave)
 	if run_currency < cost:
@@ -443,33 +475,39 @@ func try_spend_shop_refresh(wave: int) -> bool:
 	return true
 
 
+## [自定义] 添加道具到本局，已存在则不重复。
 func add_run_item(item_id: String) -> void:
 	if not run_items.has(item_id):
 		run_items.append(item_id)
 
 
+## [自定义] 返回本局道具 id 列表的副本。
 func get_run_items() -> Array[String]:
 	return run_items.duplicate()
 
 
+## [自定义] 添加玩家升级到本局，供词条系统聚合。
 func add_run_upgrade(upgrade_id: String, value: Variant) -> void:
 	run_upgrades.append({"id": upgrade_id, "value": value})
 
 
+## [自定义] 返回本局玩家升级列表的副本。
 func get_run_upgrades() -> Array:
 	return run_upgrades.duplicate()
 
 
+## [自定义] 添加武器升级到本局，同步武器时应用。
 func add_run_weapon_upgrade(upgrade_id: String) -> void:
 	if not run_weapon_upgrades.has(upgrade_id):
 		run_weapon_upgrades.append(upgrade_id)
 
 
+## [自定义] 返回本局武器升级 id 列表的副本。
 func get_run_weapon_upgrades() -> Array[String]:
 	return run_weapon_upgrades.duplicate()
 
 
-## 返回本局武器列表，每项为 {id, tier, random_affix_ids}。
+## [自定义] 返回本局武器列表，每项为 {id, tier, random_affix_ids}。
 func get_run_weapons() -> Array:
 	var result: Array = []
 	for w in run_weapons:
@@ -478,7 +516,7 @@ func get_run_weapons() -> Array:
 	return result
 
 
-## 添加武器；仅做容量检查与 append，不自动合成。
+## [自定义] 添加武器；仅做容量检查与 append，不自动合成。
 func add_run_weapon(weapon_id: String, random_affix_ids: Array = []) -> bool:
 	if get_weapon_def_by_id(weapon_id).is_empty():
 		return false
@@ -488,7 +526,7 @@ func add_run_weapon(weapon_id: String, random_affix_ids: Array = []) -> bool:
 	return true
 
 
-## 移除指定索引的武器，用于售卖。返回是否成功。
+## [自定义] 移除指定索引的武器，用于售卖。返回是否成功。
 func remove_run_weapon(index: int) -> bool:
 	if index < 0 or index >= run_weapons.size():
 		return false
@@ -496,7 +534,7 @@ func remove_run_weapon(index: int) -> bool:
 	return true
 
 
-## 手动合并：base_index 武器品级 +1，material_index 武器移除。保留 base 的 random_affix_ids。
+## [自定义] 手动合并：base_index 武器品级 +1，material_index 武器移除。保留 base 的 random_affix_ids。
 func merge_run_weapons(base_index: int, material_index: int) -> bool:
 	if base_index < 0 or base_index >= run_weapons.size():
 		return false
@@ -521,6 +559,7 @@ func merge_run_weapons(base_index: int, material_index: int) -> bool:
 	return true
 
 
+## [自定义] 检查是否可添加该武器（定义存在且未满容量）。
 func can_add_run_weapon(weapon_id: String) -> bool:
 	if get_weapon_def_by_id(weapon_id).is_empty():
 		return false

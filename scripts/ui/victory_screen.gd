@@ -12,12 +12,14 @@ var _stats_tab_container: Control
 var _menu_btn: Button
 
 
+## [系统] 节点入树时调用，构建 UI 并默认隐藏。
 func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_ui()
 	visible = false
 
 
+## [自定义] 显示通关结算：得分、背包、角色信息三 Tab。动态加载：load(backpack_panel.gd) 运行时实例化 BackpackPanel。
 func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 	# 清空旧内容并重建（保留 _menu_btn 引用，不销毁）
 	if _menu_btn.get_parent():
@@ -74,6 +76,7 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 	visible = true
 
 
+## [自定义] 构建全屏遮罩、居中面板、三 Tab（得分/背包/角色信息）、返回主菜单按钮。
 func _build_ui() -> void:
 	_backdrop = ColorRect.new()
 	_backdrop.name = "Backdrop"

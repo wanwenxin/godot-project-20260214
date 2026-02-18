@@ -9,6 +9,8 @@ const THEME_PATH := "res://resources/ui_theme.tres"
 @export var modal_panel_border: Color = Color(0.82, 0.84, 0.90, 1.0)
 
 
+## [自定义] 动态加载 UI 主题。路径硬编码 THEME_PATH，ResourceLoader.exists 校验后 load()，
+## 失败时返回新建的 UiThemeConfig（使用默认颜色）。
 static func load_theme() -> UiThemeConfig:
 	if ResourceLoader.exists(THEME_PATH):
 		var t := load(THEME_PATH) as UiThemeConfig
@@ -17,7 +19,7 @@ static func load_theme() -> UiThemeConfig:
 	return UiThemeConfig.new()
 
 
-## 返回模态面板用的 StyleBoxTexture（程序生成纹理），供暂停、设置、结算等界面复用。
+## [自定义] 返回模态面板用的 StyleBoxTexture（程序生成纹理），供暂停、设置、结算等界面复用。
 func get_modal_panel_stylebox() -> StyleBox:
 	var tex := VisualAssetRegistry.make_panel_frame_texture(
 		Vector2i(64, 64),

@@ -8,8 +8,7 @@ const BASE_FONT_SIZE := 18  # 统一基准字号
 # 提供 action_to_text 供 HUD、暂停菜单等按键提示复用
 
 
-## 将 InputMap 动作名数组转为按键字符串，如 "WASD" 或 "P"。
-## 非 static，因 autoload 单例调用时 static 会触发 STATIC_CALLED_ON_INSTANCE 警告
+## [自定义] 将 InputMap 动作名数组转为按键字符串，如 "WASD" 或 "P"。
 func action_to_text(actions: Array) -> String:
 	var result: Array[String] = []
 	for action in actions:
@@ -24,7 +23,7 @@ func action_to_text(actions: Array) -> String:
 	return "/".join(result)
 
 
-## 构建得分区。gold、total_damage 为可选，缺省时显示 0。
+## [自定义] 构建得分区。gold、total_damage 为可选，缺省时显示 0。
 func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_time: float, gold: int = 0, total_damage: int = 0) -> Control:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 8)
@@ -48,8 +47,7 @@ func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_
 	return vbox
 
 
-## 构建玩家信息区。stats 为 Dictionary 时用完整格式；否则兼容旧格式 (hp_current, hp_max, speed, inertia, weapon_details)。
-## stats_only 为 true 时仅构建角色属性区（供暂停菜单属性 Tab 使用）。
+## [自定义] 构建玩家信息区。stats 为 Dictionary 时用完整格式；stats_only 为 true 时仅构建角色属性区。
 func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = null, inertia_param = null, weapon_details_param = null, stats_only: bool = false) -> Control:
 	var stats: Dictionary
 	if stats_or_hp is Dictionary:

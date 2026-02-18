@@ -54,11 +54,13 @@ var _batch_index := 0
 @onready var intermission_timer: Timer = $IntermissionTimer
 
 
+## [系统] 节点入树时调用，随机化 RNG 并连接间隔计时器。
 func _ready() -> void:
 	_rng.randomize()
 	intermission_timer.timeout.connect(_start_next_wave)
 
 
+## [自定义] 游戏场景创建完玩家后调用，设置玩家引用与视口尺寸并开始第一波。
 func setup(player_ref: Node2D) -> void:
 	# 游戏场景创建完玩家后调用。
 	_player_ref = player_ref
@@ -66,11 +68,13 @@ func setup(player_ref: Node2D) -> void:
 	start_first_wave()
 
 
+## [自定义] 将波次归零并触发第一波。
 func start_first_wave() -> void:
 	current_wave = 0
 	_start_next_wave()
 
 
+## [自定义] 由 Game 在升级完成后显式触发，开始波次间隔倒计时。
 func begin_intermission() -> void:
 	# 由 Game 在“升级完成”后显式触发，避免和旧逻辑冲突。
 	_current_intermission = intermission_time
@@ -78,12 +82,14 @@ func begin_intermission() -> void:
 	intermission_timer.start(intermission_time)
 
 
+## [自定义] 返回波次间隔剩余秒数，已停止时返回 0。
 func get_intermission_left() -> float:
 	if intermission_timer.is_stopped():
 		return 0.0
 	return intermission_timer.time_left
 
 
+## [系统] 每帧调用，更新波次倒计时、分批生成敌人、尝试发射 wave_cleared。
 func _process(delta: float) -> void:
 	if _wave_countdown_left <= 0.0 or _wave_cleared_emitted:
 		return
@@ -103,6 +109,7 @@ func _process(delta: float) -> void:
 		_try_emit_wave_cleared()
 
 
+## [自定义] 开始下一波：加载关卡配置、生成警示、启动倒计时；防重入。
 func _start_next_wave() -> void:
 	if is_spawning:
 		return
@@ -189,6 +196,7 @@ func _start_next_wave() -> void:
 	is_spawning = false
 
 
+## [自定义] 执行一批敌人生成，调用 _queue_batch_spawn 或直接生成。
 func _spawn_batch(temporal_batch: Array) -> void:
 	# temporal_batch 为多个 {position, spawns} 的数组。
 	for pb in temporal_batch:
@@ -196,6 +204,7 @@ func _spawn_batch(temporal_batch: Array) -> void:
 
 
 # 排队生成一批敌人：同一出生点可产生多个敌人，telegraph 显示数量。
+## [自定义] 创建警示节点，警示结束后在指定位置生成一批敌人。
 func _queue_batch_spawn(spawn_position: Vector2, spawns: Array) -> void:
 	if spawns.is_empty() or not is_instance_valid(_player_ref):
 		return
@@ -214,6 +223,7 @@ func _queue_batch_spawn(spawn_position: Vector2, spawns: Array) -> void:
 		pending_spawn_count = maxi(pending_spawn_count - spawns.size(), 0)
 
 
+## [系统] 警示节点完成信号回调，在警示位置生成敌人并释放警示节点。
 func _on_telegraph_batch_finished(spawns: Array, telegraph_node: Node) -> void:
 	var spawn_position: Vector2 = telegraph_node.global_position if is_instance_valid(telegraph_node) else _random_spawn_position()
 	if is_instance_valid(telegraph_node):
@@ -223,6 +233,8 @@ func _on_telegraph_batch_finished(spawns: Array, telegraph_node: Node) -> void:
 	pending_spawn_count = maxi(pending_spawn_count - spawns.size(), 0)
 
 
+## [自定义] 实例化敌人生成。scene 来自 @export 或 LevelConfig.get_enemy_spawn_orders；
+## PackedScene.instantiate() 运行时实例化；设置玩家引用、水域边界、生命与速度缩放后加入场景树。
 func _spawn_enemy_at(scene: PackedScene, spawn_position: Vector2, hp_scale: float, speed_scale: float) -> void:
 	if scene == null or not is_instance_valid(_player_ref):
 		return
@@ -245,6 +257,7 @@ func _spawn_enemy_at(scene: PackedScene, spawn_position: Vector2, hp_scale: floa
 	add_child(enemy)
 
 
+## [自定义] 在可玩区域内采样出生点，尽量远离玩家；反复失败则用最远候选点兜底。
 func _random_spawn_position() -> Vector2:
 	# 在可玩区域内采样，且尽量远离玩家；若反复失败则用“最远候选点”兜底。
 	var region: Rect2
@@ -282,6 +295,7 @@ func _random_spawn_position() -> Vector2:
 	return best_pos
 
 
+## [系统] 敌人 died 信号回调，更新击杀数、尝试掉落、检查波次清除。
 func _on_enemy_died(enemy: Node) -> void:
 	living_enemy_count = maxi(living_enemy_count - 1, 0)
 	kill_count += 1
@@ -295,6 +309,7 @@ func _on_enemy_died(enemy: Node) -> void:
 
 
 # 在场敌人与待生成均为 0 或倒计时归零时发射一次 wave_cleared。
+## [自定义] 当无在场敌人且无待生成时发射 wave_cleared。
 func _try_emit_wave_cleared() -> void:
 	if _wave_cleared_emitted:
 		return
@@ -305,6 +320,7 @@ func _try_emit_wave_cleared() -> void:
 
 
 # 敌人死亡时按概率掉落金币或治疗；使用 call_deferred 避免 physics flushing。
+## [自定义] 按概率尝试生成金币或治疗掉落。
 func _try_spawn_drop(enemy: Node) -> void:
 	if not is_instance_valid(enemy):
 		return
@@ -320,6 +336,7 @@ func _try_spawn_drop(enemy: Node) -> void:
 		get_tree().current_scene.call_deferred("add_child", heal)
 
 
+## [自定义] Boss 死亡时额外生成金币掉落。
 func _try_spawn_boss_bonus_drop(enemy: Node) -> void:
 	# Boss 死亡时额外掉落多枚高价值金币，强化关键战反馈。
 	if not _is_boss_enemy(enemy):
@@ -331,6 +348,7 @@ func _try_spawn_boss_bonus_drop(enemy: Node) -> void:
 		_spawn_coin_drop(enemy.global_position + offset, bonus_value)
 
 
+## [自定义] 在指定位置生成金币掉落物，使用 coin_pickup_scene。
 func _spawn_coin_drop(spawn_position: Vector2, coin_value: int) -> void:
 	if coin_pickup_scene == null:
 		return
@@ -342,12 +360,14 @@ func _spawn_coin_drop(spawn_position: Vector2, coin_value: int) -> void:
 	get_tree().current_scene.call_deferred("add_child", coin)
 
 
+## [自定义] 判断敌人是否为 Boss 类型（用于额外掉落）。
 func _is_boss_enemy(enemy: Node) -> bool:
 	if not is_instance_valid(enemy):
 		return false
 	return enemy.is_in_group("boss") or str(enemy.name).to_lower().contains("boss")
 
 
+## [自定义] 动态加载默认关卡预设作为回退。路径来自 GameManager.LEVEL_PRESET_PATHS[0]，运行时 load()。
 func _get_fallback_level_config() -> LevelConfig:
 	var preset: LevelPreset = load(GameManager.LEVEL_PRESET_PATHS[0]) as LevelPreset
 	if preset and preset.level_configs.size() > 0 and preset.level_configs[0] is LevelConfig:
@@ -355,6 +375,7 @@ func _get_fallback_level_config() -> LevelConfig:
 	return null
 
 
+## [自定义] 当无关卡配置时返回默认敌人生成订单。
 func _get_fallback_orders(game_node: Node) -> Array:
 	var total: int = 8 + current_wave * 3
 	var ranged_c: int = maxi(1, int(current_wave * 0.45))

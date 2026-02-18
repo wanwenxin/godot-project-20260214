@@ -76,6 +76,7 @@ const WEAPON_FALLBACK_SCRIPTS := {
 @onready var weapon_slots: Node2D = $WeaponSlots
 
 
+## [系统] 节点入树时调用，设置碰撞层、初始化精灵与血量。
 func _ready() -> void:
 	add_to_group("players")
 	# 玩家仅与敌人发生实体碰撞，子弹通过 Area2D 处理。
@@ -87,6 +88,8 @@ func _ready() -> void:
 	emit_signal("health_changed", current_health, max_health)
 
 
+## [自定义] 应用角色模板参数。动态加载：traits_path 来自 data，ResourceLoader.exists 校验后 load()，
+## 失败时回退 DEFAULT_TRAITS；精灵图由 _update_sprite 加载（texture_sheet/texture_single）。
 func set_character_data(data: Dictionary) -> void:
 	# 把角色模板参数应用到当前实体；加载特质并参与移速/生命系数计算。
 	_character_data = data.duplicate(true)
@@ -115,6 +118,7 @@ func set_character_data(data: Dictionary) -> void:
 	emit_signal("health_changed", current_health, max_health)
 
 
+## [系统] 物理帧调用，处理移动、魔法、血量恢复、武器攻击、伤害结算。
 func _physics_process(delta: float) -> void:
 	# 使用 Input.get_vector 自动处理对角线归一化。
 	move_input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -178,6 +182,7 @@ func _physics_process(delta: float) -> void:
 			queue_free()
 
 
+## [自定义] 受到伤害，护甲减伤后缓冲到帧末与同帧其他伤害取最大后统一结算。
 func take_damage(amount: int) -> void:
 	# 无敌计时器 > 0 时忽略后续伤害，避免多次碰撞瞬间秒杀。
 	if _invulnerable_timer > 0.0:
@@ -188,6 +193,7 @@ func take_damage(amount: int) -> void:
 	_pending_damages.append(actual)
 
 
+## [自定义] 恢复血量，不超过上限。
 func heal(amount: int) -> void:
 	if amount <= 0:
 		return
@@ -195,7 +201,7 @@ func heal(amount: int) -> void:
 	emit_signal("health_changed", current_health, max_health)
 
 
-## 供 AffixManager 调用：将聚合后的词条效果应用到玩家。
+## [自定义] 供 AffixManager 调用：将聚合后的词条效果应用到玩家。
 func _apply_affix_aggregated(agg: Dictionary) -> void:
 	var old_max_hp := max_health
 	max_health = _base_max_health + int(agg.get("max_health", 0))
@@ -216,8 +222,7 @@ func _apply_affix_aggregated(agg: Dictionary) -> void:
 	current_mana = minf(current_mana, float(max_mana))
 
 
-# 应用升级到玩家与所有装备武器；value 为 UpgradeDefs 计算的奖励值，null 时用默认增量。
-# 注意：玩家相关升级已迁移至词条系统，此处仅处理武器相关升级的传递。
+## [自定义] 应用升级到所有装备武器；玩家相关升级由词条系统处理。
 func apply_upgrade(upgrade_id: String, _value: Variant = null) -> void:
 	# 仅将武器相关升级传递给每把武器；玩家相关升级由词条系统处理。
 	for weapon in _equipped_weapons:
@@ -225,22 +230,26 @@ func apply_upgrade(upgrade_id: String, _value: Variant = null) -> void:
 			weapon.apply_upgrade(upgrade_id)
 
 
+## [自定义] 设置地形速度系数，多地形取最慢。
 func set_terrain_effect(zone_id: int, speed_multiplier: float) -> void:
 	_terrain_effects[zone_id] = clampf(speed_multiplier, 0.2, 1.2)
 	_recompute_terrain_speed()
 
 
+## [自定义] 清除指定地形的速度系数。
 func clear_terrain_effect(zone_id: int) -> void:
 	_terrain_effects.erase(zone_id)
 	_recompute_terrain_speed()
 
 
+## [自定义] 设置移动惯性系数，0~0.9。
 func set_move_inertia(value: float) -> void:
 	# 统一入口，便于从设置菜单或其他系统动态调整惯性。
 	inertia_factor = clampf(value, 0.0, 0.9)
 
 
-## 装备魔法，最多 MAX_MAGICS 个；若已装备同 id 则升级品级。返回是否成功。
+## [自定义] 装备魔法，最多 MAX_MAGICS 个；若已装备同 id 则升级品级。动态加载：script_path 来自 MagicDefs，
+## ResourceLoader.exists 校验后 load()，失败返回 false；用 (GDScript).new() 实例化 MagicBase。
 func equip_magic(magic_id: String) -> bool:
 	for m in _equipped_magics:
 		if str(m.get("id", "")) == magic_id:
@@ -267,7 +276,7 @@ func equip_magic(magic_id: String) -> bool:
 	return true
 
 
-## 按品级更新魔法实例的 power、mana_cost。
+## [自定义] 按品级更新魔法实例的 power、mana_cost。
 func _apply_magic_tier_to_instance(mag: Dictionary) -> void:
 	var inst = mag.get("instance")
 	var tier_val: int = int(mag.get("tier", 0))
@@ -278,6 +287,7 @@ func _apply_magic_tier_to_instance(mag: Dictionary) -> void:
 	(inst as MagicBase).configure_from_def(def, tier_val)
 
 
+## [自定义] 返回已装备魔法 id 列表。
 func get_equipped_magic_ids() -> Array[String]:
 	var ids: Array[String] = []
 	for m in _equipped_magics:
@@ -285,12 +295,12 @@ func get_equipped_magic_ids() -> Array[String]:
 	return ids
 
 
-## 获取当前选中的魔法槽位索引。
+## [自定义] 获取当前选中的魔法槽位索引。
 func get_current_magic_index() -> int:
 	return clampi(_current_magic_index, 0, maxi(0, _equipped_magics.size() - 1))
 
 
-## 供 HUD 获取魔法 UI 数据：{id, def, icon_path, remaining_cd, total_cd, is_current}。
+## [自定义] 供 HUD 获取魔法 UI 数据：{id, def, icon_path, remaining_cd, total_cd, is_current}。
 func get_magic_ui_data() -> Array:
 	var result: Array = []
 	for i in range(_equipped_magics.size()):
@@ -311,7 +321,7 @@ func get_magic_ui_data() -> Array:
 	return result
 
 
-## 获取魔法释放方向：优先朝向最近敌人，否则用移动方向或速度方向。
+## [自定义] 获取魔法释放方向：优先朝向最近敌人，否则用移动方向或速度方向。
 func _get_magic_aim_direction() -> Vector2:
 	var nearest := _get_nearest_enemy()
 	if nearest != null:
@@ -323,6 +333,7 @@ func _get_magic_aim_direction() -> Vector2:
 	return Vector2.RIGHT
 
 
+## [自定义] 每帧尝试释放魔法：冷却递减、按键检测、区域型魔法进入 targeting 模式。
 func _try_cast_magic(delta: float) -> void:
 	# 冷却递减
 	for id in _magic_cooldowns.keys():
@@ -446,6 +457,8 @@ func _update_direction_sprite() -> void:
 	sprite.region_rect = Rect2(_last_direction_index * frame_w, row * frame_h, frame_w, frame_h)
 
 
+## [自定义] 更新角色精灵图。动态加载：sheet_path/single_path 来自 @export，ResourceLoader.exists 校验后 load()，
+## 失败则尝试另一路径，再失败则回退 PixelGenerator 生成。
 func _update_sprite(color_scheme: int) -> void:
 	# 角色贴图：优先 texture_sheet，失败则 texture_single，再回退 PixelGenerator。
 	if not sprite:
@@ -477,8 +490,7 @@ func _recompute_terrain_speed() -> void:
 		_terrain_speed_multiplier = minf(_terrain_speed_multiplier, float(_terrain_effects[key]))
 
 
-# 根据 run_weapons 同步装备；清除旧武器，按 {id, tier, random_affix_ids} 重新装备。
-# 失败项 append null，保证 _equipped_weapons 与 run_weapons 索引 1:1 对应，供合并逻辑使用。
+## [自定义] 根据 run_weapons 同步装备；清除旧武器，按 {id, tier, random_affix_ids} 重新装备；失败项 append null。
 func sync_weapons_from_run(run_weapons_list: Array) -> void:
 	for w in _equipped_weapons:
 		if w != null and is_instance_valid(w):
@@ -512,7 +524,7 @@ func sync_weapons_from_run(run_weapons_list: Array) -> void:
 	_refresh_weapon_visuals()
 
 
-# 装备指定武器（兼容旧接口，内部转为 sync）；random_affix_ids 为商店随机词条。返回是否成功。
+## [自定义] 装备指定武器，random_affix_ids 为商店随机词条。返回是否成功。
 func equip_weapon_by_id(weapon_id: String, random_affix_ids: Array = []) -> bool:
 	if not GameManager.can_add_run_weapon(weapon_id):
 		return false
@@ -522,6 +534,7 @@ func equip_weapon_by_id(weapon_id: String, random_affix_ids: Array = []) -> bool
 	return true
 
 
+## [自定义] 返回已装备武器 id 列表。
 func get_equipped_weapon_ids() -> Array[String]:
 	var ids: Array[String] = []
 	for item in _equipped_weapons:
@@ -530,7 +543,7 @@ func get_equipped_weapon_ids() -> Array[String]:
 	return ids
 
 
-## 检查是否已拥有某武器（任意品级）。
+## [自定义] 检查是否已拥有某武器（任意品级）。
 func has_weapon_id(weapon_id: String) -> bool:
 	for w in GameManager.get_run_weapons():
 		if str(w.get("id", "")) == weapon_id:
@@ -538,6 +551,7 @@ func has_weapon_id(weapon_id: String) -> bool:
 	return false
 
 
+## [自定义] 按 run_weapons 索引 1:1 返回武器详情，供暂停/结算/背包 UI 使用。
 func get_equipped_weapon_details() -> Array[Dictionary]:
 	# 按 run_weapons 索引 1:1 返回，保证 weapon_details[i] 对应 run_weapons[i]，供合并逻辑使用。
 	var result: Array[Dictionary] = []
@@ -684,6 +698,8 @@ func _refresh_weapon_visuals() -> void:
 			weapon_node.rotation = angle
 
 
+## [自定义] 创建武器实例。动态加载：script_path 来自 def 或 WEAPON_FALLBACK_SCRIPTS，
+## ResourceLoader.exists 校验后 load()，失败返回 null；用 (GDScript).new() 实例化。
 func _create_weapon_instance(def: Dictionary) -> Node2D:
 	# 支持配置里声明具体武器脚本，未声明时走本地兜底映射。
 	var script_path := str(def.get("script_path", ""))

@@ -34,6 +34,7 @@ func cast_at_position(caster: Node2D, world_pos: Vector2) -> bool:
 		return false
 	var zone := Node2D.new()
 	zone.name = "BurnZone"
+	# 动态加载：preload 编译时加载 burn_zone_node.gd，set_script 注入到 Area2D，实现燃烧区域持续伤害逻辑
 	zone.set_script(preload("res://scripts/magic/burn_zone_node.gd"))
 	zone.set_meta("burn_duration", _burn_duration)
 	zone.set_meta("burn_damage_per_tick", _burn_damage_per_tick)

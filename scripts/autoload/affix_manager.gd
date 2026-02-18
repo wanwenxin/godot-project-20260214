@@ -22,7 +22,7 @@ const _UPGRADE_TO_EFFECT := {
 const _FLOAT_EFFECTS := ["health_regen", "lifesteal_chance", "mana_regen", "attack_speed", "spell_speed", "speed"]
 
 
-## 从玩家收集所有词条（道具 + 升级），按类型分组。
+## [自定义] 从玩家收集所有词条（道具 + 升级），按类型分组。
 func collect_affixes_from_player(_player: Node) -> Dictionary:
 	var result := {"item": [], "weapon": [], "magic": []}
 	# 道具词条：从 run_items 推导
@@ -69,7 +69,7 @@ func collect_affixes_from_player(_player: Node) -> Dictionary:
 	return result
 
 
-## 聚合词条效果，返回 {effect_type: value}。
+## [自定义] 聚合词条效果，返回 {effect_type: value}。
 func get_aggregated_effects(affixes: Dictionary) -> Dictionary:
 	var agg := {}
 	for _type in ["item", "weapon", "magic"]:
@@ -95,14 +95,14 @@ func get_aggregated_effects(affixes: Dictionary) -> Dictionary:
 	return agg
 
 
-## 将聚合效果应用到玩家。需在 set_character_data 之后调用。
+## [自定义] 将聚合效果应用到玩家。需在 set_character_data 之后调用。
 func apply_affix_effects(player: Node, aggregated: Dictionary) -> void:
 	if not player.has_method("_apply_affix_aggregated"):
 		return
 	player._apply_affix_aggregated(aggregated)
 
 
-## 刷新玩家：收集词条、聚合、应用（含套装加成）。
+## [自定义] 刷新玩家：收集词条、聚合、应用（含套装加成）。
 func refresh_player(player: Node) -> void:
 	var affixes := collect_affixes_from_player(player)
 	var agg := get_aggregated_effects(affixes)
@@ -111,7 +111,7 @@ func refresh_player(player: Node) -> void:
 	apply_affix_effects(player, agg)
 
 
-## 计算武器类型/主题套装加成。多把同名武器只计 1 次，2-6 件线性增长。
+## [自定义] 计算武器类型/主题套装加成。多把同名武器只计 1 次，2-6 件线性增长。
 func get_set_bonus_effects() -> Dictionary:
 	var result := {}
 	var run_weapons_list: Array = GameManager.get_run_weapons()
@@ -173,7 +173,7 @@ func get_set_bonus_effects() -> Dictionary:
 	return result
 
 
-## 将 set_bonus 合并到 agg（按 effect_type 累加）。
+## [自定义] 将 set_bonus 合并到 agg（按 effect_type 累加）。
 func _merge_effects(agg: Dictionary, set_bonus: Dictionary) -> void:
 	for et in set_bonus.keys():
 		var val = set_bonus[et]
@@ -187,7 +187,7 @@ func _merge_effects(agg: Dictionary, set_bonus: Dictionary) -> void:
 			agg[et] = val
 
 
-## 获取可见词条列表，供 UI 展示。
+## [自定义] 获取可见词条列表，供 UI 展示。
 func get_visible_affixes(_affixes: Dictionary) -> Array:
 	var out: Array = []
 	for _type in ["item", "weapon", "magic"]:
@@ -198,13 +198,13 @@ func get_visible_affixes(_affixes: Dictionary) -> Array:
 	return out
 
 
-## 检测词条组合，返回触发的组合效果 id 列表。预留扩展点。
+## [自定义] 检测词条组合，返回触发的组合效果 id 列表。预留扩展点。
 func check_combos(_affixes: Dictionary) -> Array:
 	# 后续在 affix_combo_defs.gd 中配置
 	return []
 
 
-## 获取套装效果展示信息，供 UI 显示。返回 [{name_key, count, effect_type, bonus}]。
+## [自定义] 获取套装效果展示信息，供 UI 显示。返回 [{name_key, count, effect_type, bonus}]。
 func get_set_bonus_display_info() -> Array:
 	var result: Array = []
 	var run_weapons_list: Array = GameManager.get_run_weapons()
@@ -246,6 +246,7 @@ func get_set_bonus_display_info() -> Array:
 	return result
 
 
+## [自定义] 按 id 查找道具定义，未找到返回空字典。
 func _get_item_def_by_id(item_id: String) -> Dictionary:
 	for item in ShopItemDefs.ITEM_POOL:
 		if str(item.get("id", "")) == item_id:
@@ -253,6 +254,7 @@ func _get_item_def_by_id(item_id: String) -> Dictionary:
 	return {}
 
 
+## [自定义] 将旧格式 attr 映射为词条 id，兼容旧配置。
 func _attr_to_affix_id(attr: String) -> String:
 	var m := {
 		"max_health": "item_max_health", "max_mana": "item_max_mana", "armor": "item_armor",

@@ -57,8 +57,8 @@ var _playable_region: Rect2 = Rect2()  # 可玩区域，供冲刺怪等边界检
 var _terrain_container: Node2D  # 地形容器，波次重载时整体清除
 var _terrain_layer: TileMapLayer  # 唯一地形层：先铺满默认地形，再覆盖草/水/障碍
 var _terrain_atlas_rows: int = 1  # atlas 行数，用于限制 floor_row（1=仅 flat，3=flat/seaside/mountain）
-const TERRAIN_TILE_SIZE := 32
-const TERRAIN_TILE_FLOOR_A := 0
+const TERRAIN_TILE_SIZE := 32  # 地形瓦片像素尺寸
+const TERRAIN_TILE_FLOOR_A := 0  # 地板 A 瓦片 x 坐标
 const TERRAIN_TILE_FLOOR_B := 1
 # default_terrain_type 对应 atlas 行号：flat=0, seaside=1, mountain=2
 const TERRAIN_FLOOR_ROW_FLAT := 0
@@ -89,6 +89,7 @@ var _mobile_move := Vector2.ZERO
 @onready var magic_targeting_overlay: Node2D = $MagicTargetingOverlay
 
 
+## [系统] 节点入树时调用，生成玩家与地形、挂接波次/HUD 信号、打开开局商店。
 func _ready() -> void:
 	AudioManager.play_game_bgm()
 	# 先创建玩家，再初始化依赖玩家引用的系统。
@@ -140,6 +141,7 @@ func _ready() -> void:
 		magic_targeting_overlay.cast_cancelled.connect(_on_magic_targeting_cancelled)
 
 
+## [自定义] 使背景填满视口，解决全屏/窗口缩放时画面只占一小块的问题。
 func _resize_world_background() -> void:
 	# 使背景填满视口，解决全屏/窗口缩放时画面只占一小块的问题。
 	# 使用 offset 设置尺寸（Control.size 为只读，由 offset 推导）
@@ -150,6 +152,7 @@ func _resize_world_background() -> void:
 	world_background.offset_bottom = vs.y
 
 
+## [系统] 每帧调用，更新生存计时、HUD、摄像机、波次倒计时、暂停/缩放按键。
 func _process(delta: float) -> void:
 	# 死亡后停止所有运行时统计更新，仅保留结算 UI。
 	if is_game_over:
@@ -186,6 +189,7 @@ func _process(delta: float) -> void:
 			camera_zoom_scale = maxf(camera_zoom_scale - camera_zoom_step, camera_zoom_min)
 
 
+## [自定义] 实例化玩家场景、设置角色数据、连接信号并加入场景树。
 func _spawn_player() -> void:
 	player = player_scene.instantiate()
 	player.global_position = get_viewport_rect().size * 0.5
@@ -201,6 +205,7 @@ func _spawn_player() -> void:
 
 
 # 供 wave_manager 使用：在水中敌人生成时获取随机水域内位置。若无水域则返回视口中心。
+## [自定义] 在水域矩形内随机返回一个出生点，供水中敌人生成。
 func get_random_water_spawn_position() -> Vector2:
 	if _water_spawn_rects.is_empty():
 		return get_viewport_rect().get_center()
@@ -218,11 +223,13 @@ func get_random_water_spawn_position() -> Vector2:
 	)
 
 
+## [自定义] 是否存在水域出生点（_water_spawn_rects 非空）。
 func has_water_spawn_positions() -> bool:
 	return not _water_spawn_rects.is_empty()
 
 
 # 供水中敌人生成时获取出生位置所属水域矩形。
+## [自定义] 返回包含 pos 的水域矩形，供水中敌人边界检测；无则返回空 Rect2。
 func get_water_rect_containing(pos: Vector2) -> Rect2:
 	for rect in _water_spawn_rects:
 		if rect.has_point(pos):
@@ -239,18 +246,22 @@ func get_water_rect_containing(pos: Vector2) -> Rect2:
 
 
 # 供冲刺怪等：获取可玩区域，与地形 region 一致。
+## [自定义] 返回可玩区域矩形，供波次管理器生成敌人、冲刺怪边界检测。
 func get_playable_bounds() -> Rect2:
 	return _playable_region
 
 
+## [系统] 玩家 health_changed 信号回调，同步 HUD 血量。
 func _on_player_health_changed(current: int, max_value: int) -> void:
 	hud.set_health(current, max_value)
 
 
+## [系统] 玩家 damaged 信号回调，播放受击音效。
 func _on_player_damaged(_amount: int) -> void:
 	AudioManager.play_hit()
 
 
+## [系统] 波次 wave_started 信号回调，清除地形并重生成。
 func _on_wave_started(wave: int) -> void:
 	hud.set_wave(wave)
 	hud.show_wave_banner(wave)
@@ -262,11 +273,14 @@ func _on_wave_started(wave: int) -> void:
 	AudioManager.play_wave_start()
 
 
+## [自定义] 清空地形容器内所有子节点。
 func _clear_terrain() -> void:
 	for c in _terrain_container.get_children():
 		c.queue_free()
 
 
+## [自定义] 动态加载默认关卡预设作为回退。路径来自 GameManager.LEVEL_PRESET_PATHS[0]，
+## 运行时 load()；失败时返回带默认值的 LevelConfig。
 func _get_fallback_level_config() -> LevelConfig:
 	var preset: LevelPreset = load(GameManager.LEVEL_PRESET_PATHS[0]) as LevelPreset
 	if preset and preset.level_configs.size() > 0 and preset.level_configs[0] is LevelConfig:
@@ -274,6 +288,7 @@ func _get_fallback_level_config() -> LevelConfig:
 	return null
 
 
+## [自定义] 清除场景中所有敌人与子弹，波次重载时调用。
 func _clear_remaining_enemies_and_bullets() -> void:
 	# 波次结束时清除未击败的敌人与所有飞行子弹。
 	for enemy in get_tree().get_nodes_in_group("enemies"):
@@ -284,6 +299,7 @@ func _clear_remaining_enemies_and_bullets() -> void:
 			node.queue_free()
 
 
+## [系统] 波次 wave_cleared 信号回调，判断通关或进入升级/商店流程。
 func _on_wave_cleared(wave: int) -> void:
 	# 波次清场：清除剩余敌人与所有子弹，再进行恢复与升级。
 	_clear_remaining_enemies_and_bullets()
@@ -307,10 +323,12 @@ func _on_wave_cleared(wave: int) -> void:
 	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency, UPGRADE_REFRESH_COST)
 
 
+## [系统] 波次 kill_count_changed 信号回调，同步 HUD 击杀数。
 func _on_kill_count_changed(kills: int) -> void:
 	hud.set_kills(kills)
 
 
+## [系统] 玩家 request_area_targeting 信号回调，显示区域施法 overlay。
 func _on_player_request_area_targeting(slot: int, magic_def: Dictionary, instance: MagicBase) -> void:
 	if not is_instance_valid(player) or magic_targeting_overlay == null:
 		return
@@ -318,16 +336,19 @@ func _on_player_request_area_targeting(slot: int, magic_def: Dictionary, instanc
 	magic_targeting_overlay.start_targeting(magic_def, instance, player)
 
 
+## [系统] 区域施法 overlay cast_confirmed 信号回调，在指定位置施放魔法。
 func _on_magic_targeting_confirmed(world_pos: Vector2) -> void:
 	if is_instance_valid(player) and _pending_area_slot >= 0:
 		player.execute_area_cast(_pending_area_slot, world_pos)
 	_pending_area_slot = -1
 
 
+## [系统] 区域施法 overlay cast_cancelled 信号回调，取消施法并恢复输入。
 func _on_magic_targeting_cancelled() -> void:
 	_pending_area_slot = -1
 
 
+## [系统] 玩家 died 信号回调，显示死亡结算界面。
 func _on_player_died() -> void:
 	if is_game_over:
 		return
@@ -342,6 +363,7 @@ func _on_player_died() -> void:
 	game_over_screen.show_result(wave_manager.current_wave, wave_manager.kill_count, survival_time, player)
 
 
+## [自定义] 切换暂停状态，显示/隐藏暂停菜单。
 func _toggle_pause() -> void:
 	if is_game_over:
 		return
@@ -353,6 +375,7 @@ func _toggle_pause() -> void:
 	pause_menu.set_visible_menu(new_paused)
 
 
+## [自定义] 切换敌人血条显隐，并保存到设置。
 func _toggle_enemy_healthbar_visibility() -> void:
 	GameManager.enemy_healthbar_visible = not GameManager.enemy_healthbar_visible
 	for enemy in get_tree().get_nodes_in_group("enemies"):
@@ -365,22 +388,25 @@ func _toggle_enemy_healthbar_visibility() -> void:
 	SaveManager.set_settings(settings)
 
 
+## [自定义] 返回玩家节点引用，供暂停菜单展示角色信息。
 func get_player_for_pause() -> Node:
 	# 供暂停菜单获取玩家引用以展示数值与装备。
 	return player if is_instance_valid(player) else null
 
 
+## [自定义] 重新加载战斗场景，开始新局。
 func restart_game() -> void:
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
 
+## [自定义] 切换到主菜单场景。
 func go_main_menu() -> void:
 	get_tree().paused = false
 	GameManager.open_main_menu()
 
 
-# 从 UpgradeDefs 随机抽取 count 项，含 reward_value 与 reward_text；升级免费，刷新消耗金币。
+## [自定义] 从 UpgradeDefs 随机抽取 count 项，含 reward_value 与 reward_text；升级免费，刷新消耗金币。
 func _roll_upgrade_options(count: int) -> Array[Dictionary]:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -397,6 +423,7 @@ func _roll_upgrade_options(count: int) -> Array[Dictionary]:
 	return result
 
 
+## [自定义] 将升级奖励值格式化为 UI 展示字符串（如 +10 HP、+0.5/s）。
 func _format_upgrade_reward(upgrade_id: String, value: Variant) -> String:
 	if value == null:
 		return ""
@@ -423,6 +450,7 @@ func _format_upgrade_reward(upgrade_id: String, value: Variant) -> String:
 	return "+%d" % v
 
 
+## [系统] HUD upgrade_refresh_requested 信号回调，消耗金币刷新升级选项。
 func _on_upgrade_refresh_requested() -> void:
 	if GameManager.run_currency < UPGRADE_REFRESH_COST:
 		return
@@ -432,6 +460,7 @@ func _on_upgrade_refresh_requested() -> void:
 	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency, UPGRADE_REFRESH_COST)
 
 
+## [系统] HUD upgrade_selected 信号回调，应用升级并打开商店。
 func _on_upgrade_selected(upgrade_id: String) -> void:
 	# 防重入：同一轮只允许结算一次升级选择。
 	if _upgrade_selected or _pending_upgrade_options.is_empty():
@@ -462,6 +491,7 @@ func _on_upgrade_selected(upgrade_id: String) -> void:
 	_open_shop_after_upgrade()
 
 
+## [自定义] 打开开局商店（波次 0），玩家购买后点击下一波再开始波次 1。
 func _open_start_shop() -> void:
 	# 开局商店：波次 0，玩家购买后点击下一波再开始波次 1
 	_pending_shop_weapon_options = _roll_shop_items(4)
@@ -471,6 +501,7 @@ func _open_start_shop() -> void:
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), 0, stats)
 
 
+## [自定义] 升级完成后打开波次商店。
 func _open_shop_after_upgrade() -> void:
 	_pending_shop_weapon_options = _roll_shop_items(4)
 	_set_ui_modal_active(true)
@@ -479,6 +510,7 @@ func _open_shop_after_upgrade() -> void:
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave, stats)
 
 
+## [系统] HUD weapon_shop_refresh_requested 信号回调，消耗金币刷新商店选项。
 func _on_shop_refresh_requested() -> void:
 	var wave: int = wave_manager.current_wave
 	if not GameManager.try_spend_shop_refresh(wave):
@@ -489,6 +521,7 @@ func _on_shop_refresh_requested() -> void:
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave, stats)
 
 
+## [系统] HUD weapon_shop_closed 信号回调，关闭商店并开始波次或完成波次结算。
 func _on_shop_closed() -> void:
 	_set_ui_modal_active(false)
 	hud.hide_weapon_panel()
@@ -501,11 +534,14 @@ func _on_shop_closed() -> void:
 		_finish_wave_settlement()
 
 
+## [系统] HUD backpack_requested 信号回调，显示商店内背包覆盖层。
 func _on_backpack_requested() -> void:
 	_show_backpack_from_shop()
 
 
-## 商店内打开背包覆盖层，shop_context=true 时显示售卖/合并按钮。
+## [自定义] 商店内打开背包覆盖层，shop_context=true 时显示售卖/合并按钮。
+## 动态加载：load("res://scripts/ui/backpack_panel.gd") 运行时加载 BackpackPanel 脚本，
+## 用 (GDScript).new() 实例化；需在加入场景树后调用 set_stats（内部 get_tree/_find_canvas_layer）。
 func _show_backpack_from_shop() -> void:
 	var overlay := Panel.new()
 	overlay.name = "BackpackOverlay"
@@ -554,6 +590,7 @@ func _show_backpack_from_shop() -> void:
 	backpack_panel.merge_completed.connect(_on_backpack_overlay_merge_completed)
 
 
+## [系统] 背包覆盖层关闭按钮回调，释放 overlay 并清空引用。
 func _on_backpack_overlay_closed(overlay: Control) -> void:
 	if overlay != null and is_instance_valid(overlay):
 		overlay.queue_free()
@@ -562,7 +599,7 @@ func _on_backpack_overlay_closed(overlay: Control) -> void:
 		_backpack_overlay_panel = null
 
 
-## 商店背包 Tab 内嵌面板合并成功后刷新。
+## [系统] 商店背包 Tab 内嵌面板 merge_completed 信号回调，刷新商店背包显示。
 func _on_shop_backpack_merge_completed() -> void:
 	var stats: Dictionary = {}
 	if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
@@ -572,7 +609,7 @@ func _on_shop_backpack_merge_completed() -> void:
 		hud.refresh_shop_backpack(stats)
 
 
-## 商店背包覆盖层内合并成功后刷新显示。
+## [系统] 商店背包覆盖层 merge_completed 信号回调，刷新覆盖层内背包显示。
 func _on_backpack_overlay_merge_completed() -> void:
 	if _backpack_overlay_panel == null or not is_instance_valid(_backpack_overlay_panel):
 		return
@@ -582,6 +619,7 @@ func _on_backpack_overlay_merge_completed() -> void:
 	_backpack_overlay_panel.set_stats(stats, true)
 
 
+## [系统] 背包售卖请求回调，移除武器、增加金币、刷新玩家与 HUD。
 func _on_weapon_sell_requested(weapon_index: int) -> void:
 	var run_weapons := GameManager.get_run_weapons()
 	if weapon_index < 0 or weapon_index >= run_weapons.size():
@@ -613,16 +651,19 @@ func _on_weapon_sell_requested(weapon_index: int) -> void:
 		hud.refresh_shop_backpack(stats)
 
 
+## [系统] 波次 intermission_started 信号回调，记录间隔剩余时间。
 func _on_intermission_started(duration: float) -> void:
 	intermission_left = duration
 
 
+## [系统] HUD mobile_move_changed 信号回调，更新触控移动方向缓存。
 func _on_mobile_move_changed(direction: Vector2) -> void:
 	_mobile_move = direction
 	if is_instance_valid(player):
 		player.external_move_input = _mobile_move
 
 
+## [自定义] 打开开局武器选择面板（四选一）。
 func _start_weapon_pick() -> void:
 	player.input_enabled = false
 	_pending_start_weapon_options = _roll_weapon_shop_options(3)
@@ -636,6 +677,7 @@ func _start_weapon_pick() -> void:
 	hud.show_start_weapon_pick(_pending_start_weapon_options)
 
 
+## [系统] 开局武器选择回调，装备武器并开始波次 1。
 func _on_start_weapon_selected(weapon_id: String) -> void:
 	if _pending_start_weapon_options.is_empty():
 		return
@@ -652,6 +694,7 @@ func _on_start_weapon_selected(weapon_id: String) -> void:
 		wave_manager.setup(player)
 
 
+## [系统] 波次商店武器选择回调，购买并装备武器或道具。
 func _on_weapon_shop_selected(weapon_id: String) -> void:
 	if _pending_shop_weapon_options.is_empty():
 		return
@@ -692,7 +735,7 @@ func _on_weapon_shop_selected(weapon_id: String) -> void:
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave, stats)
 
 
-# 从武器定义中排除已装备的，随机抽取 count 项作为开局武器候选。
+## [自定义] 从武器定义中排除已装备的，随机抽取 count 项作为开局武器候选。
 func _roll_weapon_shop_options(count: int) -> Array[Dictionary]:
 	var defs := GameManager.get_weapon_defs()
 	var owned: Array[String] = player.get_equipped_weapon_ids()
@@ -709,7 +752,7 @@ func _roll_weapon_shop_options(count: int) -> Array[Dictionary]:
 	return result
 
 
-## 根据武器类型（melee/ranged）随机抽取词条，数量在 count_min~count_max 之间。
+## [自定义] 根据武器类型（melee/ranged）随机抽取词条，数量在 count_min~count_max 之间。
 func _roll_random_weapon_affixes(weapon_type: String, count_min: int, count_max: int) -> Array:
 	var pool: Array = WeaponAffixDefs.WEAPON_AFFIX_POOL
 	var filtered: Array[Dictionary] = []
@@ -730,7 +773,7 @@ func _roll_random_weapon_affixes(weapon_type: String, count_min: int, count_max:
 	return ids
 
 
-# 商店商品：武器 + 道具混合，价格随波次上涨。武器随机附加 0~2 个词条（近战/远程/通用）。
+## [自定义] 商店商品：武器 + 道具混合，价格随波次上涨。武器随机附加 0~2 个词条（近战/远程/通用）。
 func _roll_shop_items(count: int) -> Array[Dictionary]:
 	var wave: int = wave_manager.current_wave
 	var result: Array[Dictionary] = []
@@ -767,18 +810,21 @@ func _roll_shop_items(count: int) -> Array[Dictionary]:
 	return result
 
 
+## [自定义] 将武器装备到玩家，need_capacity 为 true 时检查容量。
 func _equip_weapon_to_player(weapon_id: String, need_capacity: bool, random_affix_ids: Array = []) -> bool:
 	if need_capacity and player.get_weapon_capacity_left() <= 0:
 		return false
 	return player.equip_weapon_by_id(weapon_id, random_affix_ids)
 
 
+## [自定义] 完成波次结算：关闭模态、恢复输入、开始波次间隔。
 func _finish_wave_settlement() -> void:
 	_set_ui_modal_active(false)
 	player.input_enabled = true
 	wave_manager.begin_intermission()
 
 
+## [自定义] 设置模态状态，true 时暂停游戏并隐藏暂停菜单。
 func _set_ui_modal_active(value: bool) -> void:
 	_ui_modal_active = value
 	if _ui_modal_active:
@@ -788,7 +834,7 @@ func _set_ui_modal_active(value: bool) -> void:
 		get_tree().paused = false
 
 
-## 从 terrain_colors 资源或 @export 默认值获取地形颜色；key 为 terrain_color_config 属性名。
+## [自定义] 从 terrain_colors 资源或 @export 默认值获取地形颜色；key 为 terrain_color_config 属性名。
 func _get_terrain_color(key: String, fallback: Color) -> Color:
 	if terrain_colors != null:
 		var c = terrain_colors.get(key)
@@ -797,7 +843,7 @@ func _get_terrain_color(key: String, fallback: Color) -> Color:
 	return fallback
 
 
-## 更新摄像机：缩放、跟随；当地图大于可视区域时，保持玩家偏离中心不超过 camera_dead_zone_ratio。
+## [自定义] 更新摄像机：缩放、跟随；当地图大于可视区域时，保持玩家偏离中心不超过 camera_dead_zone_ratio。
 func _update_camera() -> void:
 	if game_camera == null or not is_instance_valid(player):
 		return
@@ -826,6 +872,7 @@ func _update_camera() -> void:
 	game_camera.position = cam_pos
 
 
+## [自定义] 生成可玩区域：地板、水域、草地、障碍物、边界；依赖 _setup_terrain_tilemap 与 _spawn_terrain_zone。
 func _spawn_terrain_map() -> void:
 	var cfg: LevelConfig = GameManager.get_current_level_config(maxi(1, wave_manager.current_wave))
 	if cfg == null:
@@ -977,6 +1024,7 @@ func _spawn_terrain_map() -> void:
 	_playable_region = region
 	_spawn_world_bounds(region)
 
+## [自定义] 在 region 内随机生成 count 个集群中心点。
 func _make_cluster_centers(count: int, region: Rect2, rng: RandomNumberGenerator) -> Array[Vector2]:
 	var centers: Array[Vector2] = []
 	var safe_count := maxi(1, count)
@@ -989,6 +1037,7 @@ func _make_cluster_centers(count: int, region: Rect2, rng: RandomNumberGenerator
 	return centers
 
 
+## [自定义] 在集群中心周围生成地形区域（水域/草地）。
 func _spawn_clustered_zones(
 	total_count: int,
 	centers: Array[Vector2],
@@ -1033,6 +1082,7 @@ func _spawn_clustered_zones(
 	return placed
 
 
+## [自定义] 在分散的格子内生成地形区域。
 func _spawn_scattered_zones(
 	total_count: int,
 	size_min: Vector2,
@@ -1081,6 +1131,7 @@ func _spawn_scattered_zones(
 	return placed
 
 
+## [自定义] 在分散的格子内生成障碍物。
 func _spawn_scattered_obstacles(
 	total_count: int,
 	size_min: Vector2,
@@ -1121,6 +1172,7 @@ func _spawn_scattered_obstacles(
 	return placed
 
 
+## [自定义] 在集群中心周围生成草地区域。
 func _spawn_clustered_grass(
 	total_count: int,
 	centers: Array[Vector2],
@@ -1160,6 +1212,7 @@ func _spawn_clustered_grass(
 	return placed
 
 
+## [自定义] 生成单个障碍物（StaticBody2D），玩家与敌人都被阻挡；视觉由 TileMap 绘制。
 func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
 	# 障碍物是 StaticBody2D，玩家与敌人都被阻挡；视觉由 TileMap 绘制。
 	var body := StaticBody2D.new()
@@ -1182,6 +1235,8 @@ func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
 	_terrain_container.add_child(body)
 
 
+## [自定义] 创建 TileSet 与单层 TileMapLayer。动态加载：tex_path 硬编码，ResourceLoader.exists 校验后 load()，
+## 失败时直接 return（无 TileMapLayer）。纹理用于地形瓦片。
 func _setup_terrain_tilemap() -> void:
 	# 创建 TileSet 与单层 TileMapLayer，先铺满默认地形，再覆盖草/水/障碍。
 	_terrain_layer = null
@@ -1217,6 +1272,7 @@ func _setup_terrain_tilemap() -> void:
 	_terrain_container.add_child(terrain_root)
 
 
+## [自定义] 将世界坐标 rect 覆盖的 TileMapLayer 格子涂为指定 tile（覆盖已有地板）。
 func _paint_terrain_rect(rect: Rect2, tile_type: int) -> void:
 	# 将世界坐标 rect 覆盖的 TileMapLayer 格子涂为指定 tile（覆盖已有地板）。
 	if _terrain_layer == null:
@@ -1230,6 +1286,7 @@ func _paint_terrain_rect(rect: Rect2, tile_type: int) -> void:
 			_terrain_layer.set_cell(Vector2i(cx, cy), source_id, atlas_coords)
 
 
+## [自定义] 可移动地面：优先用 TileMapLayer 铺满，支持风格化像素图；无 TileMapLayer 时回退 Polygon2D。
 func _spawn_walkable_floor(region: Rect2, default_terrain_type: String = "flat", use_default_terrain: bool = false) -> void:
 	# 可移动地面：优先用 TileMapLayer 铺满，支持风格化像素图；无 TileMapLayer 时回退 Polygon2D。
 	var floor_row := TERRAIN_FLOOR_ROW_FLAT
@@ -1282,6 +1339,7 @@ func _spawn_walkable_floor(region: Rect2, default_terrain_type: String = "flat",
 		row += 1
 
 
+## [自定义] 四周边界：阻止单位离开可玩区域，并提供清晰边缘视觉。
 func _spawn_world_bounds(region: Rect2) -> void:
 	# 四周边界：阻止单位离开可玩区域，并提供清晰边缘视觉。
 	var t := maxf(8.0, boundary_thickness)
@@ -1295,6 +1353,7 @@ func _spawn_world_bounds(region: Rect2) -> void:
 	_spawn_boundary_body(right_rect)
 
 
+## [自定义] 生成单条边界碰撞体，视觉上不可见。
 func _spawn_boundary_body(rect: Rect2) -> void:
 	# 边界仅保留碰撞，视觉上不可见。
 	var body := StaticBody2D.new()
@@ -1310,6 +1369,7 @@ func _spawn_boundary_body(rect: Rect2) -> void:
 	_terrain_container.add_child(body)
 
 
+## [自定义] 在集群中心附近尝试放置矩形，避免与 occupied 重叠；返回 {position, size, rect} 或空字典。
 func _try_place_rect(
 	size_min: Vector2,
 	size_max: Vector2,
@@ -1345,6 +1405,7 @@ func _try_place_rect(
 	return {}
 
 
+## [自定义] 在指定 cell 内尝试放置矩形，避免与 occupied 重叠。
 func _try_place_rect_in_cell(
 	size_min: Vector2,
 	size_max: Vector2,
@@ -1380,6 +1441,7 @@ func _try_place_rect_in_cell(
 	return {}
 
 
+## [自定义] 将 region 划分为 total_count 个近似均匀的格子，用于分散放置。
 func _build_scatter_cells(total_count: int, region: Rect2) -> Array[Rect2]:
 	var cells: Array[Rect2] = []
 	var safe_count := maxi(1, total_count)
@@ -1398,6 +1460,7 @@ func _build_scatter_cells(total_count: int, region: Rect2) -> Array[Rect2]:
 	return cells
 
 
+## [自定义] 判断 rect 是否完全在 region 内。
 func _rect_inside_region(rect: Rect2, region: Rect2) -> bool:
 	return (
 		rect.position.x >= region.position.x and
@@ -1407,6 +1470,7 @@ func _rect_inside_region(rect: Rect2, region: Rect2) -> bool:
 	)
 
 
+## [自定义] 判断 rect 与 occupied 中任意矩形是否重叠（含 padding）。
 func _can_place_rect(rect: Rect2, occupied: Array[Rect2], padding: float) -> bool:
 	for other in occupied:
 		if _rect_overlaps(rect, other, padding):
@@ -1414,6 +1478,7 @@ func _can_place_rect(rect: Rect2, occupied: Array[Rect2], padding: float) -> boo
 	return true
 
 
+## [自定义] 判断 a 扩展 padding 后是否与 b 相交。
 func _rect_overlaps(a: Rect2, b: Rect2, padding: float) -> bool:
 	var aa := Rect2(
 		a.position - Vector2(padding, padding),
@@ -1422,6 +1487,8 @@ func _rect_overlaps(a: Rect2, b: Rect2, padding: float) -> bool:
 	return aa.intersects(b)
 
 
+## [自定义] 生成地形区域（草地/浅水/深水）。动态加载：load("res://scripts/terrain_zone.gd") 运行时注入脚本到 Area2D，
+## 路径硬编码；视觉由 TileMapLayer 或 ColorRect 绘制。
 func _spawn_terrain_zone(
 	spawn_pos: Vector2,
 	size: Vector2,

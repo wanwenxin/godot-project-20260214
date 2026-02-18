@@ -42,20 +42,24 @@ var default_data := {
 }
 
 
+## [系统] 节点入树时调用，确保存档目录存在。
 func _ready() -> void:
 	_ensure_save_dir()
 
 
+## [自定义] 若存档目录不存在则递归创建，避免首次写文件失败。
 func _ensure_save_dir() -> void:
 	# 首次启动可能没有目录，提前创建避免后续写文件失败。
 	if not DirAccess.dir_exists_absolute(SAVE_DIR):
 		DirAccess.make_dir_recursive_absolute(SAVE_DIR)
 
 
+## [自定义] 检查存档文件是否存在。
 func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
 
 
+## [自定义] 加载存档；无文件或解析失败时返回 default_data 深拷贝。
 func load_game() -> Dictionary:
 	# 无存档时返回默认结构，保证上层逻辑永远拿到有效字典。
 	if not has_save():
@@ -77,6 +81,7 @@ func load_game() -> Dictionary:
 	return merged
 
 
+## [自定义] 将 data 序列化为 JSON 写入 SAVE_PATH。
 func save_game(data: Dictionary) -> void:
 	_ensure_save_dir()
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -86,6 +91,7 @@ func save_game(data: Dictionary) -> void:
 	file.store_string(JSON.stringify(data))
 
 
+## [自定义] 更新本局战绩到存档：best_* 取最大、total_kills 累加、尝试解锁成就。
 func update_run_result(wave: int, survival_time: float, kills: int, character_id: int) -> Dictionary:
 	# 对累计数据做聚合更新：
 	# - best_* 取历史最大
@@ -122,6 +128,7 @@ func update_run_result(wave: int, survival_time: float, kills: int, character_id
 	return data
 
 
+## [自定义] 设置语言代码并保存。
 func set_language(language_code: String) -> Dictionary:
 	var data := load_game()
 	data["language"] = language_code
@@ -129,11 +136,13 @@ func set_language(language_code: String) -> Dictionary:
 	return data
 
 
+## [自定义] 返回 settings 字典的深拷贝。
 func get_settings() -> Dictionary:
 	var data := load_game()
 	return data.get("settings", default_data["settings"]).duplicate(true)
 
 
+## [自定义] 保存 settings 并覆盖存档中的对应部分。
 func set_settings(settings: Dictionary) -> Dictionary:
 	var data := load_game()
 	data["settings"] = settings.duplicate(true)
@@ -141,11 +150,13 @@ func set_settings(settings: Dictionary) -> Dictionary:
 	return data
 
 
+## [自定义] 返回 weapon_meta 的深拷贝。
 func get_weapon_meta() -> Dictionary:
 	var data := load_game()
 	return data.get("weapon_meta", default_data["weapon_meta"]).duplicate(true)
 
 
+## [自定义] 保存 weapon_meta 并覆盖存档中的对应部分。
 func set_weapon_meta(meta: Dictionary) -> Dictionary:
 	var data := load_game()
 	data["weapon_meta"] = meta.duplicate(true)
@@ -153,6 +164,7 @@ func set_weapon_meta(meta: Dictionary) -> Dictionary:
 	return data
 
 
+## [自定义] 若 condition 为 true 且 id 未解锁，则追加到 list_ref。
 func _try_unlock_achievement(list_ref: Array, id: String, condition: bool) -> void:
 	if not condition:
 		return

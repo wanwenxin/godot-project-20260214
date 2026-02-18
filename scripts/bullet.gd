@@ -26,6 +26,7 @@ var _hit_targets: Dictionary = {}  # 已命中目标 instance_id，用于同目�
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 
+## [系统] 节点入树时调用，设置碰撞层、外观、连接 body_entered。
 func _ready() -> void:
 	add_to_group("bullets")
 	# 子弹在 layer_3，仅与目标层发生重叠检测。
@@ -36,12 +37,13 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 
 
-## 按 collision_radius 设置碰撞形状，仅 _ready 时执行一次。
+## [自定义] 按 collision_radius 设置碰撞形状，仅 _ready 时执行一次。
 func _apply_collision_radius() -> void:
 	if collision_shape != null and collision_shape.shape is CircleShape2D:
 		(collision_shape.shape as CircleShape2D).radius = collision_radius
 
 
+## [自定义] 设置子弹外观。动态加载：texture_path 来自 @export，ResourceLoader.exists 校验后 load()，失败则 PixelGenerator。
 func _apply_bullet_appearance() -> void:
 	# 优先 texture_path，空则按 bullet_type/hit_player 回退 PixelGenerator。
 	var tex: Texture2D = null
@@ -62,6 +64,7 @@ func _apply_bullet_appearance() -> void:
 		sprite.texture = PixelGenerator.generate_bullet_sprite(hit_player)
 
 
+## [系统] 每帧调用，直线移动、超时或出界时销毁。
 func _process(delta: float) -> void:
 	# 简单直线弹道。
 	global_position += direction * speed * delta
@@ -77,7 +80,7 @@ func _process(delta: float) -> void:
 			queue_free()
 
 
-## 获取子弹销毁边界：优先用游戏可玩区域，否则用视口加边距。
+## [自定义] 获取子弹销毁边界：优先用游戏可玩区域，否则用视口加边距。
 func _get_destroy_bounds() -> Rect2:
 	var scene := get_tree().current_scene
 	if scene != null and scene.has_method("get_playable_bounds"):
@@ -87,6 +90,7 @@ func _get_destroy_bounds() -> Rect2:
 	return Rect2(vp.position - Vector2(margin, margin), vp.size + Vector2(margin * 2.0, margin * 2.0))
 
 
+## [系统] body_entered 信号回调，命中目标时结算伤害、穿透或销毁。
 func _on_body_entered(body: Node) -> void:
 	# 命中后立即销毁，避免重复结算。
 	# 同一目标只结算一次，避免 Area 重叠导致重复伤害。
