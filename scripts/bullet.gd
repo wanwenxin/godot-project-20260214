@@ -128,12 +128,15 @@ func _on_body_entered(body: Node) -> void:
 
 func _spawn_hit_flash(pos: Vector2, color: Color) -> void:
 	# 简单命中反馈：短暂闪烁，颜色与子弹一致。
+	var tree := get_tree()
+	if tree == null:
+		return
 	var flash := ColorRect.new()
 	flash.size = Vector2(12, 12)
 	flash.position = pos - flash.size * 0.5
 	flash.color = color
 	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	get_tree().current_scene.add_child(flash)
+	tree.current_scene.add_child(flash)
 	flash.z_index = 100
 	var tween := flash.create_tween()
 	tween.tween_property(flash, "color", Color(color.r, color.g, color.b, 0.0), 0.08)
@@ -149,8 +152,13 @@ func _handle_pierce_or_destroy() -> void:
 
 
 ## [自定义] 优先回收到对象池，非池化实例则 queue_free。
+## 使用 call_deferred 避免在物理回调（body_entered）中移除 CollisionObject 导致引擎报错。
 func _recycle_or_free() -> void:
 	if get_meta("object_pool_scene_path", "") != "":
-		ObjectPool.recycle(self)
+		call_deferred("_deferred_recycle")
 	else:
-		queue_free()
+		call_deferred("queue_free")
+
+
+func _deferred_recycle() -> void:
+	ObjectPool.recycle(self)

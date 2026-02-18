@@ -124,6 +124,9 @@ func _on_body_entered(body: Node) -> void:
 
 func _apply_coin_visual_by_value() -> void:
 	# 金币价值分层配色：低值铜币，中值银币，高值金币。
+	# 若 sprite 未就绪（deferred add_child 时 configure_for_spawn 先于入树调用），跳过；_ready 会再次调用。
+	if not is_instance_valid(sprite):
+		return
 	if value <= 1:
 		sprite.modulate = Color(0.80, 0.55, 0.25, 1.0)
 	elif value <= 3:

@@ -47,6 +47,16 @@ func _export_enemies(base: String) -> void:
 	for i in range(types.size()):
 		var tex := PixelGenerator.generate_enemy_sprite(types[i])
 		_tex_to_png(tex, base.path_join("enemies").path_join(names[i] + ".png"))
+	var new_ids := [
+		"slime", "goblin", "skeleton", "bat", "spider", "wolf", "orc", "ghost", "beetle", "serpent",
+		"elite_slime", "elite_goblin", "elite_skeleton", "elite_bat", "elite_spider", "elite_wolf",
+		"elite_orc", "elite_ghost", "elite_beetle", "elite_serpent",
+		"slime_king", "goblin_chief", "skeleton_lord", "bat_swarm_queen", "spider_queen",
+		"alpha_wolf", "orc_warlord", "phantom", "beetle_tyrant", "serpent_ancient"
+	]
+	for eid in new_ids:
+		var tex := PixelGenerator.generate_enemy_sprite_by_id(eid)
+		_tex_to_png(tex, base.path_join("enemies").path_join(eid + ".png"))
 
 
 func _export_weapons(base: String) -> void:

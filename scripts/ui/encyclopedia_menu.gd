@@ -157,7 +157,17 @@ func _build_characters_tab() -> void:
 
 func _build_enemies_tab() -> void:
 	var vbox := _make_scroll_vbox()
+	var last_tier := ""
 	for e in EnemyDefs.ENEMY_DEFS:
+		var tier: String = str(e.get("tier", "normal"))
+		if tier != last_tier:
+			last_tier = tier
+			var tier_key := "encyclopedia.enemy_tier_normal" if tier == "normal" else ("encyclopedia.enemy_tier_elite" if tier == "elite" else "encyclopedia.enemy_tier_boss")
+			var header := Label.new()
+			header.text = "—— " + LocalizationManager.tr_key(tier_key) + " ——"
+			header.add_theme_font_size_override("font_size", FONT_SIZE)
+			header.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 1.0))
+			vbox.add_child(header)
 		var name_str := LocalizationManager.tr_key(str(e.get("name_key", "")))
 		var details := "%s: %d | %s: %.0f | %s: %d | %s: %d" % [
 			LocalizationManager.tr_key("pause.stat_hp"), int(e.get("max_health", 25)),

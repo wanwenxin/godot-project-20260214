@@ -47,3 +47,5 @@ wait_time = 3.5
 [node name="MagicTargetingOverlay" type="Node2D" parent="."]
 z_index = 100
 script = ExtResource("11")
+
+[node name="NavigationRegion2D" type="NavigationRegion2D" parent="."]

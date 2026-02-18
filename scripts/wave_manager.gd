@@ -142,12 +142,23 @@ func _start_next_wave() -> void:
 	var orders: Array = []
 	if cfg != null:
 		orders = cfg.get_enemy_spawn_orders(current_wave, game_node, scenes, _rng)
-		var diff: float = cfg.difficulty
-		for o in orders:
-			o["hp_scale"] = (o.get("hp_scale", 1.0) as float) * diff
-			o["speed_scale"] = (o.get("speed_scale", 1.0) as float) * diff
 	else:
 		orders = _get_fallback_orders(game_node)
+	# 将 enemy_id 转为 scene：若 order 含 enemy_id 则从 EnemySceneRegistry 获取
+	for o in orders:
+		if o.get("enemy_id") != null:
+			var eid: String = str(o.enemy_id)
+			var packed: PackedScene = EnemySceneRegistry.get_scene(eid)
+			if packed != null:
+				o["scene"] = packed
+			elif scenes.has(eid):
+				o["scene"] = scenes[eid]
+	# 应用难度缩放
+	if cfg != null:
+		var diff: float = cfg.difficulty
+		for order in orders:
+			order["hp_scale"] = (order.get("hp_scale", 1.0) as float) * diff
+			order["speed_scale"] = (order.get("speed_scale", 1.0) as float) * diff
 
 	# 按出生点分组：单出生点可产生多个敌人。
 	var position_batches: Array = []  # 每项为 {position: Vector2, spawns: Array}

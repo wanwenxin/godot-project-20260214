@@ -81,6 +81,7 @@
   - 波次开始：玩家传送到地图中心
   - 波次结束：清除剩余敌人（`enemies` 组）与子弹（`bullets` 组）
   - `get_player_for_pause()`：供暂停菜单展示玩家数值
+  - 导航系统：`NavigationRegion2D` 子节点，`_spawn_obstacle` 记录 `_obstacle_rects`，`_spawn_terrain_map` 结束后 `call_deferred("_bake_navigation")`；`_bake_navigation()` 使用 `NavigationMeshSourceGeometryData2D` 烘焙可玩区域为可行走区、障碍物为孔洞，供敌人 `NavigationAgent2D` 寻路
 
 - `scripts/player.gd`
   - 键盘+触控移动融合
@@ -125,6 +126,14 @@
 
 ### 2.3 敌人与波次
 
+- `resources/enemy_defs.gd`
+  - 敌人定义集中化：36 种敌人（6 原有 + 30 扩展），含 `tier`（normal/elite/boss）、`base_id`、`behavior_mode`、`scene_path`、`name_key`、`desc_key`、`icon_path`
+  - 行为模式：`CHASE_DIRECT`(0) 直线追击、`CHASE_NAV`(1) 寻路追击、`KEEP_DISTANCE`(2) 保持距离、`FLANK`(3) 侧翼包抄、`CHARGE`(4) 蓄力冲刺、`BOSS_CUSTOM`(5) Boss 自定义
+  - `get_enemy_def(id)`、`get_ids_by_tier(tier)` 供图鉴与生成使用
+
+- `resources/enemy_scene_registry.gd`（Autoload `EnemySceneRegistry`）
+  - `id -> PackedScene` 映射，`get_scene(enemy_id)` 供 wave_manager 按 enemy_id 加载场景
+
 - `scripts/enemy_base.gd`
   - 死亡时播放差异化动画（按 `enemy_type`：melee 闪灭缩小、ranged 淡出旋转、tank 碎裂、boss 爆炸、aquatic 水花、dasher 拖尾），动画结束后 emit `died` 并 `queue_free`
   - 通用生命/接触伤害
@@ -132,11 +141,15 @@
   - 接触持续伤害：玩家与 HurtArea 重叠时，按 `contact_damage_interval` 持续造成伤害（`_on_contact_timer_timeout` 检查重叠并再次施加）
   - 地形速度系数（与玩家规则一致）
   - `apply_knockback(dir, force)`：受击击退，累加冲击速度并每帧衰减
+  - `enemy_id`：若设置则从 EnemyDefs 取 `behavior_mode`，并创建 `NavigationAgent2D`（CHASE_NAV/FLANK/KEEP_DISTANCE 时）
+  - 寻路移动：`_move_towards_player_nav`、`_move_away_nav`、`_move_towards_flank_nav` 供不同行为模式使用
 
-- `scripts/enemy_melee.gd`：追击型
-- `scripts/enemy_ranged.gd`：保持距离并射击
+- `scripts/enemy_melee.gd`：追击型（支持 CHASE_NAV/FLANK 寻路）
+- `scripts/enemy_ranged.gd`：保持距离并射击（KEEP_DISTANCE 时用寻路靠近/远离）
 - `scripts/enemy_tank.gd`：高血低速
 - `scripts/enemy_boss.gd`：Boss 波扇形弹幕
+- `scripts/enemy_aquatic.gd`：水中专属，离水扣血
+- `scripts/enemy_dasher.gd`：蓄力冲刺（CHARGE 行为）
 
 - `scripts/wave_manager.gd`
   - 波次推进、敌人构成、难度缩放
@@ -410,6 +423,8 @@ flowchart TD
 - `_upgrade_pool`：升级候选池
 
 **LevelConfig 地形扩展**（`resources/level_config.gd`）：
+- `use_extended_spawn`：启用扩展敌人生成（`normal_enemy_ids`、`elite_enemy_ids`、`boss_enemy_ids` 池，按波次精英概率、Boss 波抽取）；默认 false 时沿用原 `melee_count`/`ranged_count` 等逻辑
+- `elite_spawn_chance_base`、`elite_spawn_chance_per_wave`：精英生成概率
 - `map_size_scale`：地图大小系数，0.8=小、1.0=中、1.2=大
 - `default_terrain_type`：默认地形类型，`flat`=平地、`seaside`=海边、`mountain`=山地；地板瓦片按此选择像素图（terrain_atlas 第 0/1/2 行），默认 `flat`
 
@@ -550,11 +565,13 @@ flowchart TD
 
 ### 5.2 新增敌人
 
-1. 继承 `enemy_base.gd`
-2. 新建 `scenes/enemies/*.tscn`
-3. 在 `wave_manager.gd::_start_next_wave()` 接入生成策略
-4. 若需水中专属敌人：`is_water_only()` 返回 true，由 `terrain_zone` 维护 `water_zone_count` meta，离水时 `enemy_base` 自动施加伤害
-5. 若需自定义出生点（如水中）：在 `get_enemy_spawn_orders` 返回的 order 中设置 `pos_override` 为 `Vector2`；`game.gd` 提供 `get_random_water_spawn_position()`、`has_water_spawn_positions()`
+1. 在 `resources/enemy_defs.gd` 的 `ENEMY_DEFS` 中新增条目（含 `id`、`tier`、`base_id`、`behavior_mode`、`scene_path`、`name_key`、`desc_key`、`icon_path` 及数值）
+2. 在 `resources/enemy_scene_registry.gd` 的 `_scene_paths` 中注册 `id -> scene_path`（若使用自动扫描则无需手动添加）
+3. 创建场景 `scenes/enemies/enemy_{id}.tscn`，继承对应基类（melee/ranged/tank/aquatic/dasher/boss），配置 `enemy_id`、纹理
+4. 在 `i18n/zh-CN.json`、`i18n/en-US.json` 中新增 `enemy.{id}.name`、`enemy.{id}.desc`
+5. 若需自定义逻辑，继承 `enemy_base.gd`
+6. 若需水中专属敌人：`is_water_only()` 返回 true，由 `terrain_zone` 维护 `water_zone_count` meta，离水时 `enemy_base` 自动施加伤害
+7. 若需自定义出生点（如水中）：在 `get_enemy_spawn_orders` 返回的 order 中设置 `pos_override` 为 `Vector2`；`game.gd` 提供 `get_random_water_spawn_position()`、`has_water_spawn_positions()`
 
 ### 5.3 调整敌人出生规则（无需改代码）
 

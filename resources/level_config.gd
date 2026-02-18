@@ -46,6 +46,9 @@ extends Resource
 @export var dasher_count_min := 0 # 冲刺敌人数量最小值
 @export var dasher_count_max := 2 # 冲刺敌人数量最大值
 @export var boss_count := 0 # boss数量
+@export var use_extended_spawn := false # 为 true 时使用 normal/elite/boss 池
+@export var elite_spawn_chance_base := 0.05 # 精英基础概率
+@export var elite_spawn_chance_per_wave := 0.02 # 每波增加的精英概率
 
 @export_group("Wave")
 @export var wave_duration := 20.0 # 波次持续时间
@@ -89,7 +92,60 @@ func get_terrain_params() -> Dictionary:
 
 
 ## 返回本关敌人生成订单数组。scenes 含 melee/ranged/tank/aquatic/dasher/boss 的 PackedScene。
+## use_extended_spawn 为 true 时从 normal/elite/boss 池按 tier 抽取；否则沿用原有 count 逻辑。
 func get_enemy_spawn_orders(wave: int, game_node: Node, scenes: Dictionary, rng: RandomNumberGenerator) -> Array:
+	var orders: Array = []
+	if use_extended_spawn:
+		orders = _get_extended_spawn_orders(wave, game_node, rng)
+	else:
+		orders = _get_legacy_spawn_orders(wave, game_node, scenes, rng)
+	return orders
+
+
+func _get_extended_spawn_orders(wave: int, game_node: Node, rng: RandomNumberGenerator) -> Array:
+	var orders: Array = []
+	var normal_ids: Array[String] = []
+	var elite_ids: Array[String] = []
+	var boss_ids: Array[String] = []
+	for eid in EnemyDefs.get_ids_by_tier("normal"):
+		normal_ids.append(eid)
+	for eid in EnemyDefs.get_ids_by_tier("elite"):
+		elite_ids.append(eid)
+	for eid in EnemyDefs.get_ids_by_tier("boss"):
+		boss_ids.append(eid)
+	if normal_ids.is_empty():
+		normal_ids.append_array(["melee", "ranged", "tank", "aquatic", "dasher"])
+	if boss_ids.is_empty():
+		boss_ids.append("boss")
+	var total := clampi(6 + wave * 2, 4, 25)
+	var elite_chance := elite_spawn_chance_base + wave * elite_spawn_chance_per_wave
+	var boss_num := 1 if (wave % 5 == 0 and wave > 0) else boss_count
+	var elite_count := 0
+	for _i in range(total - boss_num):
+		if rng.randf() < elite_chance and not elite_ids.is_empty():
+			elite_count += 1
+	var normal_count := total - boss_num - elite_count
+	var hp_base := 0.9 + wave * 0.05
+	var speed_base := 1.0 + wave * 0.06
+	for _i in range(normal_count):
+		var eid: String = normal_ids[rng.randi() % normal_ids.size()]
+		var def: Dictionary = EnemyDefs.get_enemy_def(eid)
+		var hp_s := def.get("hp_scale", 1.0) as float * hp_base
+		var sp_s := def.get("speed_scale", 1.0) as float * speed_base
+		orders.append({"enemy_id": eid, "hp_scale": hp_s, "speed_scale": sp_s, "pos_override": null})
+	for _i in range(elite_count):
+		var eid: String = elite_ids[rng.randi() % elite_ids.size()]
+		var def: Dictionary = EnemyDefs.get_enemy_def(eid)
+		var hp_s := (def.get("hp_scale", 1.4) as float) * hp_base
+		var sp_s := (def.get("speed_scale", 1.2) as float) * speed_base
+		orders.append({"enemy_id": eid, "hp_scale": hp_s, "speed_scale": sp_s, "pos_override": null})
+	for _i in range(boss_num):
+		var eid: String = boss_ids[rng.randi() % boss_ids.size()]
+		orders.append({"enemy_id": eid, "hp_scale": 1.0 + wave * 0.12, "speed_scale": 0.95, "pos_override": null})
+	return orders
+
+
+func _get_legacy_spawn_orders(wave: int, game_node: Node, scenes: Dictionary, rng: RandomNumberGenerator) -> Array:
 	var orders: Array = []
 	var melee_c := clampi(rng.randi_range(melee_count_min, melee_count_max), 0, 20)
 	var ranged_c := clampi(rng.randi_range(ranged_count_min, ranged_count_max), 0, 10)
@@ -98,10 +154,8 @@ func get_enemy_spawn_orders(wave: int, game_node: Node, scenes: Dictionary, rng:
 	if game_node != null and game_node.has_method("has_water_spawn_positions") and game_node.has_water_spawn_positions():
 		aquatic_c = clampi(rng.randi_range(aquatic_count_min, aquatic_count_max), 0, 4)
 	var dasher_c := clampi(rng.randi_range(dasher_count_min, dasher_count_max), 0, 4)
-
 	var hp_base := 0.9 + wave * 0.06
 	var speed_base := 1.0 + wave * 0.08
-
 	for _i in range(melee_c):
 		orders.append({"scene": scenes.get("melee"), "hp_scale": hp_base, "speed_scale": speed_base, "pos_override": null})
 	for _i in range(ranged_c):
@@ -115,5 +169,4 @@ func get_enemy_spawn_orders(wave: int, game_node: Node, scenes: Dictionary, rng:
 		orders.append({"scene": scenes.get("dasher"), "hp_scale": hp_base, "speed_scale": 1.0 + wave * 0.06, "pos_override": null})
 	for _i in range(boss_count):
 		orders.append({"scene": scenes.get("boss"), "hp_scale": 1.0 + wave * 0.15, "speed_scale": 1.0, "pos_override": null})
-
 	return orders

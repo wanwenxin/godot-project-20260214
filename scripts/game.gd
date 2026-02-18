@@ -54,6 +54,7 @@ var _pending_upgrade_options: Array[Dictionary] = []  # 当前波次四选一升
 var _upgrade_selected := false  # 防重入：本轮是否已选择升级
 var _water_spawn_rects: Array[Rect2] = []  # 水域矩形，供水中敌人生成
 var _playable_region: Rect2 = Rect2()  # 可玩区域，供冲刺怪等边界检测
+var _obstacle_rects: Array[Rect2] = []  # 障碍物矩形，供导航烘焙时排除
 var _terrain_container: Node2D  # 地形容器，波次重载时整体清除
 var _terrain_layer: TileMapLayer  # 唯一地形层：先铺满默认地形，再覆盖草/水/障碍
 var _terrain_atlas_rows: int = 1  # atlas 行数，用于限制 floor_row（1=仅 flat，3=flat/seaside/mountain）
@@ -87,6 +88,7 @@ var _mobile_move := Vector2.ZERO
 @onready var victory_screen = $VictoryScreen
 @onready var world_background: ColorRect = $WorldBackground
 @onready var magic_targeting_overlay: Node2D = $MagicTargetingOverlay
+@onready var nav_region: NavigationRegion2D = $NavigationRegion2D
 
 
 ## [系统] 节点入树时调用，生成玩家与地形、挂接波次/HUD 信号、打开开局商店。
@@ -985,6 +987,7 @@ func _spawn_terrain_map() -> void:
 		56.0 * linear_scale
 		)
 	# 障碍物：避让水域与已生成障碍，全图散布。
+	_obstacle_rects.clear()
 	var hard_occupied: Array[Rect2] = []
 	hard_occupied.append_array(water_occupied)
 	hard_occupied.append_array(solid_occupied)
@@ -1022,6 +1025,7 @@ func _spawn_terrain_map() -> void:
 	_water_spawn_rects.append_array(water_occupied)
 	_playable_region = region
 	_spawn_world_bounds(region)
+	call_deferred("_bake_navigation")
 
 ## [自定义] 在 region 内随机生成 count 个集群中心点。
 func _make_cluster_centers(count: int, region: Rect2, rng: RandomNumberGenerator) -> Array[Vector2]:
@@ -1232,6 +1236,32 @@ func _spawn_obstacle(spawn_pos: Vector2, size: Vector2) -> void:
 		rect.position = -size * 0.5
 		body.add_child(rect)
 	_terrain_container.add_child(body)
+	_obstacle_rects.append(Rect2(spawn_pos - size * 0.5, size))
+
+
+## [自定义] 烘焙导航网格：可玩区域为可行走区，障碍物为孔洞；供 NavigationAgent2D 寻路。
+func _bake_navigation() -> void:
+	if nav_region == null or _playable_region.size.x <= 0 or _playable_region.size.y <= 0:
+		return
+	var geom := NavigationMeshSourceGeometryData2D.new()
+	var outer := PackedVector2Array([
+		_playable_region.position,
+		_playable_region.position + Vector2(_playable_region.size.x, 0),
+		_playable_region.position + _playable_region.size,
+		_playable_region.position + Vector2(0, _playable_region.size.y)
+	])
+	geom.add_traversable_outline(outer)
+	for rect in _obstacle_rects:
+		var hole := PackedVector2Array([
+			rect.position,
+			rect.position + Vector2(rect.size.x, 0),
+			rect.position + rect.size,
+			rect.position + Vector2(0, rect.size.y)
+		])
+		geom.add_obstruction_outline(hole)
+	var nav_poly := NavigationPolygon.new()
+	NavigationServer2D.bake_from_source_geometry_data(nav_poly, geom)
+	nav_region.navigation_polygon = nav_poly
 
 
 ## [自定义] 创建 TileSet 与单层 TileMapLayer。动态加载：tex_path 硬编码，ResourceLoader.exists 校验后 load()，

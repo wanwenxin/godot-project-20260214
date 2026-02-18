@@ -22,6 +22,8 @@ signal died(enemy: Node)
 @export var sheet_rows: int = 3  # 精灵图行数（站立、行走1、行走2）
 # 敌人类型：0=melee, 1=ranged, 2=tank, 3=boss, 4=aquatic, 5=dasher，用于死亡动画与 PixelGenerator 回退
 @export var enemy_type: int = 0
+# 敌人 id（如 slime、elite_goblin）：若设置则从 EnemyDefs 加载数值并用 generate_enemy_sprite_by_id 生成纹理
+@export var enemy_id: String = ""
 
 var current_health := 25
 var player_ref: Node2D
@@ -40,6 +42,9 @@ var _knockback_velocity := Vector2.ZERO
 var _out_of_water_cd := 0.0  # 离水伤害 CD
 var _last_direction_index := 0  # 8 方向索引
 var _is_dying := false  # 死亡动画播放中，防重入
+# 行为模式：0=CHASE_DIRECT, 1=CHASE_NAV, 2=KEEP_DISTANCE, 3=FLANK, 4=CHARGE, 5=BOSS_CUSTOM；由 EnemyDefs 注入
+var _behavior_mode: int = 0
+var _nav_agent: NavigationAgent2D  # 寻路代理，CHASE_NAV/FLANK 时使用
 
 
 func is_water_only() -> bool:
@@ -65,6 +70,18 @@ func _ready() -> void:
 		# 接触伤害通过计时器节流。
 		contact_timer.wait_time = contact_damage_interval
 		contact_timer.timeout.connect(_on_contact_timer_timeout)
+	# 从 EnemyDefs 取 behavior_mode；若 enemy_id 非空则覆盖。
+	if enemy_id != "":
+		var def := EnemyDefs.get_enemy_def(enemy_id)
+		if not def.is_empty():
+			_behavior_mode = def.get("behavior_mode", 0)
+	# 寻路代理：CHASE_NAV/FLANK/KEEP_DISTANCE 时需绕障碍；非水中敌人才创建。
+	if not is_water_only() and (_behavior_mode == EnemyDefs.BEHAVIOR_CHASE_NAV or _behavior_mode == EnemyDefs.BEHAVIOR_FLANK or _behavior_mode == EnemyDefs.BEHAVIOR_KEEP_DISTANCE):
+		_nav_agent = NavigationAgent2D.new()
+		_nav_agent.path_desired_distance = 8.0
+		_nav_agent.target_desired_distance = 8.0
+		_nav_agent.avoidance_enabled = false
+		add_child(_nav_agent)
 
 
 func _process(delta: float) -> void:
@@ -85,8 +102,8 @@ func set_player(node: Node2D) -> void:
 	player_ref = node
 
 
-func set_enemy_texture(enemy_type: int) -> void:
-	# 优先 texture_sheet，失败则 texture_single，再回退 PixelGenerator；enemy_type 仅用于 PixelGenerator。
+func set_enemy_texture(type_hint: int = -1) -> void:
+	# 优先 texture_sheet，失败则 texture_single；enemy_id 非空时用 generate_enemy_sprite_by_id；否则回退 PixelGenerator(enemy_type)。
 	if not sprite:
 		return
 	var tex: Texture2D = null
@@ -103,7 +120,10 @@ func set_enemy_texture(enemy_type: int) -> void:
 		sprite.texture = tex
 		sprite.region_enabled = false
 		return
-	sprite.texture = PixelGenerator.generate_enemy_sprite(enemy_type)
+	if enemy_id != "":
+		sprite.texture = PixelGenerator.generate_enemy_sprite_by_id(enemy_id)
+	else:
+		sprite.texture = PixelGenerator.generate_enemy_sprite(type_hint if type_hint >= 0 else enemy_type)
 	sprite.region_enabled = false
 
 
@@ -202,7 +222,67 @@ func _finish_death() -> void:
 func _move_towards_player(_delta: float, move_scale: float = 1.0) -> void:
 	if not is_instance_valid(player_ref):
 		return
+	if _behavior_mode == EnemyDefs.BEHAVIOR_CHASE_NAV and _nav_agent != null:
+		_move_towards_player_nav(_delta, move_scale)
+		return
+	if _behavior_mode == EnemyDefs.BEHAVIOR_FLANK and _nav_agent != null:
+		_move_towards_flank_nav(_delta, move_scale)
+		return
 	var dir := (player_ref.global_position - global_position).normalized()
+	velocity = dir * speed * move_scale * _terrain_speed_multiplier + _knockback_velocity
+	_knockback_velocity = _knockback_velocity.lerp(Vector2.ZERO, 0.5)
+	move_and_slide()
+
+
+## [自定义] 使用 NavigationAgent2D 寻路追击玩家；CHASE_NAV 时调用。
+func _move_towards_player_nav(_delta: float, move_scale: float = 1.0) -> void:
+	if not is_instance_valid(player_ref) or _nav_agent == null:
+		return
+	# 每帧更新目标；需在 physics 阶段后设置，避免首次 get_next_path_position 无效。
+	_nav_agent.target_position = player_ref.global_position
+	var next_pos := _nav_agent.get_next_path_position()
+	var dir := (next_pos - global_position).normalized()
+	if dir.length_squared() < 0.001:
+		dir = (player_ref.global_position - global_position).normalized()
+	velocity = dir * speed * move_scale * _terrain_speed_multiplier + _knockback_velocity
+	_knockback_velocity = _knockback_velocity.lerp(Vector2.ZERO, 0.5)
+	move_and_slide()
+
+
+## [自定义] 侧翼包抄：寻路至玩家侧翼方向；FLANK 时调用。
+func _move_towards_flank_nav(_delta: float, move_scale: float = 1.0) -> void:
+	if not is_instance_valid(player_ref) or _nav_agent == null:
+		return
+	var to_player := player_ref.global_position - global_position
+	var dist := to_player.length()
+	if dist < 20.0:
+		# 已近，直接追击
+		_move_towards_player_nav(_delta, move_scale)
+		return
+	var dir := to_player.normalized()
+	# 侧翼：垂直于玩家朝向的方向，取离自己更近的一侧
+	var side := Vector2(-dir.y, dir.x)
+	var flank_target := player_ref.global_position + side * 80.0
+	_nav_agent.target_position = flank_target
+	var next_pos := _nav_agent.get_next_path_position()
+	var move_dir := (next_pos - global_position).normalized()
+	if move_dir.length_squared() < 0.001:
+		move_dir = dir
+	velocity = move_dir * speed * move_scale * _terrain_speed_multiplier + _knockback_velocity
+	_knockback_velocity = _knockback_velocity.lerp(Vector2.ZERO, 0.5)
+	move_and_slide()
+
+
+## [自定义] 使用 NavigationAgent2D 寻路远离玩家；KEEP_DISTANCE 时「太近则后退」调用。
+func _move_away_nav(_delta: float, move_scale: float = 1.0) -> void:
+	if not is_instance_valid(player_ref) or _nav_agent == null:
+		return
+	var away_target := global_position + (global_position - player_ref.global_position).normalized() * 150.0
+	_nav_agent.target_position = away_target
+	var next_pos := _nav_agent.get_next_path_position()
+	var dir := (next_pos - global_position).normalized()
+	if dir.length_squared() < 0.001:
+		dir = (global_position - player_ref.global_position).normalized()
 	velocity = dir * speed * move_scale * _terrain_speed_multiplier + _knockback_velocity
 	_knockback_velocity = _knockback_velocity.lerp(Vector2.ZERO, 0.5)
 	move_and_slide()

@@ -12,7 +12,6 @@ var _shoot_cd := 0.0
 
 func _ready() -> void:
 	super._ready()
-	# 远程敌人外观：紫色菱形风格。
 	set_enemy_texture(enemy_type)
 
 
@@ -25,16 +24,24 @@ func _physics_process(delta: float) -> void:
 	var dir := to_player.normalized()
 
 	# 与玩家距离控制：
-	# - 太远则靠近
-	# - 太近则后退
+	# - 太远则靠近（KEEP_DISTANCE 时用寻路）
+	# - 太近则后退（KEEP_DISTANCE 时用寻路）
 	# - 在舒适区间内停留射击
 	if dist > preferred_distance + 25.0:
-		velocity = dir * speed
+		if _behavior_mode == EnemyDefs.BEHAVIOR_KEEP_DISTANCE and _nav_agent != null:
+			_move_towards_player_nav(delta, 1.0)
+		else:
+			velocity = dir * speed * _terrain_speed_multiplier
+			move_and_slide()
 	elif dist < preferred_distance - 25.0:
-		velocity = -dir * speed
+		if _behavior_mode == EnemyDefs.BEHAVIOR_KEEP_DISTANCE and _nav_agent != null:
+			_move_away_nav(delta, 1.0)
+		else:
+			velocity = -dir * speed * _terrain_speed_multiplier
+			move_and_slide()
 	else:
 		velocity = Vector2.ZERO
-	move_and_slide()
+		move_and_slide()
 
 	_shoot_cd = max(_shoot_cd - delta, 0.0)
 	if _shoot_cd <= 0.0 and bullet_scene != null:

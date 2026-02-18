@@ -18,6 +18,27 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-18：pickup configure_for_spawn 时 sprite 为 null
+
+- **现象**：`_apply_coin_visual_by_value` 报错，调用链为 enemy died → _spawn_coin_drop → ObjectPool.acquire(deferred=true) → configure_for_spawn
+- **原因**：acquire(deferred=true) 使用 call_deferred 加入 parent，configure_for_spawn 在入树前被调用，此时 @onready sprite 尚未初始化
+- **修复**：`_apply_coin_visual_by_value` 开头增加 `if not is_instance_valid(sprite): return`；_ready 入树后会再次调用并正确设置
+- **预防**：对象池 deferred add 时，configure 在入树前调用，需对 @onready 子节点做空检查
+
+### 2026-02-18：子弹回收在物理回调中移除 CollisionObject 报错
+
+- **现象**：`Removing a CollisionObject node during a physics callback is not allowed`；`get_tree()` 为 null 导致 `_spawn_hit_flash` 报错
+- **原因**：`body_entered` 为物理回调，`_recycle_or_free` 直接调用 `ObjectPool.recycle`，后者执行 `remove_child` 在物理回调中移除节点；回收后节点可能已脱离场景树，后续 `_spawn_hit_flash` 中 `get_tree()` 为 null
+- **修复**：`_recycle_or_free` 改用 `call_deferred("_deferred_recycle")` 或 `call_deferred("queue_free")`；`_spawn_hit_flash` 增加 `get_tree()` 空检查
+- **预防**：物理回调（body_entered、area_entered 等）中移除节点需使用 `call_deferred` 延后执行
+
+### 2026-02-18：level_config boss_count 自引用
+
+- **现象**：`_get_extended_spawn_orders` 中 `var boss_count := 1 if (wave % 5 == 0 and wave > 0) else boss_count` 的 else 分支引用自身，导致逻辑错误
+- **原因**：局部变量 boss_count 在声明时引用自身（应为导出变量 boss_count）
+- **修复**：改为 `var boss_num := 1 if (wave % 5 == 0 and wave > 0) else boss_count`，后续使用 boss_num
+- **预防**：声明局部变量时避免在初始化表达式中引用同名变量
+
 ### 2026-02-17：Tab 与商店系统优化
 
 - **现象**：Tab 样式不统一；设置游戏标签项过多；商店售卖无价格显示；价格公式未含品级系数

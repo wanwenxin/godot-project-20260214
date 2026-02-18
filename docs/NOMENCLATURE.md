@@ -80,6 +80,7 @@
 | 图鉴菜单 | 见「菜单」 | main_menu | EncyclopediaMenu |
 | 图鉴项 | 图鉴 Tab 内单个条目卡片（左侧图片 + 右侧名称与详情） | 图鉴菜单 | _add_entry 创建的 PanelContainer |
 | 图鉴标签 | 图鉴 TabContainer 的 6 个 Tab（角色、敌人、道具、武器、魔法、词条）；武器/词条 Tab 内各有子 Tab | 图鉴菜单 | Tabs |
+| 敌人 tier 分组 | 图鉴敌人 Tab 内按普通/精英/BOSS 分组的标题 | 图鉴菜单 | _build_enemies_tab 中的 Label |
 
 ---
 
