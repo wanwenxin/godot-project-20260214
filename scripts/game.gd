@@ -289,14 +289,13 @@ func _get_fallback_level_config() -> LevelConfig:
 
 
 ## [自定义] 清除场景中所有敌人与子弹，波次重载时调用。
+## 子弹使用对象池 recycle_group 批量回收，避免 queue_free 开销。
 func _clear_remaining_enemies_and_bullets() -> void:
 	# 波次结束时清除未击败的敌人与所有飞行子弹。
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if is_instance_valid(enemy):
 			enemy.queue_free()
-	for node in get_tree().get_nodes_in_group("bullets"):
-		if is_instance_valid(node):
-			node.queue_free()
+	ObjectPool.recycle_group("bullets")
 
 
 ## [系统] 波次 wave_cleared 信号回调，判断通关或进入升级/商店流程。

@@ -41,8 +41,9 @@ func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 	var base_direction: Vector2 = (target.global_position - global_position).normalized()
 	var bullets := maxi(1, pellet_count)
 	var did_shoot := false
+	var root := get_tree().current_scene
 	for i in range(bullets):
-		var bullet := bullet_scene.instantiate() as Node2D
+		var bullet := ObjectPool.acquire(bullet_scene, root) as Node2D
 		if bullet == null:
 			continue
 		var offset_deg := 0.0
@@ -64,7 +65,6 @@ func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 		bullet.set("collision_radius", bullet_collision_radius)
 		if is_instance_valid(_owner_ref):
 			bullet.set("owner_ref", _owner_ref)
-		get_tree().current_scene.add_child(bullet)
 		did_shoot = true
 	if did_shoot:
 		if bullet_type != "":

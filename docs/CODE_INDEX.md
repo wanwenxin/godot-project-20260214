@@ -59,6 +59,7 @@
 
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
+| [scripts/autoload/object_pool.gd](scripts/autoload/object_pool.gd) | 对象池：子弹、掉落物池化，减少实例化开销 | `acquire`、`recycle`、`recycle_group` |
 | [scripts/autoload/affix_manager.gd](scripts/autoload/affix_manager.gd) | 词条收集、聚合、效果应用 | `collect_affixes_from_player`、`refresh_player`、`get_visible_affixes` |
 | [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | 场景切换、角色/武器配置、本局金币与武器库存、总伤害统计、手动合成 | `change_scene`、`get_character_data`、`run_currency`、`run_total_damage`、`add_record_damage_dealt`、`add_run_weapon`、`merge_run_weapons` |
 | [scripts/autoload/save_manager.gd](scripts/autoload/save_manager.gd) | 存档读写、设置持久化、统计聚合 | `load_game`、`set_settings`、`has_save` |
@@ -74,9 +75,9 @@
 |------|------|---------------|
 | [scripts/game.gd](scripts/game.gd) | 主游戏控制器、地形生成、升级/商店流程、摄像机缩放 | `victory_wave`、`get_player_for_pause` |
 | [scripts/player.gd](scripts/player.gd) | 玩家移动、索敌、开火、受伤、死亡 | `died`、`health_changed`、`get_equipped_weapon_details`、`get_full_stats_for_pause`、`get_attack_speed` |
-| [scripts/bullet.gd](scripts/bullet.gd) | 子弹飞行、命中、穿透、去重 | `hit_player`、`remaining_pierce` |
+| [scripts/bullet.gd](scripts/bullet.gd) | 子弹飞行、命中、穿透、去重；对象池支持 | `hit_player`、`remaining_pierce`、`reset_for_pool` |
 | [scripts/enemy_bullet.gd](scripts/enemy_bullet.gd) | 敌人专用子弹，更大更慢 | 继承 bullet |
-| [scripts/pickup.gd](scripts/pickup.gd) | 金币/治疗掉落、拾取、飘动、金币吸收动画 | `pickup_type`、`value`、`absorb_range` |
+| [scripts/pickup.gd](scripts/pickup.gd) | 金币/治疗掉落、拾取、飘动、金币吸收动画；对象池支持 | `pickup_type`、`value`、`absorb_range`、`configure_for_spawn`、`reset_for_pool` |
 
 ### 2.3 敌人与波次
 
@@ -192,6 +193,7 @@
 
 | 文件路径 | 模块 | 职责摘要 |
 |----------|------|----------|
+| scripts/autoload/object_pool.gd | 全局管理 | 对象池：子弹、掉落物池化 |
 | scripts/autoload/affix_manager.gd | 全局管理 | 词条收集、聚合、效果应用 |
 | scripts/autoload/game_manager.gd | 全局管理 | 场景切换、角色/武器配置、本局状态 |
 | scripts/autoload/save_manager.gd | 全局管理 | 存档读写、设置持久化 |

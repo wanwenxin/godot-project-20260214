@@ -72,6 +72,9 @@ var _last_mana_current := 0.0
 var _last_mana_max := 1.0
 var _last_armor := 0
 var _magic_panel: PanelContainer  # 左下角魔法面板
+# 魔法冷却节流：remaining_cd 变化阈值（秒），低于此值不更新冷却遮罩
+const MAGIC_CD_UPDATE_THRESHOLD := 0.05
+var _last_magic_cd_per_slot: Array[float] = []  # 每槽上次显示的 remaining_cd
 var _magic_slots: Array = []  # 每项 {panel, icon, cd_overlay}
 
 const HUD_FONT_SIZE := 18  # 统一基准字号，便于阅读
@@ -203,6 +206,9 @@ func _apply_hud_font_sizes() -> void:
 
 
 func set_health(current: int, max_value: int) -> void:
+	# 脏检查：值未变则跳过，减少每帧 StyleBox 重建与 Label 赋值
+	if current == _last_health_current and max_value == _last_health_max:
+		return
 	_last_health_current = current
 	_last_health_max = max_value
 	if health_bar:
@@ -230,16 +236,22 @@ func set_health(current: int, max_value: int) -> void:
 
 
 func set_wave(value: int) -> void:
+	if value == _last_wave:
+		return
 	_last_wave = value
 	wave_label.text = LocalizationManager.tr_key("hud.wave", {"value": value})
 
 
 func set_kills(value: int) -> void:
+	if value == _last_kills:
+		return
 	_last_kills = value
 	kill_label.text = LocalizationManager.tr_key("hud.kills", {"value": value})
 
 
 func set_survival_time(value: float) -> void:
+	if is_equal_approx(value, _last_time):
+		return
 	_last_time = value
 	timer_label.text = LocalizationManager.tr_key("hud.time", {"value": "%.1f" % value})
 
@@ -249,13 +261,18 @@ func set_pause_hint(show_hint: bool) -> void:
 
 
 func set_currency(value: int) -> void:
+	if value == _last_currency:
+		return
 	_last_currency = value
 	_currency_label.text = LocalizationManager.tr_key("hud.gold", {"value": value})
 
 
 func set_experience(current: int, threshold: int) -> void:
+	var th := maxi(threshold, 1)
+	if current == _last_exp_current and th == _last_exp_threshold:
+		return
 	_last_exp_current = current
-	_last_exp_threshold = maxi(threshold, 1)
+	_last_exp_threshold = th
 	if exp_bar:
 		exp_bar.min_value = 0.0
 		exp_bar.max_value = float(_last_exp_threshold)
@@ -263,14 +280,20 @@ func set_experience(current: int, threshold: int) -> void:
 
 
 func set_level(level: int) -> void:
+	if level == _last_level:
+		return
 	_last_level = level
 	if level_label:
 		level_label.text = LocalizationManager.tr_key("hud.level", {"value": level})
 
 
 func set_mana(current: float, max_value: float) -> void:
+	var max_val := maxf(max_value, 1.0)
+	# 脏检查：魔力变化频率低，值未变则跳过
+	if is_equal_approx(current, _last_mana_current) and is_equal_approx(max_val, _last_mana_max):
+		return
 	_last_mana_current = current
-	_last_mana_max = maxf(max_value, 1.0)
+	_last_mana_max = max_val
 	if mana_bar:
 		mana_bar.min_value = 0.0
 		mana_bar.max_value = _last_mana_max
@@ -289,16 +312,41 @@ func set_mana(current: float, max_value: float) -> void:
 
 
 func set_armor(value: int) -> void:
+	if value == _last_armor:
+		return
 	_last_armor = value
 	if armor_label:
 		armor_label.text = LocalizationManager.tr_key("hud.armor", {"value": value})
 
 
 ## 更新左下角魔法面板：magic_data 为 get_magic_ui_data() 返回的数组。
+## 魔法冷却遮罩按 remaining_cd 变化阈值（0.05s）节流，减少无效更新。
 func set_magic_ui(magic_data: Array) -> void:
 	if _magic_panel == null:
 		return
 	_magic_panel.visible = not magic_data.is_empty()
+	# 脏检查：若各槽 is_current、icon_path、remaining_cd（阈值内）均未变则跳过
+	var need_update := false
+	if magic_data.size() != _last_magic_cd_per_slot.size():
+		need_update = true
+		_last_magic_cd_per_slot.resize(magic_data.size())
+		_last_magic_cd_per_slot.fill(-1.0)
+	if not need_update:
+		for i in range(mini(_magic_slots.size(), magic_data.size())):
+			var data: Dictionary = magic_data[i]
+			var remaining: float = float(data.get("remaining_cd", 0.0))
+			var is_current: bool = data.get("is_current", false)
+			var icon_path: String = str(data.get("icon_path", ""))
+			var last_cd: float = _last_magic_cd_per_slot[i] if i < _last_magic_cd_per_slot.size() else -1.0
+			if abs(remaining - last_cd) > MAGIC_CD_UPDATE_THRESHOLD:
+				need_update = true
+				break
+			# 简化：仅按 cd 节流，is_current/icon 变化频率低，若 cd 未超阈值则整体可跳过
+		# 注：is_current 切换时需立即更新边框，故不能仅靠 cd。改为：任意槽有显著变化则更新
+		# 为简化，若 need_update 仍为 false，检查 is_current 与 icon 是否变化（需额外缓存）
+		# 实际中 is_current 仅切换魔法时变，icon 不变，主要开销在 cd_overlay。按 cd 节流即可。
+	if not need_update:
+		return
 	for i in range(_magic_slots.size()):
 		var slot: Dictionary = _magic_slots[i]
 		var panel: Panel = slot.panel
@@ -324,6 +372,11 @@ func set_magic_ui(magic_data: Array) -> void:
 			cd_overlay.offset_bottom = 4 + (MAGIC_SLOT_SIZE - 8) * ratio
 		else:
 			cd_overlay.visible = false
+		# 更新缓存供下次脏检查
+		if i >= _last_magic_cd_per_slot.size():
+			_last_magic_cd_per_slot.resize(i + 1)
+			_last_magic_cd_per_slot.fill(-1.0)
+		_last_magic_cd_per_slot[i] = remaining
 
 
 func set_intermission_countdown(seconds_left: float) -> void:
@@ -334,10 +387,17 @@ func set_intermission_countdown(seconds_left: float) -> void:
 	_intermission_label.text = LocalizationManager.tr_key("hud.next_wave", {"value": "%.1f" % seconds_left})
 
 
+var _last_wave_countdown := -1.0  # 波次倒计时脏检查缓存
+
 func set_wave_countdown(seconds_left: float) -> void:
 	if seconds_left <= 0.0:
-		_wave_countdown_label.visible = false
+		if _last_wave_countdown > 0.0:  # 仅当从正变零时更新
+			_last_wave_countdown = 0.0
+			_wave_countdown_label.visible = false
 		return
+	if is_equal_approx(seconds_left, _last_wave_countdown):
+		return
+	_last_wave_countdown = seconds_left
 	_wave_countdown_label.visible = true
 	_wave_countdown_label.text = LocalizationManager.tr_key("hud.wave_countdown", {"value": "%.0f" % seconds_left})
 

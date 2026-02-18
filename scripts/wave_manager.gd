@@ -329,11 +329,10 @@ func _try_spawn_drop(enemy: Node) -> void:
 		var coin_value := 2 + int(current_wave / 3.0)
 		_spawn_coin_drop(enemy.global_position, coin_value)
 	elif r < coin_drop_chance + heal_drop_chance and heal_pickup_scene != null:
-		var heal := heal_pickup_scene.instantiate()
+		var root := get_tree().current_scene
+		var heal := ObjectPool.acquire(heal_pickup_scene, root, true)
 		heal.global_position = enemy.global_position
-		heal.pickup_type = "heal"
-		heal.value = 6 + int(current_wave / 3.0)
-		get_tree().current_scene.call_deferred("add_child", heal)
+		heal.configure_for_spawn("heal", 6 + int(current_wave / 3.0))
 
 
 ## [自定义] Boss 死亡时额外生成金币掉落。
@@ -349,15 +348,14 @@ func _try_spawn_boss_bonus_drop(enemy: Node) -> void:
 
 
 ## [自定义] 在指定位置生成金币掉落物，使用 coin_pickup_scene。
+## 对象池 acquire(deferred=true) 避免 physics flushing 报错。
 func _spawn_coin_drop(spawn_position: Vector2, coin_value: int) -> void:
 	if coin_pickup_scene == null:
 		return
-	var coin := coin_pickup_scene.instantiate()
+	var root := get_tree().current_scene
+	var coin := ObjectPool.acquire(coin_pickup_scene, root, true)
 	coin.global_position = spawn_position
-	coin.pickup_type = "coin"
-	coin.value = maxi(1, coin_value)
-	# 在物理回调链里延迟 add_child，避免 flushing_queries 报错。
-	get_tree().current_scene.call_deferred("add_child", coin)
+	coin.configure_for_spawn("coin", coin_value)
 
 
 ## [自定义] 判断敌人是否为 Boss 类型（用于额外掉落）。

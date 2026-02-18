@@ -22,8 +22,9 @@ func _physics_process(delta: float) -> void:
 	if _shoot_cd > 0.0 or bullet_scene == null:
 		return
 	var to_player := (player_ref.global_position - global_position).normalized()
+	var root := get_tree().current_scene
 	for i in range(3):
-		var bullet := bullet_scene.instantiate()
+		var bullet := ObjectPool.acquire(bullet_scene, root)
 		if bullet == null:
 			continue
 		var offset_deg := lerpf(-18.0, 18.0, float(i) / 2.0)
@@ -32,5 +33,4 @@ func _physics_process(delta: float) -> void:
 		bullet.set("speed", 180.0)
 		bullet.set("damage", 11)
 		bullet.set("hit_player", true)
-		get_tree().current_scene.add_child(bullet)
 	_shoot_cd = fire_rate

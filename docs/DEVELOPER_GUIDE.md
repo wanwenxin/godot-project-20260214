@@ -21,6 +21,13 @@
 
 ### 2.1 全局管理（autoload）
 
+- `scripts/autoload/object_pool.gd`
+  - 对象池：对子弹、掉落物等高频实例化对象做池化，减少 instantiate/queue_free 开销
+  - `acquire(scene, parent, deferred)`：从池中获取或实例化，加入 parent；deferred=true 时用 call_deferred 避免 physics flushing
+  - `recycle(node)`：回收到池；非池化实例则 queue_free
+  - `recycle_group(group_name)`：批量回收指定组内可池化节点
+  - 池化节点需实现 `reset_for_pool()` 重置状态；bullet/pickup 已支持
+
 - `scripts/autoload/game_manager.gd`
   - 场景切换（主菜单/角色选择/战斗）
   - 角色模板数据
@@ -100,8 +107,9 @@
   - 子弹寿命与命中：玩家子弹用 `life_time` 超时销毁；敌人子弹（`hit_player=true`）出界前不消失，仅当超出可玩区域时销毁
   - 同目标去重命中
   - 穿透后延迟销毁
-  - 加入 `bullets` 组，波次结束时统一清除
+  - 加入 `bullets` 组，波次结束时 ObjectPool.recycle_group 批量回收
   - 玩家子弹支持 `bullet_type` / `bullet_color` 区分外观与命中反馈
+  - 对象池支持：`reset_for_pool()` 清空 `_hit_targets`；命中/超时后 `_recycle_or_free()` 回池
 
 - `scripts/enemy_bullet.gd` + `scenes/enemy_bullet.tscn`
   - 敌人专用子弹：继承 bullet，个头更大（10x10 像素、collision_radius=6）、速度更慢（约 180–190）
@@ -113,6 +121,7 @@
   - 金币按价值分级着色（铜/银/金）
   - 金币吸收：玩家进入 `absorb_range` 后飞向玩家并缩小，带动画
   - 自动飘动与超时销毁
+  - 对象池支持：`configure_for_spawn(type, value)` 配置类型与纹理；`reset_for_pool()` 重置状态；拾取/超时后 `_recycle_or_free()` 回池
 
 ### 2.3 敌人与波次
 
@@ -179,6 +188,7 @@
 - `scripts/ui/hud.gd`
   - 战斗信息（血量/魔力条/护甲/经验条/等级/波次/击杀/时间/金币）
   - 魔力条与护甲由 `game.gd` 在 `_process` 中从 player 读取并调用 `set_mana`、`set_armor`
+  - HUD 脏检查：`set_mana`、`set_armor`、`set_health`、`set_magic_ui` 等入口在值未变时 early return，减少每帧 StyleBox 重建与 Label 赋值；魔法冷却遮罩按 remaining_cd 变化阈值（0.05s）节流
   - 魔法面板：左下角，横向排列已装备魔法，当前选中绿色边框，独立冷却遮罩；`set_magic_ui(magic_data)` 由 game 每帧传入 `player.get_magic_ui_data()`
   - 多行按键提示：移动、暂停、镜头缩放、魔法、敌人血条（复用 `ResultPanelShared.action_to_text`）
   - 波次倒计时（正上方）、间隔倒计时与波次横幅

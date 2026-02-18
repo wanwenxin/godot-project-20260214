@@ -17,6 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+ObjectPool="*res://scripts/autoload/object_pool.gd"
 LogManager="*res://scripts/autoload/log_manager.gd"
 AffixManager="*res://scripts/autoload/affix_manager.gd"
 GameManager="*res://scripts/autoload/game_manager.gd"

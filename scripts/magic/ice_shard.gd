@@ -16,7 +16,8 @@ func cast(caster: Node2D, target_dir: Vector2) -> bool:
 	if target_dir.length_squared() < 0.01:
 		return false
 	var bullet_scene: PackedScene = preload("res://scenes/bullet.tscn")
-	var bullet = bullet_scene.instantiate() as Area2D
+	var root: Node = caster.get_tree().current_scene
+	var bullet := ObjectPool.acquire(bullet_scene, root) as Area2D
 	if bullet == null:
 		return false
 	bullet.global_position = caster.global_position
@@ -29,5 +30,4 @@ func cast(caster: Node2D, target_dir: Vector2) -> bool:
 	bullet.set("bullet_type", "laser")
 	bullet.set("bullet_color", Color(0.4, 0.7, 1.0, 1.0))
 	bullet.set("owner_ref", caster)
-	caster.get_tree().current_scene.add_child(bullet)
 	return true

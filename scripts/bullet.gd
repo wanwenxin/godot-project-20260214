@@ -23,6 +23,11 @@ var direction := Vector2.RIGHT
 var _hit_targets: Dictionary = {}  # 已命中目标 instance_id，用于同目标去重
 
 @onready var sprite: Sprite2D = $Sprite2D
+
+
+## [自定义] 对象池回收时重置状态，避免残留 _hit_targets 等。
+func reset_for_pool() -> void:
+	_hit_targets.clear()
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 
@@ -72,12 +77,12 @@ func _process(delta: float) -> void:
 		# 敌人子弹：出界前不消失，仅当超出可玩区域时销毁。
 		var bounds := _get_destroy_bounds()
 		if not bounds.has_point(global_position):
-			queue_free()
+			_recycle_or_free()
 	else:
 		# 玩家子弹：沿用 life_time 逻辑。
 		life_time -= delta
 		if life_time <= 0.0:
-			queue_free()
+			_recycle_or_free()
 
 
 ## [自定义] 获取子弹销毁边界：优先用游戏可玩区域，否则用视口加边距。
@@ -140,4 +145,12 @@ func _handle_pierce_or_destroy() -> void:
 	if remaining_pierce > 0:
 		remaining_pierce -= 1
 		return
-	queue_free()
+	_recycle_or_free()
+
+
+## [自定义] 优先回收到对象池，非池化实例则 queue_free。
+func _recycle_or_free() -> void:
+	if get_meta("object_pool_scene_path", "") != "":
+		ObjectPool.recycle(self)
+	else:
+		queue_free()

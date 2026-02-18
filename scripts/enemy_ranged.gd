@@ -38,12 +38,12 @@ func _physics_process(delta: float) -> void:
 
 	_shoot_cd = max(_shoot_cd - delta, 0.0)
 	if _shoot_cd <= 0.0 and bullet_scene != null:
-		# 复用通用 bullet 场景，通过 hit_player 区分阵营。
-		var bullet = bullet_scene.instantiate()
+		# 复用通用 bullet 场景，通过 hit_player 区分阵营；对象池 acquire 减少实例化开销。
+		var root := get_tree().current_scene
+		var bullet := ObjectPool.acquire(bullet_scene, root)
 		bullet.global_position = global_position
 		bullet.set("direction", dir)
 		bullet.set("speed", 190.0)
 		bullet.set("damage", 8)
 		bullet.set("hit_player", true)
-		get_tree().current_scene.add_child(bullet)
 		_shoot_cd = fire_rate

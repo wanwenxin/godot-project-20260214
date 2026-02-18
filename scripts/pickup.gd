@@ -2,6 +2,7 @@ extends Area2D
 
 # 掉落物：金币或治疗，玩家接触后生效并销毁；带初始向上飘动。
 # 金币支持吸收范围：靠近时飞向玩家并有缩放动画。
+# 支持对象池：acquire 时由 wave_manager 配置，recycle 时 reset_for_pool 重置。
 @export var pickup_type := "coin"  # "coin" 或 "heal"
 @export var value := 1  # 金币数量或治疗量
 @export var life_time := 10.0  # 超时未拾取则销毁（秒）
@@ -40,7 +41,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	life_time -= delta
 	if life_time <= 0.0:
-		queue_free()
+		_recycle_or_free()
 		return
 	# 金币：检测玩家距离，进入吸收范围后飞向玩家并缩小。
 	if pickup_type == "coin":
@@ -75,7 +76,44 @@ func _do_pickup(player: Node) -> void:
 	elif pickup_type == "heal" and player.has_method("heal"):
 		player.heal(value)
 	AudioManager.play_pickup()
-	queue_free()
+	_recycle_or_free()
+
+
+## [自定义] 对象池 acquire 后由 wave_manager 调用，配置类型与数值并更新纹理。
+func configure_for_spawn(p_type: String, val: int) -> void:
+	pickup_type = p_type
+	value = maxi(1, val)
+	var tex: Texture2D = null
+	if pickup_type == "heal":
+		if texture_heal != "" and ResourceLoader.exists(texture_heal):
+			tex = load(texture_heal) as Texture2D
+		if tex == null:
+			tex = PixelGenerator.generate_pickup_sprite(true)
+	else:
+		if texture_coin != "" and ResourceLoader.exists(texture_coin):
+			tex = load(texture_coin) as Texture2D
+		if tex == null:
+			tex = PixelGenerator.generate_pickup_sprite(false)
+		_apply_coin_visual_by_value()
+	if sprite:
+		sprite.texture = tex
+
+
+## [自定义] 对象池回收时重置状态，供下次 acquire 使用。
+func reset_for_pool() -> void:
+	life_time = 10.0  # 恢复默认超时
+	_velocity = Vector2(randf_range(-20.0, 20.0), randf_range(-30.0, -10.0))
+	_absorbing = false
+	if sprite:
+		sprite.scale = Vector2(1.0, 1.0)
+
+
+## [自定义] 优先回收到对象池，非池化实例则 queue_free。
+func _recycle_or_free() -> void:
+	if get_meta("object_pool_scene_path", "") != "":
+		ObjectPool.recycle(self)
+	else:
+		queue_free()
 
 
 func _on_body_entered(body: Node) -> void:
