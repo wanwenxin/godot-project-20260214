@@ -467,6 +467,7 @@ func _open_start_shop() -> void:
 	_pending_shop_weapon_options = _roll_shop_items(4)
 	_set_ui_modal_active(true)
 	var stats: Dictionary = player.get_full_stats_for_pause() if is_instance_valid(player) and player.has_method("get_full_stats_for_pause") else {}
+	stats["wave"] = 0
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), 0, stats)
 
 
@@ -474,6 +475,7 @@ func _open_shop_after_upgrade() -> void:
 	_pending_shop_weapon_options = _roll_shop_items(4)
 	_set_ui_modal_active(true)
 	var stats: Dictionary = player.get_full_stats_for_pause() if is_instance_valid(player) and player.has_method("get_full_stats_for_pause") else {}
+	stats["wave"] = wave_manager.current_wave
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave, stats)
 
 
@@ -483,6 +485,7 @@ func _on_shop_refresh_requested() -> void:
 		return
 	_pending_shop_weapon_options = _roll_shop_items(4)
 	var stats: Dictionary = player.get_full_stats_for_pause() if is_instance_valid(player) and player.has_method("get_full_stats_for_pause") else {}
+	stats["wave"] = wave
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave, stats)
 
 
@@ -545,6 +548,7 @@ func _show_backpack_from_shop() -> void:
 	var stats: Dictionary = {}
 	if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
 		stats = player.get_full_stats_for_pause()
+	stats["wave"] = wave_manager.current_wave
 	backpack_panel.set_stats(stats, true)
 	backpack_panel.sell_requested.connect(_on_weapon_sell_requested)
 	backpack_panel.merge_completed.connect(_on_backpack_overlay_merge_completed)
@@ -563,6 +567,7 @@ func _on_shop_backpack_merge_completed() -> void:
 	var stats: Dictionary = {}
 	if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
 		stats = player.get_full_stats_for_pause()
+	stats["wave"] = wave_manager.current_wave
 	if hud.has_method("refresh_shop_backpack"):
 		hud.refresh_shop_backpack(stats)
 
@@ -586,10 +591,11 @@ func _on_weapon_sell_requested(weapon_index: int) -> void:
 	var def := GameManager.get_weapon_def_by_id(wid)
 	if def.is_empty():
 		return
-	var base_cost: int = int(def.get("cost", 5))
+	var base_cost: int = int(def.get("base_cost", 5))
 	var wave: int = wave_manager.current_wave
 	var wave_coef: float = 1.0 + float(wave) * 0.15
-	var sell_price: int = maxi(1, int(float(base_cost) * wave_coef * 0.3))
+	var tier_coef: float = TierConfig.get_damage_multiplier(int(w.get("tier", 0)))
+	var sell_price: int = maxi(1, int(float(base_cost) * tier_coef * wave_coef * 0.3))
 	if not GameManager.remove_run_weapon(weapon_index):
 		return
 	GameManager.add_currency(sell_price)
@@ -600,6 +606,7 @@ func _on_weapon_sell_requested(weapon_index: int) -> void:
 	var stats: Dictionary = {}
 	if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
 		stats = player.get_full_stats_for_pause()
+	stats["wave"] = wave_manager.current_wave
 	if _backpack_overlay_panel != null and is_instance_valid(_backpack_overlay_panel) and _backpack_overlay_panel.has_method("set_stats"):
 		_backpack_overlay_panel.set_stats(stats, true)
 	if hud.has_method("refresh_shop_backpack"):
@@ -681,6 +688,7 @@ func _on_weapon_shop_selected(weapon_id: String) -> void:
 	if _pending_shop_weapon_options.is_empty():
 		_pending_shop_weapon_options = _roll_shop_items(4)
 	var stats: Dictionary = player.get_full_stats_for_pause() if is_instance_valid(player) and player.has_method("get_full_stats_for_pause") else {}
+	stats["wave"] = wave_manager.current_wave
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave_manager.current_wave, stats)
 
 
@@ -731,7 +739,7 @@ func _roll_shop_items(count: int) -> Array[Dictionary]:
 	for item in weapon_defs:
 		var w: Dictionary = item.duplicate(true)
 		w["type"] = "weapon"
-		w["cost"] = ShopItemDefs.get_price(int(item.get("cost", 5)), wave)
+		w["cost"] = ShopItemDefs.get_price_with_tier(int(item.get("base_cost", 5)), 0, wave)
 		w["random_affix_ids"] = _roll_random_weapon_affixes(str(item.get("type", "melee")), 0, 2)
 		weapon_candidates.append(w)
 	var owned_magics: Array[String] = player.get_equipped_magic_ids()
@@ -743,7 +751,7 @@ func _roll_shop_items(count: int) -> Array[Dictionary]:
 			if magic_slots_full and not owned_magics.has(mid):
 				continue
 		var it: Dictionary = item.duplicate(true)
-		it["cost"] = ShopItemDefs.get_price(it.get("base_cost", 5), wave)
+		it["cost"] = ShopItemDefs.get_price_with_tier(int(it.get("base_cost", 5)), 0, wave)
 		item_candidates.append(it)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()

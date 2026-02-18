@@ -30,6 +30,9 @@ func _ready() -> void:
 	_close_button.pressed.connect(_on_close_pressed)
 	LocalizationManager.language_changed.connect(_on_language_changed)
 	_build_tabs()
+	_tabs.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
+	_tabs.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
+	_tabs.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
 	_apply_localized_texts()
 
 

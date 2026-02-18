@@ -18,6 +18,13 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-17：Tab 与商店系统优化
+
+- **现象**：Tab 样式不统一；设置游戏标签项过多；商店售卖无价格显示；价格公式未含品级系数
+- **原因**：各菜单 Tab 独立实现；设置项未精简；售卖价未在 UI 展示；weapon_defs 用 cost 非 base_cost
+- **修复**：(1) 所有 TabContainer 字体 20、side_margin/top_margin 16，暂停/结算 Tab 置顶；(2) 设置游戏标签移除移动预设、暂停键、按键提示；(3) stats 增加 wave，BackpackPanel 计算 sell_price 并在 tooltip 显示；(4) weapon_defs cost→base_cost，ShopItemDefs 新增 get_price_with_tier(base,tier,wave)，售卖价=base*tier_coef*wave_coef*0.3
+- **预防**：价格公式统一走 ShopItemDefs；基础价格写入各定义文件
+
 ### 2026-02-17：hud.gd get_viewport_rect 未找到
 
 - **现象**：`res://scripts/ui/hud.gd` 第 699 行报错 `Function "get_viewport_rect()" not found in base self`

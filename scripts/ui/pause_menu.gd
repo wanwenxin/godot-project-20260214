@@ -101,8 +101,11 @@ func _build_main_layout() -> void:
 	main.add_child(tab_wrapper)
 	_tab_container = TabContainer.new()
 	_tab_container.name = "PauseTabs"
-	_tab_container.tabs_position = TabContainer.TabPosition.POSITION_BOTTOM
+	_tab_container.tabs_position = TabContainer.TabPosition.POSITION_TOP  # Tab 标签置于顶部
 	_tab_container.custom_minimum_size = Vector2(320, 400)
+	_tab_container.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
+	_tab_container.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
+	_tab_container.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
 	tab_wrapper.add_child(_tab_container)
 	# Tab 0：系统（标题、按键提示、继续、主菜单）
 	var system_tab := _build_system_tab()

@@ -64,6 +64,7 @@ var last_run_result := {
 	"survival_time": 0.0
 }
 var run_currency := 0  # 本局金币
+var run_total_damage := 0  # 本局对敌人造成的总伤害（结算展示用）
 var run_experience := 0  # 本局经验值
 var run_level := 1  # 本局等级
 var enemy_healthbar_visible := true  # 敌人血条显隐
@@ -177,6 +178,12 @@ func save_run_result(wave: int, kills: int, survival_time: float) -> void:
 
 func add_currency(amount: int) -> void:
 	run_currency = maxi(run_currency + amount, 0)
+
+
+## 记录本局对敌人造成的伤害，供结算界面展示总伤害。
+func add_record_damage_dealt(amount: int) -> void:
+	if amount > 0:
+		run_total_damage += amount
 
 
 ## 经验值系统：击败敌人获得经验，升级时 run_level 增加。
@@ -413,6 +420,7 @@ func get_weapon_def_by_id(weapon_id: String) -> Dictionary:
 
 func reset_run_weapons() -> void:
 	run_weapons.clear()
+	run_total_damage = 0
 	shop_refresh_count = 0
 	run_items.clear()
 	run_upgrades.clear()

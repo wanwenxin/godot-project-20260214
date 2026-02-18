@@ -4,7 +4,6 @@ signal closed
 
 # 窗口模式：百分比为屏幕比例，Fullscreen 为全屏
 const WINDOW_MODES := ["50%", "75%", "100%", "Fullscreen"]
-const PRESETS := ["wasd", "arrows"]
 const KEY_CHOICES := ["Escape", "P", "H", "Tab", "F1", "F2"]
 const BINDABLE_ACTIONS := [
 	"move_left", "move_right", "move_up", "move_down",
@@ -36,16 +35,11 @@ const ACTION_NAME_KEYS := {
 @onready var resolution_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox/ResolutionLabel
 @onready var resolution_option: OptionButton = $Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox/ResolutionOption
 
-@onready var preset_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/PresetLabel
-@onready var preset_option: OptionButton = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/PresetOption
 @onready var move_inertia_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/MoveInertiaLabel
 @onready var move_inertia_slider: HSlider = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/MoveInertiaSlider
-@onready var pause_key_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/PauseKeyLabel
-@onready var pause_key_option: OptionButton = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/PauseKeyOption
 @onready var toggle_hp_key_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/ToggleHpKeyLabel
 @onready var toggle_hp_key_option: OptionButton = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/ToggleHpKeyOption
 @onready var enemy_hp_check: CheckBox = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/EnemyHpCheck
-@onready var pause_hint_check: CheckBox = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/PauseHintCheck
 
 var _settings: Dictionary = {}  # 当前设置副本，修改后写回 SaveManager
 var _silent := false  # 防重入：_reload_from_save 时忽略控件回调
@@ -63,16 +57,16 @@ func _ready() -> void:
 	close_button.pressed.connect(_on_close_pressed)
 	volume_slider.value_changed.connect(_on_volume_changed)
 	resolution_option.item_selected.connect(_on_resolution_selected)
-	preset_option.item_selected.connect(_on_preset_selected)
 	move_inertia_slider.value_changed.connect(_on_move_inertia_changed)
-	pause_key_option.item_selected.connect(_on_pause_key_selected)
 	toggle_hp_key_option.item_selected.connect(_on_toggle_hp_selected)
 	enemy_hp_check.toggled.connect(_on_enemy_hp_toggled)
-	pause_hint_check.toggled.connect(_on_pause_hint_toggled)
 	LocalizationManager.language_changed.connect(_on_language_changed)
 
 	_build_static_options()
 	_build_key_bindings_tab()
+	tabs.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
+	tabs.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
+	tabs.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
 	_apply_localized_texts()
 	_reload_from_save()
 	set_process_unhandled_input(false)
@@ -98,13 +92,8 @@ func _build_static_options() -> void:
 			display = value
 		resolution_option.add_item(display)
 		resolution_option.set_item_metadata(i, value)
-	preset_option.clear()
-	for value in PRESETS:
-		preset_option.add_item(value)
-	pause_key_option.clear()
 	toggle_hp_key_option.clear()
 	for value in KEY_CHOICES:
-		pause_key_option.add_item(value)
 		toggle_hp_key_option.add_item(value)
 	_silent = false
 
@@ -116,12 +105,9 @@ func _reload_from_save() -> void:
 	var game_cfg: Dictionary = _settings.get("game", {})
 	volume_slider.value = float(system_cfg.get("master_volume", 0.70)) * 100.0
 	_select_option_by_value(resolution_option, str(system_cfg.get("resolution", WINDOW_MODES[2])))
-	_select_option_text(preset_option, str(game_cfg.get("key_preset", "wasd")))
 	move_inertia_slider.value = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, 0.9)
-	_select_option_text(pause_key_option, str(game_cfg.get("pause_key", "Escape")))
 	_select_option_text(toggle_hp_key_option, str(game_cfg.get("toggle_enemy_hp_key", "H")))
 	enemy_hp_check.button_pressed = bool(game_cfg.get("show_enemy_health_bar", true))
-	pause_hint_check.button_pressed = bool(game_cfg.get("show_key_hints_in_pause", true))
 	_refresh_key_binding_display()
 	_silent = false
 
@@ -178,29 +164,11 @@ func _on_resolution_selected(index: int) -> void:
 	_save_and_apply()
 
 
-func _on_preset_selected(index: int) -> void:
-	if _silent:
-		return
-	var game_cfg: Dictionary = _settings.get("game", {})
-	game_cfg["key_preset"] = preset_option.get_item_text(index)
-	_settings["game"] = game_cfg
-	_save_and_apply()
-
-
 func _on_move_inertia_changed(value: float) -> void:
 	if _silent:
 		return
 	var game_cfg: Dictionary = _settings.get("game", {})
 	game_cfg["move_inertia"] = clampf(value, 0.0, 0.9)
-	_settings["game"] = game_cfg
-	_save_and_apply()
-
-
-func _on_pause_key_selected(index: int) -> void:
-	if _silent:
-		return
-	var game_cfg: Dictionary = _settings.get("game", {})
-	game_cfg["pause_key"] = pause_key_option.get_item_text(index)
 	_settings["game"] = game_cfg
 	_save_and_apply()
 
@@ -223,15 +191,6 @@ func _on_enemy_hp_toggled(value: bool) -> void:
 	_save_and_apply()
 
 
-func _on_pause_hint_toggled(value: bool) -> void:
-	if _silent:
-		return
-	var game_cfg: Dictionary = _settings.get("game", {})
-	game_cfg["show_key_hints_in_pause"] = value
-	_settings["game"] = game_cfg
-	_save_and_apply()
-
-
 func _on_close_pressed() -> void:
 	visible = false
 	emit_signal("closed")
@@ -244,12 +203,9 @@ func _apply_localized_texts() -> void:
 	close_button.text = LocalizationManager.tr_key("common.close")
 	volume_label.text = LocalizationManager.tr_key("settings.system.volume")
 	resolution_label.text = LocalizationManager.tr_key("settings.system.window_mode")
-	preset_label.text = LocalizationManager.tr_key("settings.game.preset")
 	move_inertia_label.text = LocalizationManager.tr_key("settings.game.move_inertia")
-	pause_key_label.text = LocalizationManager.tr_key("settings.game.pause_key")
 	toggle_hp_key_label.text = LocalizationManager.tr_key("settings.game.toggle_hp_key")
 	enemy_hp_check.text = LocalizationManager.tr_key("settings.game.enemy_hp")
-	pause_hint_check.text = LocalizationManager.tr_key("settings.game.pause_hints")
 
 
 func _build_key_bindings_tab() -> void:

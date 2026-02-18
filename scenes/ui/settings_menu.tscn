@@ -95,13 +95,6 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="PresetLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
-layout_mode = 2
-text = "Move Preset"
-
-[node name="PresetOption" type="OptionButton" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
-layout_mode = 2
-
 [node name="MoveInertiaLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
 layout_mode = 2
 text = "Move Inertia"
@@ -110,13 +103,6 @@ text = "Move Inertia"
 layout_mode = 2
 max_value = 0.9
 step = 0.05
-
-[node name="PauseKeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
-layout_mode = 2
-text = "Pause Key"
-
-[node name="PauseKeyOption" type="OptionButton" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
-layout_mode = 2
 
 [node name="ToggleHpKeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
 layout_mode = 2
@@ -128,11 +114,6 @@ layout_mode = 2
 [node name="EnemyHpCheck" type="CheckBox" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
 layout_mode = 2
 text = "Show Enemy Health Bar"
-button_pressed = true
-
-[node name="PauseHintCheck" type="CheckBox" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
-layout_mode = 2
-text = "Show Key Hints In Pause"
 button_pressed = true
 
 [node name="CloseButton" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox"]

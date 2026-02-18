@@ -199,9 +199,15 @@ func _build_structured_content(data: Dictionary) -> void:
 		eff_lbl.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
 		eff_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 		vbox.add_child(eff_lbl)
-	# 售卖按钮（仅 show_sell 时，位于合成按钮上方）
+	# 售卖按钮（仅 show_sell 时，显示价格 + 按钮）
 	var weapon_idx: int = int(data.get("weapon_index", -1))
 	if bool(data.get("show_sell", false)) and weapon_idx >= 0:
+		var sell_price: int = int(data.get("sell_price", 0))
+		var price_lbl := Label.new()
+		price_lbl.text = LocalizationManager.tr_key("backpack.sell_price", {"price": sell_price})
+		price_lbl.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
+		price_lbl.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
+		vbox.add_child(price_lbl)
 		var sell_btn := Button.new()
 		sell_btn.text = LocalizationManager.tr_key("backpack.sell")
 		sell_btn.pressed.connect(_on_sell_pressed.bind(weapon_idx))

@@ -25,5 +25,6 @@ func _process(delta: float) -> void:
 				continue
 			if (node.global_position - global_position).length_squared() <= radius * radius:
 				node.take_damage(dmg, elem)
+				GameManager.add_record_damage_dealt(dmg)
 				if is_instance_valid(caster_ref) and caster_ref.has_method("try_lifesteal"):
 					caster_ref.try_lifesteal()

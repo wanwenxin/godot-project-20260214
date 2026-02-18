@@ -27,6 +27,15 @@ const ITEM_POOL := [
 	{"type": "attribute", "id": "item_spell_speed", "affix_ids": ["item_spell_speed"], "attr": "spell_speed", "base_value": 0.15, "tier": 0, "base_cost": 5, "name_key": "item.spell_speed.name", "display_name_key": "item.display.spell_speed", "desc_key": "item.spell_speed.desc", "icon_path": "res://assets/ui/upgrade_icons/icon_mana.png"},
 ]
 
-## 计算商品价格（含波次涨价）
+## 计算商品价格：base_cost * tier_coefficient * wave_coefficient
+## tier_coefficient：武器按品级 1+tier*0.2，道具/魔法为 1
+## wave_coefficient：1 + wave * 0.15
+static func get_price_with_tier(base_cost: int, tier: int, wave: int) -> int:
+	var tier_coef: float = 1.0 + maxi(0, tier) * 0.2 if tier > 0 else 1.0
+	var wave_coef: float = 1.0 + float(wave) * WAVE_PRICE_SCALE
+	return maxi(1, int(float(base_cost) * tier_coef * wave_coef))
+
+
+## 兼容旧接口：无 tier 时按 tier=0 计算（道具/魔法）
 static func get_price(base_cost: int, wave: int) -> int:
-	return maxi(1, int(float(base_cost) * (1.0 + float(wave) * WAVE_PRICE_SCALE)))
+	return get_price_with_tier(base_cost, 0, wave)

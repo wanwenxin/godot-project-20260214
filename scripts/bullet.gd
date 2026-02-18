@@ -101,6 +101,7 @@ func _on_body_entered(body: Node) -> void:
 	elif (not hit_player) and body.is_in_group("enemies"):
 		if body.has_method("take_damage"):
 			body.take_damage(damage, elemental_type)
+			GameManager.add_record_damage_dealt(damage)
 		if is_instance_valid(owner_ref) and owner_ref.has_method("try_lifesteal"):
 			owner_ref.try_lifesteal()
 		if body.has_method("apply_knockback") and bullet_type != "":

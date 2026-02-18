@@ -40,7 +40,7 @@
 | UI | [scripts/ui/hud.gd](scripts/ui/hud.gd) | `show_upgrade_options`、`show_weapon_shop`、`show_start_weapon_pick` |
 | 升级配置 | [resources/upgrade_defs.gd](resources/upgrade_defs.gd) | 升级池、等级奖励公式 |
 | 商店配置 | [resources/shop_item_defs.gd](resources/shop_item_defs.gd) | 道具池、波次涨价 |
-| 全局 | [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | `run_currency`、`run_experience`、`run_level`、`add_experience` |
+| 全局 | [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | `run_currency`、`run_total_damage`、`run_experience`、`run_level`、`add_experience` |
 
 ### 1.5 结算与死亡/通关
 
@@ -48,7 +48,7 @@
 |------|------|------|
 | 死亡 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | `show_result(wave, kills, time, player_node)` |
 | 通关 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 同上，标题「通关」 |
-| 共享 | [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | `build_score_block`、`build_player_stats_block` |
+| 共享 | [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | `build_score_block`（含金币、总伤害）、`build_player_stats_block` |
 | 触发 | [scripts/game.gd](scripts/game.gd) | `_on_player_died`、`_on_wave_cleared`（`wave >= victory_wave`） |
 
 ---
@@ -60,7 +60,7 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/autoload/affix_manager.gd](scripts/autoload/affix_manager.gd) | 词条收集、聚合、效果应用 | `collect_affixes_from_player`、`refresh_player`、`get_visible_affixes` |
-| [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | 场景切换、角色/武器配置、本局金币与武器库存、手动合成 | `change_scene`、`get_character_data`、`run_currency`、`add_run_weapon`、`merge_run_weapons` |
+| [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | 场景切换、角色/武器配置、本局金币与武器库存、总伤害统计、手动合成 | `change_scene`、`get_character_data`、`run_currency`、`run_total_damage`、`add_record_damage_dealt`、`add_run_weapon`、`merge_run_weapons` |
 | [scripts/autoload/save_manager.gd](scripts/autoload/save_manager.gd) | 存档读写、设置持久化、统计聚合 | `load_game`、`set_settings`、`has_save` |
 | [scripts/autoload/audio_manager.gd](scripts/autoload/audio_manager.gd) | 合成音效与 BGM | `play_shoot_by_type`、`play_menu_bgm`、`play_game_bgm` |
 | [scripts/autoload/localization_manager.gd](scripts/autoload/localization_manager.gd) | 多语言、文案 key | `tr_key`、`language_changed` |

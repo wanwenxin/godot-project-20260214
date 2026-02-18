@@ -7,6 +7,7 @@ var _backdrop: ColorRect
 var _panel: Panel
 var _tab_container: TabContainer
 var _score_tab_container: VBoxContainer  # 得分 Tab 内容
+var _backpack_tab_container: Control  # 背包 Tab 内容
 var _stats_tab_container: Control  # 角色信息 Tab 内容
 var _menu_btn: Button
 
@@ -23,6 +24,9 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 		_menu_btn.get_parent().remove_child(_menu_btn)
 	for child in _score_tab_container.get_children():
 		child.queue_free()
+	# 背包 Tab：清空后由 set_stats 重建
+	for child in _backpack_tab_container.get_children():
+		child.queue_free()
 	for child in _stats_tab_container.get_children():
 		child.queue_free()
 	var save_data := SaveManager.load_game()
@@ -35,10 +39,12 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", Color(0.95, 0.4, 0.4))
 	_score_tab_container.add_child(title)
-	var score_block: Control = ResultPanelShared.build_score_block(wave, kills, time, best_wave, best_time)
+	var gold := GameManager.run_currency
+	var total_damage := GameManager.run_total_damage
+	var score_block: Control = ResultPanelShared.build_score_block(wave, kills, time, best_wave, best_time, gold, total_damage)
 	_score_tab_container.add_child(score_block)
 	_score_tab_container.add_child(_menu_btn)
-	# 角色信息 Tab
+	# 背包 Tab：复用 BackpackPanel，shop_context=false
 	var stats: Dictionary = {}
 	if is_instance_valid(player_node) and player_node.has_method("get_full_stats_for_pause"):
 		stats = player_node.get_full_stats_for_pause()
@@ -56,6 +62,14 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 			if player_node.has_method("get_equipped_weapon_details"):
 				weapon_details = player_node.get_equipped_weapon_details()
 		stats = {"hp_current": hp_current, "hp_max": hp_max, "speed": speed, "inertia": inertia, "weapon_details": weapon_details, "magic_details": [], "item_ids": []}
+	stats["wave"] = wave
+	var backpack_panel: VBoxContainer = (load("res://scripts/ui/backpack_panel.gd") as GDScript).new()
+	backpack_panel.name = "BackpackPanel"
+	backpack_panel.add_theme_constant_override("separation", 12)
+	backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_backpack_tab_container.add_child(backpack_panel)
+	backpack_panel.set_stats(stats, false)
+	# 角色信息 Tab
 	var player_block: Control = ResultPanelShared.build_player_stats_block(stats)
 	_stats_tab_container.add_child(player_block)
 	visible = true
@@ -94,7 +108,10 @@ func _build_ui() -> void:
 	margin.add_theme_constant_override("margin_bottom", 24)
 	_panel.add_child(margin)
 	_tab_container = TabContainer.new()
-	_tab_container.tabs_position = TabContainer.TabPosition.POSITION_BOTTOM
+	_tab_container.tabs_position = TabContainer.TabPosition.POSITION_TOP  # Tab 标签置于顶部
+	_tab_container.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
+	_tab_container.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
+	_tab_container.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
 	margin.add_child(_tab_container)
 	# Tab 0：得分
 	var score_tab := ScrollContainer.new()
@@ -107,7 +124,17 @@ func _build_ui() -> void:
 	score_tab.add_child(_score_tab_container)
 	_tab_container.add_child(score_tab)
 	_tab_container.set_tab_title(0, LocalizationManager.tr_key("result.tab_score"))
-	# Tab 1：角色信息
+	# Tab 1：背包
+	var backpack_scroll := ScrollContainer.new()
+	backpack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	backpack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_backpack_tab_container = VBoxContainer.new()
+	_backpack_tab_container.add_theme_constant_override("separation", 12)
+	_backpack_tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	backpack_scroll.add_child(_backpack_tab_container)
+	_tab_container.add_child(backpack_scroll)
+	_tab_container.set_tab_title(1, LocalizationManager.tr_key("result.tab_backpack"))
+	# Tab 2：角色信息
 	var stats_scroll := ScrollContainer.new()
 	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -116,7 +143,7 @@ func _build_ui() -> void:
 	_stats_tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stats_scroll.add_child(_stats_tab_container)
 	_tab_container.add_child(stats_scroll)
-	_tab_container.set_tab_title(1, LocalizationManager.tr_key("result.tab_stats"))
+	_tab_container.set_tab_title(2, LocalizationManager.tr_key("result.tab_stats"))
 	_menu_btn = Button.new()
 	_menu_btn.name = "MenuButton"
 	_menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
@@ -139,4 +166,5 @@ func _on_language_changed(_code: String) -> void:
 		_menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
 	if _tab_container:
 		_tab_container.set_tab_title(0, LocalizationManager.tr_key("result.tab_score"))
-		_tab_container.set_tab_title(1, LocalizationManager.tr_key("result.tab_stats"))
+		_tab_container.set_tab_title(1, LocalizationManager.tr_key("result.tab_backpack"))
+		_tab_container.set_tab_title(2, LocalizationManager.tr_key("result.tab_stats"))

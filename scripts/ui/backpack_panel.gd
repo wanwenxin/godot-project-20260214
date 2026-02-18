@@ -34,10 +34,12 @@ func hide_tooltip() -> void:
 
 
 var _shop_context := false  # 是否从商店打开，仅此时显示售卖/合并按钮
+var _shop_wave := 0  # 商店模式下当前波次，用于计算售卖价
 
 ## 根据 stats 刷新背包内容。shop_context=true 时显示售卖/合并按钮。
 func set_stats(stats: Dictionary, shop_context: bool = false) -> void:
 	_shop_context = shop_context
+	_shop_wave = int(stats.get("wave", 0))
 	_exit_merge_mode()
 	if _tooltip_popup == null:
 		_tooltip_popup = BackpackTooltipPopup.new()
@@ -233,13 +235,22 @@ func _build_weapon_tooltip_data(w: Dictionary, weapon_upgrades: Array, weapon_in
 		effect_parts.append(LocalizationManager.tr_key("pause.stat_bullet_speed") + ": %.0f" % float(w.get("bullet_speed", 0)))
 		effect_parts.append(LocalizationManager.tr_key("pause.stat_pellets") + ": %d" % int(w.get("pellet_count", 1)))
 		effect_parts.append(LocalizationManager.tr_key("pause.stat_pierce") + ": %d" % int(w.get("bullet_pierce", 0)))
+	# 售卖价：base_cost * tier_coef * wave_coef * 0.3
+	var sell_price: int = 0
+	if show_sell:
+		var def := GameManager.get_weapon_def_by_id(str(w.get("id", "")))
+		var base_cost: int = int(def.get("base_cost", 5))
+		var tier_coef: float = TierConfig.get_damage_multiplier(int(w.get("tier", 0)))
+		var wave_coef: float = 1.0 + float(_shop_wave) * 0.15
+		sell_price = maxi(1, int(float(base_cost) * tier_coef * wave_coef * 0.3))
 	return {
 		"title": LocalizationManager.tr_key(name_key),
 		"affixes": affixes,
 		"effects": ", ".join(effect_parts),
 		"show_sell": show_sell,
 		"show_synthesize": show_synthesize,
-		"weapon_index": weapon_index
+		"weapon_index": weapon_index,
+		"sell_price": sell_price
 	}
 
 

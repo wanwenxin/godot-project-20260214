@@ -24,7 +24,7 @@
 - `scripts/autoload/game_manager.gd`
   - 场景切换（主菜单/角色选择/战斗）
   - 角色模板数据
-  - 本局金币 `run_currency`（新游戏/继续默认 500）、经验值 `run_experience`、等级 `run_level`
+  - 本局金币 `run_currency`（新游戏/继续默认 500）、本局总伤害 `run_total_damage`（结算展示，`add_record_damage_dealt` 记录）、经验值 `run_experience`、等级 `run_level`
   - 本局武器库存 `run_weapons`（每项 `{id, tier, random_affix_ids}`，最多 6 把；手动合成，`merge_run_weapons`）
   - 商店刷新次数 `shop_refresh_count`（新游戏/继续重置）；刷新费用 `get_shop_refresh_cost(wave)`，`try_spend_shop_refresh(wave)` 扣费并 +1
   - 本局已购道具 `run_items`（道具 id 列表）
@@ -193,18 +193,18 @@
 - `scripts/ui/result_panel_shared.gd`（Autoload）
   - 结算/死亡/通关界面共享 UI 构建逻辑
   - `action_to_text(actions)`：将 InputMap 动作名转为按键字符串，供 HUD、暂停菜单按键提示复用
-  - `build_score_block(wave, kills, time, best_wave, best_time)`：得分区（波次、击杀、时间、新纪录标记）
+  - `build_score_block(wave, kills, time, best_wave, best_time, gold?, total_damage?)`：得分区（波次、击杀、时间、金币、总伤害、新纪录标记）
   - `build_player_stats_block(stats, ..., stats_only)`：玩家信息区；`stats_only=true` 时仅构建角色属性区（供暂停菜单属性 Tab）；默认完整展示武器/道具/词条/魔法（供死亡/通关界面）
   - 统一基准字号 `BASE_FONT_SIZE`（18）
   - 供 pause_menu、game_over_screen、victory_screen 复用
 
 - `scripts/ui/game_over_screen.gd` + `scenes/ui/game_over_screen.tscn`
   - 死亡结算界面：CanvasLayer layer=100，全屏遮罩 + 居中 Panel
-  - TabContainer（得分 / 角色信息），Tab 置于底部；得分 Tab 含标题、得分区、返回主菜单；角色信息 Tab 展示完整玩家信息
+  - TabContainer（得分 / 背包 / 角色信息），Tab 置于顶部；得分 Tab 含标题、得分区（波次/击杀/时间/金币/总伤害）、返回主菜单；背包 Tab 复用 BackpackPanel（只读）；角色信息 Tab 展示完整玩家信息
   - 接口：`show_result(wave, kills, time, player_node)`
 
 - `scripts/ui/victory_screen.gd` + `scenes/ui/victory_screen.tscn`
-  - 通关结算界面：布局与死亡界面一致，TabContainer（得分 / 角色信息）
+  - 通关结算界面：布局与死亡界面一致，TabContainer（得分 / 背包 / 角色信息）
   - 接口：`show_result(wave, kills, time, player_node)`
 
 ### 2.6 武器系统

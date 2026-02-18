@@ -24,7 +24,8 @@ func action_to_text(actions: Array) -> String:
 	return "/".join(result)
 
 
-func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_time: float) -> Control:
+## 构建得分区。gold、total_damage 为可选，缺省时显示 0。
+func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_time: float, gold: int = 0, total_damage: int = 0) -> Control:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 8)
 	var wave_flag := LocalizationManager.tr_key("hud.new_record") if wave >= best_wave else ""
@@ -34,7 +35,9 @@ func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_
 		"wave_flag": wave_flag,
 		"kills": kills,
 		"time": "%.1f" % time,
-		"time_flag": time_flag
+		"time_flag": time_flag,
+		"gold": gold,
+		"total_damage": total_damage
 	})
 	var lbl := Label.new()
 	lbl.text = score_text

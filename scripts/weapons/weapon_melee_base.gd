@@ -102,6 +102,7 @@ func _apply_touch_hits() -> void:
 		if not _can_hit_enemy(body):
 			continue
 		body.take_damage(final_damage, elemental)
+		GameManager.add_record_damage_dealt(final_damage)
 		if is_instance_valid(_owner_ref) and _owner_ref.has_method("try_lifesteal"):
 			_owner_ref.try_lifesteal()
 		_enemy_last_hit[body.get_instance_id()] = float(Time.get_ticks_msec()) / 1000.0

@@ -30,6 +30,7 @@ func cast_at_position(caster: Node2D, world_pos: Vector2) -> bool:
 		var dist_sq: float = (node.global_position - world_pos).length_squared()
 		if dist_sq <= radius * radius:
 			node.take_damage(power, element)
+			GameManager.add_record_damage_dealt(power)
 			if is_instance_valid(caster) and caster.has_method("try_lifesteal"):
 				caster.try_lifesteal()
 	AudioManager.play_magic_cast()

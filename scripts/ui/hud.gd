@@ -705,6 +705,9 @@ func _build_runtime_ui() -> void:
 	_shop_tab_container.tabs_position = TabContainer.TabPosition.POSITION_TOP
 	_shop_tab_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_shop_tab_container.custom_minimum_size = Vector2(896, 400)  # 与 main_vbox 70% 一致，保证 Tab 内容区可见
+	_shop_tab_container.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
+	_shop_tab_container.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
+	_shop_tab_container.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
 	main_vbox.add_child(_shop_tab_container)
 
 	# Tab 0 - 商店：武器选项 + 刷新按钮
