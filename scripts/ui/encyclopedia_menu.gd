@@ -233,14 +233,21 @@ func _build_magic_tab() -> void:
 		var details := LocalizationManager.tr_key(str(m.get("desc_key", "")))
 		var mana: int = int(m.get("mana_cost", 0))
 		var power: int = int(m.get("power", 0))
-		var elem: String = str(m.get("element", ""))
 		var cd: float = float(m.get("cooldown", 0))
-		var elem_tr: String = LocalizationManager.tr_key("magic.element_%s" % elem) if elem != "" else ""
-		details = "%s: %d | %s: %d | %s: %s | %s: %.1fs\n%s" % [
+		# 从词条解析范围、效果、元素名称
+		var range_affix := MagicAffixDefs.get_affix_def(str(m.get("range_affix_id", "")))
+		var effect_affix := MagicAffixDefs.get_affix_def(str(m.get("effect_affix_id", "")))
+		var elem_affix := MagicAffixDefs.get_affix_def(str(m.get("element_affix_id", "")))
+		var range_name := LocalizationManager.tr_key(str(range_affix.get("name_key", ""))) if not range_affix.is_empty() else ""
+		var effect_name := LocalizationManager.tr_key(str(effect_affix.get("name_key", ""))) if not effect_affix.is_empty() else ""
+		var elem_name := LocalizationManager.tr_key(str(elem_affix.get("name_key", ""))) if not elem_affix.is_empty() else ""
+		details = "%s: %d | %s: %d | %s: %.1fs\n%s: %s | %s: %s | %s: %s\n%s" % [
 			LocalizationManager.tr_key("pause.stat_mana"), mana,
 			LocalizationManager.tr_key("magic.stat_power"), power,
-			LocalizationManager.tr_key("encyclopedia.stat_element"), elem_tr,
 			LocalizationManager.tr_key("pause.stat_cooldown"), cd,
+			LocalizationManager.tr_key("encyclopedia.magic_range"), range_name,
+			LocalizationManager.tr_key("encyclopedia.magic_effect"), effect_name,
+			LocalizationManager.tr_key("encyclopedia.stat_element"), elem_name,
 			details
 		]
 		_add_entry(vbox, name_str, details, str(m.get("icon_path", "")))
@@ -250,7 +257,21 @@ func _build_magic_tab() -> void:
 func _build_affixes_tab() -> void:
 	var affixes_sub := TabContainer.new()
 	affixes_sub.custom_minimum_size = Vector2(0, 360)
-	var vbox_magic := _make_scroll_vbox_for_parent(affixes_sub)
+	var magic_sub := TabContainer.new()
+	magic_sub.custom_minimum_size = Vector2(0, 320)
+	var vbox_magic_range := _make_scroll_vbox_for_parent(magic_sub)
+	var vbox_magic_effect := _make_scroll_vbox_for_parent(magic_sub)
+	var vbox_magic_element := _make_scroll_vbox_for_parent(magic_sub)
+	for a in MagicAffixDefs.RANGE_AFFIX_POOL:
+		_add_magic_affix_entry(vbox_magic_range, a)
+	for a in MagicAffixDefs.EFFECT_AFFIX_POOL:
+		_add_magic_affix_entry(vbox_magic_effect, a)
+	for a in MagicAffixDefs.ELEMENT_AFFIX_POOL:
+		_add_magic_affix_entry(vbox_magic_element, a)
+	magic_sub.set_tab_title(0, LocalizationManager.tr_key("encyclopedia.magic_affix_range"))
+	magic_sub.set_tab_title(1, LocalizationManager.tr_key("encyclopedia.magic_affix_effect"))
+	magic_sub.set_tab_title(2, LocalizationManager.tr_key("encyclopedia.magic_affix_element"))
+	affixes_sub.add_child(magic_sub)
 	var vbox_item := _make_scroll_vbox_for_parent(affixes_sub)
 	var vbox_weapon_both := _make_scroll_vbox_for_parent(affixes_sub)
 	var vbox_weapon_melee := _make_scroll_vbox_for_parent(affixes_sub)
@@ -259,8 +280,6 @@ func _build_affixes_tab() -> void:
 	var vbox_weapon_theme := _make_scroll_vbox_for_parent(affixes_sub)
 	var melee_type_ids := ["type_blade", "type_spear"]
 	var ranged_type_ids := ["type_firearm", "type_staff"]
-	for a in MagicAffixDefs.MAGIC_AFFIX_POOL:
-		_add_affix_entry(vbox_magic, a)
 	for a in ItemAffixDefs.ITEM_AFFIX_POOL:
 		_add_affix_entry(vbox_item, a)
 	for a in WeaponAffixDefs.WEAPON_AFFIX_POOL:
@@ -285,6 +304,20 @@ func _build_affixes_tab() -> void:
 	_affixes_sub.set_tab_title(6, LocalizationManager.tr_key("encyclopedia.affix_weapon_theme"))
 	_tabs.add_child(_affixes_sub)
 	_tabs.set_tab_title(5, LocalizationManager.tr_key("encyclopedia.tab_affixes"))
+
+
+## 魔法词条展示：名称、描述、数值（范围词条含 value_default）。
+func _add_magic_affix_entry(vbox: VBoxContainer, a: Dictionary) -> void:
+	var name_str := LocalizationManager.tr_key(str(a.get("name_key", "")))
+	var details := LocalizationManager.tr_key(str(a.get("desc_key", "")))
+	if a.has("value_default"):
+		var v: float = float(a.get("value_default", 0))
+		var vk: String = str(a.get("value_key", ""))
+		if vk == "size":
+			details = "%s: %.0f\n%s" % [LocalizationManager.tr_key("encyclopedia.magic_affix_size"), v, details]
+		elif vk == "radius":
+			details = "%s: %.0f\n%s" % [LocalizationManager.tr_key("encyclopedia.magic_affix_radius"), v, details]
+	_add_entry(vbox, name_str, details, "")
 
 
 func _add_affix_entry(vbox: VBoxContainer, a: Dictionary) -> void:
@@ -321,6 +354,11 @@ func _apply_localized_texts() -> void:
 		_weapons_sub.set_tab_title(1, LocalizationManager.tr_key("encyclopedia.weapon_ranged"))
 	if _affixes_sub != null:
 		_affixes_sub.set_tab_title(0, LocalizationManager.tr_key("encyclopedia.affix_magic"))
+		var magic_sub: Control = _affixes_sub.get_child(0) if _affixes_sub.get_child_count() > 0 else null
+		if magic_sub is TabContainer:
+			magic_sub.set_tab_title(0, LocalizationManager.tr_key("encyclopedia.magic_affix_range"))
+			magic_sub.set_tab_title(1, LocalizationManager.tr_key("encyclopedia.magic_affix_effect"))
+			magic_sub.set_tab_title(2, LocalizationManager.tr_key("encyclopedia.magic_affix_element"))
 		_affixes_sub.set_tab_title(1, LocalizationManager.tr_key("encyclopedia.affix_item"))
 		_affixes_sub.set_tab_title(2, LocalizationManager.tr_key("encyclopedia.affix_weapon_both"))
 		_affixes_sub.set_tab_title(3, LocalizationManager.tr_key("encyclopedia.affix_weapon_melee"))

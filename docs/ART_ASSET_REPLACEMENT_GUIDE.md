@@ -70,7 +70,7 @@
 
 | 资源 | 用途 | 建议尺寸 | 路径 | 格式 |
 |------|------|----------|------|------|
-| weapon_blade_short | 短刃 | 96×96 | `res://assets/weapons/blade_short.png` | PNG |
+| weapon_blade_short | 虚空短刃 | 96×96 | `res://assets/weapons/blade_short.png` | PNG |
 | weapon_hammer_heavy | 重锤 | 96×96 | `res://assets/weapons/hammer_heavy.png` | PNG |
 | weapon_dagger | 刺刀 | 96×96 | `res://assets/weapons/dagger.png` | PNG |
 | weapon_spear | 长矛 | 96×96 | `res://assets/weapons/spear.png` | PNG |
@@ -81,7 +81,7 @@
 | weapon_wand_focus | 聚焦法杖 | 96×96 | `res://assets/weapons/wand_focus.png` | PNG |
 | weapon_sniper | 狙击枪 | 96×96 | `res://assets/weapons/sniper.png` | PNG |
 | weapon_orb_wand | 法球杖 | 96×96 | `res://assets/weapons/orb_wand.png` | PNG |
-| swing_blade_short | 短刃挥击 | 24×8 | `res://assets/weapons/swing_blade_short.png` | PNG |
+| swing_blade_short | 虚空短刃挥击 | 24×8 | `res://assets/weapons/swing_blade_short.png` | PNG |
 | swing_hammer_heavy | 重锤挥击 | 24×8 | `res://assets/weapons/swing_hammer_heavy.png` | PNG |
 | swing_dagger | 刺刀挥击 | 24×8 | `res://assets/weapons/swing_dagger.png` | PNG |
 | swing_spear | 长矛挥击 | 24×8 | `res://assets/weapons/swing_spear.png` | PNG |

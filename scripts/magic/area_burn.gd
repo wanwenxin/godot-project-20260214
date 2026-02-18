@@ -4,12 +4,6 @@ extends MagicBase
 # 由 magic_targeting_overlay 选择位置后调用 cast_at_position。
 # 持续 burn_duration 秒，每 burn_interval 秒对区域内敌人造成 burn_damage_per_tick 伤害。
 
-var _burn_duration := 4.0
-var _burn_damage_per_tick := 8
-var _burn_interval := 0.5
-var _area_radius := 80.0
-
-
 func _init() -> void:
 	magic_id = "burn_zone"
 	mana_cost = 20
@@ -19,10 +13,6 @@ func _init() -> void:
 
 func configure_from_def(def: Dictionary, tier: int = 0) -> void:
 	super.configure_from_def(def, tier)
-	_burn_duration = float(def.get("burn_duration", 4.0))
-	_burn_damage_per_tick = int(def.get("burn_damage_per_tick", 8))
-	_burn_interval = float(def.get("burn_interval", 0.5))
-	_area_radius = float(def.get("area_radius", 80.0))
 
 
 func cast_at_position(caster: Node2D, world_pos: Vector2) -> bool:
@@ -34,12 +24,12 @@ func cast_at_position(caster: Node2D, world_pos: Vector2) -> bool:
 		return false
 	var zone := Node2D.new()
 	zone.name = "BurnZone"
-	# 动态加载：preload 编译时加载 burn_zone_node.gd，set_script 注入到 Area2D，实现燃烧区域持续伤害逻辑
+	# 持续伤害参数由 effect_dot 词条提供，范围由 range 词条提供
 	zone.set_script(preload("res://scripts/magic/burn_zone_node.gd"))
-	zone.set_meta("burn_duration", _burn_duration)
-	zone.set_meta("burn_damage_per_tick", _burn_damage_per_tick)
-	zone.set_meta("burn_interval", _burn_interval)
-	zone.set_meta("area_radius", _area_radius)
+	zone.set_meta("burn_duration", burn_duration)
+	zone.set_meta("burn_damage_per_tick", burn_damage_per_tick)
+	zone.set_meta("burn_interval", burn_interval)
+	zone.set_meta("area_radius", range_size)
 	zone.set_meta("element", element)
 	zone.set_meta("caster", caster)
 	zone.global_position = world_pos

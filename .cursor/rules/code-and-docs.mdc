@@ -12,6 +12,7 @@ alwaysApply: true
 - `docs/DEVELOPER_GUIDE.md` — 架构、模块职责、数据流、扩展入口、配置项、排障
 - `docs/CODE_INDEX.md` — 代码索引与文件结构
 - `docs/NOMENCLATURE.md` — 菜单、UI、功能模块的**项目内部称呼**，涉及名词时须参考
+- `docs/WORLD_BACKGROUND.md` — 世界观与命名风格，**新增武器/道具/魔法/词条/角色/敌人时须参考**
 - `docs/BUG_LOG.md` — BUG 修复记录，**执行 coding 计划时必读**，避免出现同类问题
 
 据此规划实现路径，避免与现有架构冲突、重复踩坑。

@@ -308,21 +308,46 @@ func _make_magic_slot(m: Dictionary) -> PanelContainer:
 	if not (tier_color is Color):
 		tier_color = TierConfig.get_tier_color(int(m.get("tier", 0)))
 	var display_name := LocalizationManager.tr_key("magic.%s.name" % str(m.get("id", "")))
-	var tip := _build_magic_tooltip(m, def)
-	slot.configure(icon_path, BackpackSlot.PLACEHOLDER_COLOR, tip, _tooltip_popup, display_name, tier_color, {})
+	var tip_data: Dictionary = _build_magic_tooltip_data(m, def)
+	slot.configure(icon_path, BackpackSlot.PLACEHOLDER_COLOR, "", _tooltip_popup, display_name, tier_color, tip_data)
 	return _wrap_slot_in_panel(slot)
 
 
-func _build_magic_tooltip(m: Dictionary, def: Dictionary) -> String:
-	var name_key := "magic.%s.name" % str(m.get("id", ""))
-	var lines: Array[String] = [LocalizationManager.tr_key(name_key)]
-	lines.append(SEP)
+## 构建魔法 tooltip 结构化数据：威力/消耗/冷却 + 三类词条 Chip。
+func _build_magic_tooltip_data(m: Dictionary, def: Dictionary) -> Dictionary:
+	var title_key := "magic.%s.name" % str(m.get("id", ""))
 	var effect_parts: Array[String] = []
 	effect_parts.append(LocalizationManager.tr_key("backpack.tooltip_power") + ": %d" % int(def.get("power", 0)))
 	effect_parts.append(LocalizationManager.tr_key("backpack.tooltip_mana") + ": %d" % int(def.get("mana_cost", 0)))
 	effect_parts.append(LocalizationManager.tr_key("backpack.tooltip_cooldown") + ": %.1fs" % float(def.get("cooldown", 1.0)))
-	lines.append(LocalizationManager.tr_key("backpack.tooltip_effects") + ": " + ", ".join(effect_parts))
-	return "\n".join(lines)
+	var effects_str := ", ".join(effect_parts)
+	var affixes: Array[Dictionary] = []
+	for affix_id_key in ["range_affix_id", "effect_affix_id", "element_affix_id"]:
+		var aid: String = str(def.get(affix_id_key, ""))
+		if aid.is_empty():
+			continue
+		var affix_def := MagicAffixDefs.get_affix_def(aid)
+		if affix_def.is_empty():
+			continue
+		var value_fmt := ""
+		if affix_def.has("value_default"):
+			var v: float = float(affix_def.get("value_default", 0))
+			var vk: String = str(affix_def.get("value_key", ""))
+			if vk == "size":
+				value_fmt = "%.0f" % v
+			elif vk == "radius":
+				value_fmt = "%.0f" % v
+		affixes.append({
+			"id": aid,
+			"name_key": str(affix_def.get("name_key", "")),
+			"desc_key": str(affix_def.get("desc_key", "")),
+			"value_fmt": value_fmt
+		})
+	return {
+		"title": LocalizationManager.tr_key(title_key),
+		"affixes": affixes,
+		"effects": effects_str
+	}
 
 
 func _make_item_slot(item_id: String) -> PanelContainer:

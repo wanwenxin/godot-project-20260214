@@ -333,7 +333,7 @@ func _get_magic_aim_direction() -> Vector2:
 	return Vector2.RIGHT
 
 
-## [自定义] 每帧尝试释放魔法：冷却递减、按键检测、区域型魔法进入 targeting 模式。
+## [自定义] 每帧尝试释放魔法：冷却递减、按键检测；所有魔法统一进入 targeting 模式（显示范围后左键确认/右键取消）。
 func _try_cast_magic(delta: float) -> void:
 	# 冷却递减
 	for id in _magic_cooldowns.keys():
@@ -358,17 +358,11 @@ func _try_cast_magic(delta: float) -> void:
 	var actual_cd: float = cooldown / maxf(0.1, spell_speed)
 	if _magic_cooldowns.get(magic_id, 0.0) > 0.0:
 		return
-	var cast_mode: String = str(def.get("cast_mode", "projectile"))
-	if cast_mode == "area":
-		request_area_targeting.emit(slot, def, instance)
-		return
-	var dir := _get_magic_aim_direction()
-	if (instance as MagicBase).cast(self, dir):
-		current_mana -= float(cost)
-		_magic_cooldowns[magic_id] = actual_cd
+	# 所有魔法统一进入 targeting 模式。
+	request_area_targeting.emit(slot, def, instance)
 
 
-## 区域施法确认：由 game 在 overlay cast_confirmed 时调用。
+## 魔法施法确认：由 game 在 overlay cast_confirmed 时调用。根据 range_type 调用 cast 或 cast_at_position。
 func execute_area_cast(slot: int, world_pos: Vector2) -> bool:
 	if slot < 0 or slot >= _equipped_magics.size():
 		return false
@@ -381,10 +375,19 @@ func execute_area_cast(slot: int, world_pos: Vector2) -> bool:
 	if current_mana < float(cost):
 		return false
 	var magic_id: String = str(def.get("id", ""))
-	if (instance as MagicBase).cast_at_position(self, world_pos):
+	var mb := instance as MagicBase
+	var cooldown: float = float(def.get("cooldown", 1.0))
+	var actual_cd: float = cooldown / maxf(0.1, spell_speed)
+	var success := false
+	if mb.range_type == "line":
+		var dir := (world_pos - global_position).normalized()
+		if dir.length_squared() >= 0.01:
+			success = mb.cast(self, dir)
+	else:
+		success = mb.cast_at_position(self, world_pos)
+	if success:
 		current_mana -= float(cost)
-		var cooldown: float = float(def.get("cooldown", 1.0))
-		_magic_cooldowns[magic_id] = cooldown / maxf(0.1, spell_speed)
+		_magic_cooldowns[magic_id] = actual_cd
 		return true
 	return false
 

@@ -16,10 +16,7 @@ func configure_from_def(def: Dictionary, tier: int = 0) -> void:
 
 
 func cast_at_position(caster: Node2D, world_pos: Vector2) -> bool:
-	var def := MagicDefs.get_magic_by_id(magic_id)
-	if def.is_empty():
-		return false
-	var radius: float = float(def.get("area_radius", 100.0))
+	var radius: float = range_size  # 由范围词条 value_default 提供
 	var tree := caster.get_tree()
 	if tree == null:
 		return false

@@ -119,7 +119,7 @@
 | [scripts/weapons/weapon_base.gd](scripts/weapons/weapon_base.gd) | 武器基类、冷却、配置、升级接口 | `configure_from_def`、`tick_and_try_attack` |
 | [scripts/weapons/weapon_melee_base.gd](scripts/weapons/weapon_melee_base.gd) | 近战基类、挥击与碰触判定 | 继承 weapon_base |
 | [scripts/weapons/weapon_ranged_base.gd](scripts/weapons/weapon_ranged_base.gd) | 远程基类、子弹发射 | 继承 weapon_base |
-| [scripts/weapons/melee/weapon_blade_short.gd](scripts/weapons/melee/weapon_blade_short.gd) | 短刃 | 继承 weapon_melee_base |
+| [scripts/weapons/melee/weapon_blade_short.gd](scripts/weapons/melee/weapon_blade_short.gd) | 虚空短刃 | 继承 weapon_melee_base |
 | [scripts/weapons/melee/weapon_hammer_heavy.gd](scripts/weapons/melee/weapon_hammer_heavy.gd) | 重锤 | 继承 weapon_melee_base |
 | [scripts/weapons/ranged/weapon_pistol_basic.gd](scripts/weapons/ranged/weapon_pistol_basic.gd) | 手枪 | 继承 weapon_ranged_base |
 | [scripts/weapons/ranged/weapon_shotgun_wide.gd](scripts/weapons/ranged/weapon_shotgun_wide.gd) | 霰弹枪 | 继承 weapon_ranged_base |
@@ -134,13 +134,13 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/magic/magic_base.gd](scripts/magic/magic_base.gd) | 魔法基类 | `cast(caster, target_dir)`、`cast_at_position(caster, world_pos)` |
-| [scripts/magic/fire_bolt.gd](scripts/magic/fire_bolt.gd) | 火球术 | 火焰弹道 |
+| [scripts/magic/fire_bolt.gd](scripts/magic/fire_bolt.gd) | 绯焰弹 | 火焰弹道 |
 | [scripts/magic/ice_shard.gd](scripts/magic/ice_shard.gd) | 冰霜碎片 | 冰霜弹道 |
 | [scripts/magic/area_shockwave.gd](scripts/magic/area_shockwave.gd) | 冲击波 | 区域一次性伤害 |
 | [scripts/magic/area_burn.gd](scripts/magic/area_burn.gd) | 燃烧区域 | 区域持续燃烧伤害 |
 | [scripts/magic/burn_zone_node.gd](scripts/magic/burn_zone_node.gd) | 燃烧区域节点 | 持续存在并周期性造成伤害 |
 | [scripts/ui/magic_targeting_overlay.gd](scripts/ui/magic_targeting_overlay.gd) | 区域施法选择 | 圆形范围跟随鼠标，左键施放、右键/Esc 取消 |
-| [resources/magic_defs.gd](resources/magic_defs.gd) | 魔法定义（含 cast_mode、area_radius、effect_type、cooldown） |
+| [resources/magic_defs.gd](resources/magic_defs.gd) | 魔法定义（power、mana_cost、cooldown、range/effect/element_affix_id） |
 | [resources/upgrade_defs.gd](resources/upgrade_defs.gd) | 升级配置（含 spell_speed） |
 | [resources/shop_item_defs.gd](resources/shop_item_defs.gd) | 商店道具配置 |
 
@@ -156,7 +156,7 @@
 | [resources/weapon_affix_defs.gd](resources/weapon_affix_defs.gd) | 武器词条库 | `WEAPON_AFFIX_POOL` |
 | [resources/weapon_type_affix_defs.gd](resources/weapon_type_affix_defs.gd) | 武器类型词条库 | `WEAPON_TYPE_AFFIX_POOL` |
 | [resources/weapon_theme_affix_defs.gd](resources/weapon_theme_affix_defs.gd) | 武器主题词条库 | `WEAPON_THEME_AFFIX_POOL` |
-| [resources/magic_affix_defs.gd](resources/magic_affix_defs.gd) | 魔法词条库 | `MAGIC_AFFIX_POOL` |
+| [resources/magic_affix_defs.gd](resources/magic_affix_defs.gd) | 魔法词条库（范围/效果/元素） | `RANGE_AFFIX_POOL`、`EFFECT_AFFIX_POOL`、`ELEMENT_AFFIX_POOL` |
 | [resources/affix_combo_defs.gd](resources/affix_combo_defs.gd) | 词条组合效果配置 | `COMBO_POOL` |
 
 ### 2.7 UI 层
@@ -175,7 +175,7 @@
 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | 死亡结算 | `show_result` |
 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 通关结算 | `show_result` |
 | [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | 结算面板共享 UI | `build_score_block`、`build_player_stats_block`（支持完整 stats 字典） |
-| [scripts/ui/magic_targeting_overlay.gd](scripts/ui/magic_targeting_overlay.gd) | 区域施法选择覆盖层 | `start_targeting`、`cast_confirmed`、`cast_cancelled` |
+| [scripts/ui/magic_targeting_overlay.gd](scripts/ui/magic_targeting_overlay.gd) | 魔法施法覆盖层，按 range_type 显示直线/鼠标圆心圆/角色圆心圆 | `start_targeting`、`cast_confirmed`、`cast_cancelled` |
 
 ### 2.8 资源与工具
 

@@ -1029,8 +1029,7 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 		if item_type == "attribute":
 			stats_text = _build_item_stats_text(option)
 		elif item_type == "magic":
-			var def := MagicDefs.get_magic_by_id(item_id)
-			stats_text = LocalizationManager.tr_key(str(option.get("desc_key", ""))) if def.is_empty() else "%d 伤害 · %d 魔力" % [def.get("power", 0), def.get("mana_cost", 0)]
+			stats_text = _build_magic_shop_stats_text(item_id, option)
 		else:
 			stats_text = _build_weapon_stats_text(option)
 		if is_shop:
@@ -1053,6 +1052,25 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 	for i in range(button_index, _weapon_buttons.size()):
 		_weapon_buttons[i].visible = false
 		_weapon_icons[i].visible = false
+
+
+## 商店魔法卡片：威力、消耗、冷却 + 三类词条名称。
+func _build_magic_shop_stats_text(item_id: String, option: Dictionary) -> String:
+	var def := MagicDefs.get_magic_by_id(item_id)
+	if def.is_empty():
+		return LocalizationManager.tr_key(str(option.get("desc_key", "")))
+	var parts: Array[String] = []
+	parts.append("%s %d" % [LocalizationManager.tr_key("magic.stat_power"), int(def.get("power", 0))])
+	parts.append("%s %d" % [LocalizationManager.tr_key("pause.stat_mana"), int(def.get("mana_cost", 0))])
+	parts.append("%s %.1fs" % [LocalizationManager.tr_key("pause.stat_cooldown"), float(def.get("cooldown", 1.0))])
+	for affix_id_key in ["range_affix_id", "effect_affix_id", "element_affix_id"]:
+		var aid: String = str(def.get(affix_id_key, ""))
+		if aid.is_empty():
+			continue
+		var affix_def := MagicAffixDefs.get_affix_def(aid)
+		if not affix_def.is_empty():
+			parts.append(LocalizationManager.tr_key(str(affix_def.get("name_key", ""))))
+	return " · ".join(parts)
 
 
 func _build_item_stats_text(option: Dictionary) -> String:

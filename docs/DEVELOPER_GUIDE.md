@@ -270,19 +270,20 @@
 - **商店随机词条**：`_roll_shop_items` 为武器随机附加 0~2 个词条（按 weapon_type 筛选），购买时传入 `add_run_weapon`；`sync_weapons_from_run` 对每把武器应用 `random_affix_ids`
 - **攻击速度**：玩家属性 `attack_speed`，系数越高武器冷却越短
 - 流程：
-  1. 开局默认装备短刃（blade_short）直接开始波次
+  1. 开局默认装备虚空短刃（blade_short）直接开始波次
   2. 每波结算先升级（4 选 1，免费，可金币刷新），再进入商店（武器+道具+魔法，购买后刷新或点下一波）；点击下一波后立即重置玩家、刷新地图、预生成倒计时、生成敌人（无间隔等待）
 
 ### 2.7 魔法系统
 
-- `scripts/magic/magic_base.gd`：魔法基类，定义 `cast(caster, target_dir)`（弹道型）与 `cast_at_position(caster, world_pos)`（区域型）接口
-- `resources/magic_defs.gd`：魔法定义池（mana_cost、power、element、cast_mode、area_radius、effect_type、cooldown、burn_* 等）
-- **cast_mode**：`projectile` 弹道型（按键即释放，方向朝向最近敌人）或 `area` 区域型（进入 targeting 模式，鼠标选点施放）
-- **区域施法**：`scripts/ui/magic_targeting_overlay.gd` 显示圆形范围跟随鼠标，左键施放、右键/Esc 取消；冲击波（一次性伤害）、燃烧区域（持续 DOT）
+- `scripts/magic/magic_base.gd`：魔法基类，定义 `cast(caster, target_dir)`（直线型）与 `cast_at_position(caster, world_pos)`（圆区域型）接口
+- `resources/magic_defs.gd`：魔法定义池（mana_cost、power、cooldown、range_affix_id、effect_affix_id、element_affix_id）；威力/消耗/冷却保留，范围/效果/元素由词条决定
+- `resources/magic_affix_defs.gd`：魔法词条三类池（RANGE_AFFIX_POOL、EFFECT_AFFIX_POOL、ELEMENT_AFFIX_POOL），每魔法各 1 个
+- **统一施法流程**：所有魔法均为按键 → 进入准备施法 → 显示施法范围 → 左键确认 / 右键取消；`range_type` 决定范围形状与确认后的调用方式
+- **魔法施法覆盖层**：`scripts/ui/magic_targeting_overlay.gd` 按 `range_type` 显示：`line` 直线（角色到鼠标）、`mouse_circle` 鼠标圆心圆、`char_circle` 角色圆心圆；左键施放、右键/Esc 取消
 - **施法速度**：玩家属性 `spell_speed`，系数越高魔法冷却越短；升级与道具可提升
 - 玩家最多装备 3 个魔法，左右方向键切换当前魔法，E 键施放（cast_magic、magic_prev、magic_next）
-- 释放时消耗魔力，弹道型生成弹道命中敌人；区域型在选定位置生成效果
-- 魔法可在商店购买
+- 确认后：`line` 调用 `cast(caster, dir)`，圆区域调用 `cast_at_position(caster, world_pos)`
+- 魔法可在商店购买；世界观与命名参考 `docs/WORLD_BACKGROUND.md`
 
 - `scripts/ui/main_menu.gd`
   - 显示总统计、最近战绩、成就数量

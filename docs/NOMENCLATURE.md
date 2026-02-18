@@ -31,7 +31,7 @@
 | | | 道具标签 | Tab 2，道具图标与描述（仅 attribute，排除 magic） |
 | | | 武器标签 | Tab 3，含子 Tab（近战/远程） |
 | | | 魔法标签 | Tab 4，魔法图标与属性 |
-| | | 词条标签 | Tab 5，含子 Tab（魔法、道具、武器-通用、武器-近战、武器-远程） |
+| | | 词条标签 | Tab 5，含子 Tab（魔法-范围/效果/元素、道具、武器-通用、武器-近战、武器-远程） |
 | | | 图鉴项 | 各 Tab 内单条卡片（左侧图片 + 右侧名称与详情） |
 | **结算** | game_over / victory | 死亡结算界面 | 玩家死亡后展示 |
 | | | 通关结算界面 | 达到通关波次后展示 |
@@ -106,7 +106,7 @@
 |----------|------|------|-----------|
 | 模态遮罩 | 升级/商店时全屏半透明背景，阻挡下层点击 | HUD | _modal_backdrop |
 | 全屏遮罩 | 暂停/设置等全屏弹窗后的背景遮罩 | pause_menu / settings_menu / game_over_screen / victory_screen | _fullscreen_backdrop / _backdrop |
-| 区域施法覆盖层 | 区域型魔法选点时的圆形范围跟随鼠标 | game | magic_targeting_overlay |
+| 魔法施法覆盖层 | 所有魔法选点时的施法范围（直线/鼠标圆心圆/角色圆心圆），左键施放、右键取消 | game | magic_targeting_overlay |
 | 魔法槽冷却遮罩 | 单个魔法槽上的冷却进度半透明覆盖 | HUD 魔法面板 | cd_overlay |
 | 不透明背景 | 升级/武器面板内的纯色背景块 | HUD | OpaqueBackdrop |
 
@@ -143,7 +143,7 @@
 | 武器商店 | 波次后商店，武器+道具+魔法 | game.gd, shop_item_defs.gd |
 | 开局武器选择 | 新游戏/继续后首次选武器 | game.gd, hud.gd |
 | 魔法系统 | 弹道/区域施法、冷却、施法速度 | player.gd, magic_defs.gd, magic_base.gd |
-| 区域施法 | 圆形选点、左键施放、右键取消 | magic_targeting_overlay.gd |
+| 魔法施法 | 统一 targeting 流程：按键进入准备、显示范围、左键施放、右键取消 | magic_targeting_overlay.gd |
 | 结算共享 | 得分区、玩家属性区构建，供死亡/通关/暂停复用 | result_panel_shared.gd |
 | 按键绑定 | 可配置动作与冲突校验 | game_manager.gd, settings_menu.gd |
 | 存档系统 | 读写 save.json、设置持久化 | save_manager.gd |
