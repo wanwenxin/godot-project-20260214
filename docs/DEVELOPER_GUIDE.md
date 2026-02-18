@@ -210,6 +210,8 @@
   - 升级/商店卡片间距 24、统一基准字号 18
   - 升级四选一面板（可金币刷新，等级越高奖励越多）
   - 商店：TabContainer（商店 / 背包 / 角色信息），Tab 置于底部；商店 Tab 含武器 4 件 + 刷新按钮（刷新费用 1+refresh_count*(1+wave*0.15)）；背包 Tab 打开背包覆盖层；角色信息 Tab 展示 build_player_stats_block(stats_only=true)
+  - 商店角色信息 Tab 脏检查：`_update_shop_stats_tab` 对 stats 做轻量哈希，未变时跳过重建
+  - 背包覆盖层复用：`game.gd::_show_backpack_from_shop` 关闭时仅 hide，再次打开时 show + set_stats，避免重复 load/new BackpackPanel
   - 升级/商店结算层使用全屏纯色不透明 backdrop
   - 触控按钮（移动 + 暂停）
 
@@ -308,15 +310,16 @@
 
 - `scripts/ui/backpack_panel.gd`
   - 背包面板：按武器、魔法、道具分栏展示，每项为带边框的 `BackpackSlot`（图标 + 名称，名称按品级着色）
-  - `set_stats(stats)`：根据 `weapon_details`、`magic_details`、`item_ids` 构建三区
-  - 图标缺失时用 `VisualAssetRegistry.make_color_texture` 生成占位图
+  - `set_stats(stats)`：根据 `weapon_details`、`magic_details`、`item_ids` 构建三区；脏检查：stats 哈希未变且 shop_context 未变时跳过重建
+  - 槽位 StyleBox 复用：`_get_slot_style()` 缓存单例，减少对象分配
+  - 图标加载走 `VisualAssetRegistry.get_texture_cached`，缺失时用 `make_color_texture` 生成占位图
   - 悬浮时显示 `BackpackTooltipPopup`，武器/道具用结构化数据（名称、词条 Chip 横向排布、效果），词条可 hover 显示二级详情
   - 道具 tooltip 仅展示最终效果加成，不展示词条与数值；道具名用 `display_name_key`（如疾风靴、恶魔药剂）
   - 武器 tooltip 含「合成」按钮（非最高品级且存在同名同品级其他武器时）；点击后进入合并模式，选择素材完成手动合成
   - `hide_tooltip()`：暂停菜单关闭时调用
 
 - `scripts/ui/backpack_tooltip_popup.gd`
-  - 背包悬浮面板：PanelContainer 实现，挂到暂停菜单 CanvasLayer 保证同视口、文字可显示
+  - 背包悬浮面板：PanelContainer 实现，挂到暂停菜单 CanvasLayer 保证同视口、文字可显示；tooltip 数据轻量哈希（title/weapon_index/affixes/effects）避免 JSON.stringify 开销
   - 词条二级面板：独立 PanelContainer，与主 tooltip 同级（CanvasLayer），首次显示时加入场景树，屏幕坐标定位；AFFIX_TOOLTIP_WIDTH 200、字体 14；完整描述+数值
   - `show_tooltip(text)`：纯文本模式，用于魔法等无词条项；同一物体悬浮移动时不重生成
   - `show_structured_tooltip(data)`：结构化模式，名称 + 词条 Chip 横向排布（可 hover 显示描述与数值）+ 效果；武器可含合成按钮
@@ -485,7 +488,7 @@ flowchart TD
 - **武器图标**：weapon_defs 的 `icon_path`，HUD/player 从 option 或 weapon 节点读取
 - **掉落物**：`pickup.gd` 的 `@export_file texture_coin`、`texture_heal`
 - **升级图标**：`_upgrade_pool` 的 `icon_path`，HUD 从 option 读取
-- **VisualAssetRegistry**：`make_color_texture(color, size)` 纯色贴图；`make_panel_frame_texture(size, bg_color, border_color, border_width, corner_radius)` 生成九宫格面板框纹理
+- **VisualAssetRegistry**：`get_texture_cached(path)` 按路径缓存纹理，避免重复 load；`make_color_texture(color, size)` 纯色贴图（同色同尺寸复用缓存）；`make_panel_frame_texture(...)` 生成九宫格面板框纹理
 
 ### 4.7 默认地形与像素图
 

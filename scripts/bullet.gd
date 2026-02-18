@@ -25,9 +25,10 @@ var _hit_targets: Dictionary = {}  # 已命中目标 instance_id，用于同目�
 @onready var sprite: Sprite2D = $Sprite2D
 
 
-## [自定义] 对象池回收时重置状态，避免残留 _hit_targets 等。
+## [自定义] 对象池回收时重置状态，避免残留 _hit_targets、life_time 等。
 func reset_for_pool() -> void:
 	_hit_targets.clear()
+	life_time = 2.0  # 复用后需重置，否则首帧即因 life_time<=0 被回收
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 

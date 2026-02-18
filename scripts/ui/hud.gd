@@ -48,6 +48,7 @@ var _shop_backpack_panel: VBoxContainer  # 背包 Tab 内嵌 BackpackPanel
 var _shop_next_btn: Button
 var _shop_tab_container: TabContainer  # 商店/背包/角色信息 Tab
 var _shop_stats_container: Control  # 角色信息 Tab 内容容器，用于刷新
+var _last_shop_stats_hash: String = ""  # 脏检查：stats 未变时跳过角色信息 Tab 重建
 var _modal_backdrop: ColorRect  # 全屏遮罩，升级/商店时显示
 var _weapon_mode := ""  # "start" 或 "shop"，区分开局选择与波次商店
 var _touch_panel: Control  # 触控按钮容器
@@ -542,10 +543,33 @@ func _on_shop_backpack_merge_completed() -> void:
 	emit_signal("backpack_merge_completed")
 
 
+## 轻量哈希：stats 关键字段，用于角色信息 Tab 脏检查。
+func _hash_shop_stats(stats: Dictionary) -> String:
+	var w: Array = stats.get("weapon_details", [])
+	var m: Array = stats.get("magic_details", [])
+	var i: Array = stats.get("item_ids", [])
+	var wave: int = int(stats.get("wave", 0))
+	var parts: Array[String] = []
+	for x in w:
+		parts.append(str(x.get("id", "")) + ":" + str(x.get("tier", 0)))
+	for x in m:
+		parts.append(str(x.get("id", "")))
+	for x in i:
+		parts.append(str(x))
+	# 角色属性区也依赖 hp/armor 等
+	var hp: String = "%d/%d" % [int(stats.get("hp_current", 0)), int(stats.get("hp_max", 0))]
+	var extra: String = "%d|%d|%.0f" % [int(stats.get("max_mana", 0)), int(stats.get("armor", 0)), float(stats.get("speed", 0))]
+	return "%d|%d|%d|%d|%s|%s|%s" % [w.size(), m.size(), i.size(), wave, "|".join(parts), hp, extra]
+
+
 ## 更新角色信息 Tab 内容。
 func _update_shop_stats_tab(stats: Dictionary) -> void:
 	if not _shop_stats_container:
 		return
+	var new_hash := _hash_shop_stats(stats)
+	if new_hash == _last_shop_stats_hash:
+		return
+	_last_shop_stats_hash = new_hash
 	for c in _shop_stats_container.get_children():
 		c.queue_free()
 	var block: Control = ResultPanelShared.build_player_stats_block(stats, null, null, null, null, true)

@@ -70,13 +70,17 @@ func _get_player() -> Node2D:
 	return null
 
 
-func _do_pickup(player: Node) -> void:
+## [自定义] 执行拾取逻辑。defer_recycle=true 时延后回收，避免在 body_entered 物理回调中 remove_child 报错。
+func _do_pickup(player: Node, defer_recycle: bool = false) -> void:
 	if pickup_type == "coin":
 		GameManager.add_currency(value)
 	elif pickup_type == "heal" and player.has_method("heal"):
 		player.heal(value)
 	AudioManager.play_pickup()
-	_recycle_or_free()
+	if defer_recycle:
+		call_deferred("_recycle_or_free")
+	else:
+		_recycle_or_free()
 
 
 ## [自定义] 对象池 acquire 后由 wave_manager 调用，配置类型与数值并更新纹理。
@@ -119,7 +123,7 @@ func _recycle_or_free() -> void:
 func _on_body_entered(body: Node) -> void:
 	if not body.is_in_group("players"):
 		return
-	_do_pickup(body)
+	_do_pickup(body, true)  # 物理回调中需 defer 回收，避免 remove_child 报错
 
 
 func _apply_coin_visual_by_value() -> void:

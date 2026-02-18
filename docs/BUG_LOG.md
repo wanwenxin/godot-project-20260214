@@ -18,6 +18,20 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-18：玩家子弹发射一段时间后无法再发射
+
+- **现象**：发射一段时间后子弹不再出现，但有发射音效
+- **原因**：子弹对象池复用后 `reset_for_pool()` 未重置 `life_time`；玩家子弹在 `_process` 中 `life_time -= delta`，回收时 life_time 已为 0，复用后首帧即 `life_time <= 0` 触发回收，子弹立即消失
+- **修复**：`bullet.reset_for_pool()` 增加 `life_time = 2.0`；所有 acquire 子弹处显式设置 `collision_mask`（玩家/魔法=2，敌人=1），因复用节点 _ready 不重跑
+- **预防**：对象池 `reset_for_pool` 需重置所有影响复用后行为的属性
+
+### 2026-02-18：pickup body_entered 中回收报错
+
+- **现象**：`Removing a CollisionObject node during a physics callback is not allowed`，backtrace 指向 pickup.gd _on_body_entered → _do_pickup → _recycle_or_free → ObjectPool.recycle
+- **原因**：`body_entered` 为物理回调，直接调用 `ObjectPool.recycle` 会执行 `remove_child`，在物理回调中移除 Area2D 不被允许
+- **修复**：`_do_pickup` 新增 `defer_recycle` 参数；`_on_body_entered` 调用 `_do_pickup(body, true)`，true 时用 `call_deferred("_recycle_or_free")` 延后回收
+- **预防**：物理回调（body_entered、area_entered 等）中移除或回收节点需使用 `call_deferred` 延后执行
+
 ### 2026-02-18：pickup configure_for_spawn 时 sprite 为 null
 
 - **现象**：`_apply_coin_visual_by_value` 报错，调用链为 enemy died → _spawn_coin_drop → ObjectPool.acquire(deferred=true) → configure_for_spawn

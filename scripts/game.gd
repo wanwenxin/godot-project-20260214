@@ -541,9 +541,18 @@ func _on_backpack_requested() -> void:
 
 
 ## [自定义] 商店内打开背包覆盖层，shop_context=true 时显示售卖/合并按钮。
-## 动态加载：load("res://scripts/ui/backpack_panel.gd") 运行时加载 BackpackPanel 脚本，
-## 用 (GDScript).new() 实例化；需在加入场景树后调用 set_stats（内部 get_tree/_find_canvas_layer）。
+## 覆盖层复用：关闭时仅 hide，再次打开时 show + set_stats，避免重复 load/new BackpackPanel。
 func _show_backpack_from_shop() -> void:
+	# 复用已存在的覆盖层
+	if _backpack_overlay != null and is_instance_valid(_backpack_overlay) and _backpack_overlay_panel != null:
+		_backpack_overlay.visible = true
+		hud.move_child(_backpack_overlay, hud.get_child_count() - 1)
+		var stats: Dictionary = {}
+		if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
+			stats = player.get_full_stats_for_pause()
+		stats["wave"] = wave_manager.current_wave
+		_backpack_overlay_panel.set_stats(stats, true)
+		return
 	var overlay := Panel.new()
 	overlay.name = "BackpackOverlay"
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -579,9 +588,7 @@ func _show_backpack_from_shop() -> void:
 	_backpack_overlay = overlay
 	_backpack_overlay_panel = backpack_panel
 	hud.add_child(overlay)
-	# 置于最上层
 	hud.move_child(overlay, hud.get_child_count() - 1)
-	# set_stats 需在加入场景树后调用（内部会 get_tree / _find_canvas_layer）
 	var stats: Dictionary = {}
 	if is_instance_valid(player) and player.has_method("get_full_stats_for_pause"):
 		stats = player.get_full_stats_for_pause()
@@ -591,13 +598,10 @@ func _show_backpack_from_shop() -> void:
 	backpack_panel.merge_completed.connect(_on_backpack_overlay_merge_completed)
 
 
-## [系统] 背包覆盖层关闭按钮回调，释放 overlay 并清空引用。
+## [系统] 背包覆盖层关闭按钮回调。复用模式：仅 hide，不 queue_free。
 func _on_backpack_overlay_closed(overlay: Control) -> void:
 	if overlay != null and is_instance_valid(overlay):
-		overlay.queue_free()
-	if _backpack_overlay == overlay:
-		_backpack_overlay = null
-		_backpack_overlay_panel = null
+		overlay.visible = false
 
 
 ## [系统] 商店背包 Tab 内嵌面板 merge_completed 信号回调，刷新商店背包显示。

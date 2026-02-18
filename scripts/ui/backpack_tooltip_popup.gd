@@ -148,8 +148,16 @@ func show_structured_tooltip(data: Dictionary) -> void:
 	visible = true
 
 
+## 轻量哈希：仅拼接 title、weapon_index、affixes id、effects 等关键字段，避免 JSON.stringify 开销。
 func _hash_tooltip_data(data: Dictionary) -> String:
-	return JSON.stringify(data)
+	var parts: Array[String] = [str(data.get("title", "")), str(data.get("weapon_index", -1)), str(data.get("effects", ""))]
+	parts.append("%s" % bool(data.get("show_sell", false)))
+	parts.append("%d" % int(data.get("sell_price", 0)))
+	parts.append("%s" % bool(data.get("show_synthesize", false)))
+	for a in data.get("affixes", []):
+		if a is Dictionary:
+			parts.append(str(a.get("id", "")))
+	return "|".join(parts)
 
 
 func _switch_to_simple_mode() -> void:

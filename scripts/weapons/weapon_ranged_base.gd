@@ -55,6 +55,7 @@ func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 		bullet.set("speed", bullet_speed)
 		bullet.set("damage", final_damage)
 		bullet.set("hit_player", false)
+		bullet.collision_mask = 2  # 玩家子弹碰撞敌人层；复用时 _ready 不重跑，需显式设置
 		bullet.set("remaining_pierce", bullet_pierce)
 		bullet.set("elemental_type", elemental)
 		if bullet_type != "":

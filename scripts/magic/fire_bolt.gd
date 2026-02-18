@@ -28,6 +28,7 @@ func cast(caster: Node2D, target_dir: Vector2) -> bool:
 	bullet.set("speed", 450.0)
 	bullet.set("damage", power)
 	bullet.set("hit_player", false)
+	bullet.collision_mask = 2  # 玩家魔法子弹碰撞敌人层
 	bullet.set("remaining_pierce", 0)
 	bullet.set("elemental_type", element)
 	bullet.set("bullet_type", "laser")

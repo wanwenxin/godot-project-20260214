@@ -27,11 +27,11 @@ func configure(icon_path: String, color: Color, tip: String, tooltip_popup: Back
 	_tip_data = tip_data
 	_tooltip_popup = tooltip_popup
 	_weapon_index = weapon_index
-	# 图标
+	# 图标：使用纹理缓存避免重复 load
 	_icon_rect = TextureRect.new()
 	var tex: Texture2D = null
-	if icon_path != "" and ResourceLoader.exists(icon_path):
-		tex = load(icon_path) as Texture2D
+	if icon_path != "":
+		tex = VisualAssetRegistry.get_texture_cached(icon_path)
 	if tex == null:
 		tex = VisualAssetRegistry.make_color_texture(color, Vector2i(SLOT_SIZE, SLOT_SIZE))
 	_icon_rect.texture = tex

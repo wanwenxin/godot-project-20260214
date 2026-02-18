@@ -67,7 +67,7 @@
 | [scripts/autoload/localization_manager.gd](scripts/autoload/localization_manager.gd) | 多语言、文案 key | `tr_key`、`language_changed` |
 | [scripts/autoload/log_manager.gd](scripts/autoload/log_manager.gd) | 游戏进程错误/警告输出到 `user://logs/game_errors.log` | 自动捕获，无需调用 |
 | [addons/editor_logger/plugin.gd](addons/editor_logger/plugin.gd) | 编辑器进程错误/警告输出到 `user://logs/game_errors.log`（与游戏同文件）；从 godot.log 中继 GDScript::reload 解析错误 | 需在项目设置中启用插件 |
-| [scripts/autoload/visual_asset_registry.gd](scripts/autoload/visual_asset_registry.gd) | 纯色贴图工具 | `make_color_texture` |
+| [scripts/autoload/visual_asset_registry.gd](scripts/autoload/visual_asset_registry.gd) | 纹理缓存、纯色贴图 | `get_texture_cached`、`make_color_texture` |
 
 ### 2.2 战斗核心
 

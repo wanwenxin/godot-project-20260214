@@ -53,4 +53,5 @@ func _physics_process(delta: float) -> void:
 		bullet.set("speed", 190.0)
 		bullet.set("damage", 8)
 		bullet.set("hit_player", true)
+		bullet.collision_mask = 1  # 敌人子弹碰撞玩家层
 		_shoot_cd = fire_rate

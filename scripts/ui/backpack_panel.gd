@@ -15,6 +15,7 @@ var _merge_weapon_id: String = ""
 var _merge_weapon_tier: int = -1
 var _weapon_grid: HFlowContainer = null
 var _cancel_btn: Button = null
+var _slot_style: StyleBoxFlat = null  # 槽位边框样式缓存，复用减少分配
 
 
 ## 向上查找 CanvasLayer（暂停菜单），用于挂载 tooltip 保证同视口显示。
@@ -35,9 +36,29 @@ func hide_tooltip() -> void:
 
 var _shop_context := false  # 是否从商店打开，仅此时显示售卖/合并按钮
 var _shop_wave := 0  # 商店模式下当前波次，用于计算售卖价
+var _last_stats_hash: String = ""  # 脏检查：stats 未变时跳过重建
+
+## 轻量哈希：weapon_details/magic_details/item_ids 的关键字段及 wave，用于脏检查。
+func _hash_stats(stats: Dictionary) -> String:
+	var w: Array = stats.get("weapon_details", [])
+	var m: Array = stats.get("magic_details", [])
+	var i: Array = stats.get("item_ids", [])
+	var wave: int = int(stats.get("wave", 0))
+	var parts: Array[String] = []
+	for x in w:
+		parts.append(str(x.get("id", "")) + ":" + str(x.get("tier", 0)))
+	for x in m:
+		parts.append(str(x.get("id", "")))
+	for x in i:
+		parts.append(str(x))
+	return "%d|%d|%d|%d|%s" % [w.size(), m.size(), i.size(), wave, "|".join(parts)]
 
 ## 根据 stats 刷新背包内容。shop_context=true 时显示售卖/合并按钮。
 func set_stats(stats: Dictionary, shop_context: bool = false) -> void:
+	var new_hash := _hash_stats(stats)
+	if new_hash == _last_stats_hash and shop_context == _shop_context:
+		return
+	_last_stats_hash = new_hash
 	_shop_context = shop_context
 	_shop_wave = int(stats.get("wave", 0))
 	_exit_merge_mode()
@@ -118,17 +139,18 @@ func _build_all_sections(weapon_details: Array, magic_details: Array, item_ids: 
 	add_child(i_grid)
 
 
-func _make_slot_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.set_border_width_all(1)
-	style.border_color = Color(0.45, 0.48, 0.55, 1.0)
-	style.bg_color = Color(0.08, 0.09, 0.1, 0.6)
-	return style
+func _get_slot_style() -> StyleBoxFlat:
+	if _slot_style == null:
+		_slot_style = StyleBoxFlat.new()
+		_slot_style.set_border_width_all(1)
+		_slot_style.border_color = Color(0.45, 0.48, 0.55, 1.0)
+		_slot_style.bg_color = Color(0.08, 0.09, 0.1, 0.6)
+	return _slot_style
 
 
 func _wrap_slot_in_panel(slot: BackpackSlot) -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _make_slot_style())
+	panel.add_theme_stylebox_override("panel", _get_slot_style())
 	panel.add_child(slot)
 	return panel
 
