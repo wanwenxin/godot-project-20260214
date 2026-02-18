@@ -4,17 +4,19 @@ extends Node2D
 
 func _ready() -> void:
 	var particles := CPUParticles2D.new()
-	particles.amount = 12
+	particles.amount = 28
 	particles.lifetime = 0.8
 	particles.one_shot = false
 	particles.explosiveness = 0.0
 	particles.direction = Vector2.UP
 	particles.spread = 180.0
-	particles.initial_velocity_min = 20.0
-	particles.initial_velocity_max = 50.0
+	particles.initial_velocity_min = 40.0
+	particles.initial_velocity_max = 90.0
 	particles.gravity = Vector2(0, -20)
+	particles.scale_amount_min = 1.5
+	particles.scale_amount_max = 2.5
 	particles.color = Color(1.0, 0.35, 0.05, 0.9)
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
-	particles.emission_sphere_radius = 25.0
+	particles.emission_sphere_radius = 45.0
 	particles.emitting = true
 	add_child(particles)

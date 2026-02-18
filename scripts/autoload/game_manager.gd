@@ -402,11 +402,11 @@ func get_key_bindings() -> Dictionary:
 		# 迁移旧版 cast_magic_2 (E) 到 cast_magic
 		if result.has("cast_magic_2") and not result.has("cast_magic"):
 			result["cast_magic"] = result["cast_magic_2"]
-		# 新动作缺失时使用默认（左右方向键）
+		# 新动作缺失时使用默认（Q/E 切换魔法）
 		if not result.has("magic_prev") or str(result.get("magic_prev", "")).strip_edges().is_empty():
-			result["magic_prev"] = "Left"
+			result["magic_prev"] = "Q"
 		if not result.has("magic_next") or str(result.get("magic_next", "")).strip_edges().is_empty():
-			result["magic_next"] = "Right"
+			result["magic_next"] = "E"
 		return result
 	# 从 preset + pause_key + toggle_hp_key 构建
 	var preset: String = str(game_cfg.get("key_preset", "wasd"))

@@ -16,13 +16,10 @@ signal backpack_merge_completed  # 商店背包 Tab 内合并完成，需刷新
 signal mobile_move_changed(direction: Vector2)
 signal pause_pressed
 
-@onready var health_bar: ProgressBar = $Root/TopRow/HealthBox/HealthBar
-@onready var health_label: Label = $Root/TopRow/HealthBox/HealthLabel
-@onready var exp_bar: ProgressBar = $Root/TopRow/HealthBox/ExpBar
-@onready var mana_bar: ProgressBar = $Root/TopRow/HealthBox/ManaBar
-@onready var mana_label: Label = $Root/TopRow/HealthBox/ManaLabel
-@onready var level_label: Label = $Root/TopRow/HealthBox/LevelLabel
-@onready var armor_label: Label = $Root/TopRow/HealthBox/ArmorLabel
+@onready var health_bar: ProgressBar = $Root/TopRow/HealthBox/HPBlock/HealthBar
+@onready var health_label: Label = $Root/TopRow/HealthBox/HPBlock/HealthLabel
+@onready var mana_bar: ProgressBar = $Root/TopRow/HealthBox/MPBlock/ManaBar
+@onready var mana_label: Label = $Root/TopRow/HealthBox/MPBlock/ManaLabel
 @onready var wave_label: Label = $Root/TopRow/WaveLabel
 @onready var kill_label: Label = $Root/TopRow/KillLabel
 @onready var timer_label: Label = $Root/TopRow/TimerLabel
@@ -79,8 +76,8 @@ var _last_magic_current_index := -1  # 上次当前选中槽索引，用于切�
 var _magic_slots: Array = []  # 每项 {panel, icon, cd_overlay, name_label, affix_label}
 
 const HUD_FONT_SIZE := 18  # 统一基准字号，便于阅读
-const MAGIC_SLOT_SIZE := 72  # 魔法槽图标尺寸（放大便于阅读）
-const MAGIC_SLOT_EXTRA_HEIGHT := 36  # 名称+词条区域高度
+const MAGIC_SLOT_SIZE := 92  # 魔法槽图标尺寸（放大便于阅读）
+const MAGIC_SLOT_EXTRA_HEIGHT := 46  # 名称+词条区域高度
 
 
 func _ready() -> void:
@@ -196,7 +193,7 @@ func _wrap_anchored_label_in_panel(lbl: Label) -> void:
 
 
 func _apply_hud_font_sizes() -> void:
-	for lbl in [health_label, mana_label, level_label, armor_label, wave_label, kill_label, timer_label, pause_hint]:
+	for lbl in [health_label, mana_label, wave_label, kill_label, timer_label, pause_hint]:
 		if lbl is Label:
 			lbl.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 	if _currency_label:
@@ -268,23 +265,19 @@ func set_currency(value: int) -> void:
 
 
 func set_experience(current: int, threshold: int) -> void:
+	# 战斗 HUD 已移除经验条，仅更新缓存供语言切换等使用
 	var th := maxi(threshold, 1)
 	if current == _last_exp_current and th == _last_exp_threshold:
 		return
 	_last_exp_current = current
 	_last_exp_threshold = th
-	if exp_bar:
-		exp_bar.min_value = 0.0
-		exp_bar.max_value = float(_last_exp_threshold)
-		exp_bar.value = float(current)
 
 
 func set_level(level: int) -> void:
 	if level == _last_level:
 		return
 	_last_level = level
-	if level_label:
-		level_label.text = LocalizationManager.tr_key("hud.level", {"value": level})
+	# 战斗 HUD 已移除等级展示，仅保留缓存
 
 
 func set_mana(current: float, max_value: float) -> void:
@@ -315,8 +308,7 @@ func set_armor(value: int) -> void:
 	if value == _last_armor:
 		return
 	_last_armor = value
-	if armor_label:
-		armor_label.text = LocalizationManager.tr_key("hud.armor", {"value": value})
+	# 战斗 HUD 已移除护甲展示，仅保留缓存
 
 
 ## 更新左下角魔法面板：magic_data 为 get_magic_ui_data() 返回的数组。

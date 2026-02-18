@@ -9,21 +9,23 @@ func _ready() -> void:
 	var radial: bool = get_meta("radial_360", false)
 
 	var particles := CPUParticles2D.new()
-	particles.amount = 32
-	particles.lifetime = 0.4
+	particles.amount = 60
+	particles.lifetime = 0.5
 	particles.one_shot = true
 	particles.explosiveness = 1.0
 	particles.direction = cast_dir if cast_dir.length_squared() > 0.01 else Vector2.RIGHT
 	particles.spread = 360.0 if radial else 45.0
-	particles.initial_velocity_min = 60.0
-	particles.initial_velocity_max = 140.0
+	particles.initial_velocity_min = 100.0
+	particles.initial_velocity_max = 220.0
 	particles.gravity = Vector2.ZERO
+	particles.scale_amount_min = 1.2
+	particles.scale_amount_max = 2.0
 	particles.color = color
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_POINT
 	particles.emitting = true
 	add_child(particles)
 
-	var t := get_tree().create_timer(0.55)
+	var t := get_tree().create_timer(0.6)
 	t.timeout.connect(_on_burst_finished)
 
 
