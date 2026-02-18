@@ -90,7 +90,7 @@
 | [scripts/enemy_boss.gd](scripts/enemy_boss.gd) | Boss 波扇形弹幕 | 继承 enemy_base |
 | [scripts/enemy_aquatic.gd](scripts/enemy_aquatic.gd) | 水中专属敌人，离水扣血 | 继承 enemy_base，`is_water_only()` |
 | [scripts/enemy_dasher.gd](scripts/enemy_dasher.gd) | 蓄力冲刺攻击敌人 | 继承 enemy_base |
-| [scripts/wave_manager.gd](scripts/wave_manager.gd) | 波次推进、敌人生成、掉落、倒计时 | `wave_started`、`wave_cleared`、`kill_count_changed` |
+| [scripts/wave_manager.gd](scripts/wave_manager.gd) | 波次推进、敌人生成、掉落、倒计时、预生成倒计时 | `wave_started`、`wave_cleared`、`kill_count_changed`、`pre_spawn_countdown_started`、`pre_spawn_countdown_changed` |
 | [scripts/spawn_telegraph.gd](scripts/spawn_telegraph.gd) | 敌人生成前警示，显示数量（×N） | 配合 wave_manager 使用 |
 | [resources/enemy_defs.gd](resources/enemy_defs.gd) | 敌人定义集中化（36 种，含 tier/behavior_mode），供图鉴与生成 | `ENEMY_DEFS`、`get_enemy_def`、`get_ids_by_tier` |
 | [resources/enemy_scene_registry.gd](resources/enemy_scene_registry.gd) | 敌人 id→场景映射，供 wave_manager 按 enemy_id 加载 | `get_scene` |

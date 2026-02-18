@@ -11,6 +11,9 @@ signal kill_count_changed(kills: int)
 signal intermission_started(duration: float)
 # 当前波次剩余时间，供 HUD 正上方显示；倒计时归零时视为波次结束。
 signal wave_countdown_changed(seconds_left: float)
+# 预生成倒计时：地图刷新后、敌人生成前，供 HUD 中上显示「波次 X - X.Xs」。
+signal pre_spawn_countdown_started(duration: float)
+signal pre_spawn_countdown_changed(seconds_left: float)
 
 @export var wave_duration := 20.0
 @export var melee_scene: PackedScene
@@ -30,6 +33,7 @@ signal wave_countdown_changed(seconds_left: float)
 @export var telegraph_show_ring := true
 @export var telegraph_show_countdown := true
 @export var intermission_time := 3.5
+@export var pre_spawn_countdown := 3.0  # 地图刷新后、敌人生成前的倒计时秒数
 @export var coin_drop_chance := 0.38
 @export var heal_drop_chance := 0.17
 @export var boss_bonus_coin_count := Vector2i(2, 3)
@@ -52,12 +56,18 @@ var _pending_spawn_batches: Array = []  # 分批生成队列，每批为 Array[D
 var _batch_index := 0
 
 @onready var intermission_timer: Timer = $IntermissionTimer
+var _pre_spawn_timer: Timer = null  # 预生成倒计时，_ready 中创建
 
 
 ## [系统] 节点入树时调用，随机化 RNG 并连接间隔计时器。
 func _ready() -> void:
 	_rng.randomize()
 	intermission_timer.timeout.connect(_start_next_wave)
+	_pre_spawn_timer = Timer.new()
+	_pre_spawn_timer.name = "PreSpawnTimer"
+	_pre_spawn_timer.one_shot = true
+	_pre_spawn_timer.timeout.connect(_on_pre_spawn_timeout)
+	add_child(_pre_spawn_timer)
 
 
 ## [自定义] 游戏场景创建完玩家后调用，设置玩家引用与视口尺寸并开始第一波。
@@ -82,6 +92,13 @@ func begin_intermission() -> void:
 	intermission_timer.start(intermission_time)
 
 
+## [自定义] 跳过间隔，立即开始下一波。商店点击下一波时调用，流程：重置玩家→刷新地图→倒计时→生成敌人。
+func start_next_wave_now() -> void:
+	intermission_timer.stop()
+	_current_intermission = 0.0
+	_start_next_wave()
+
+
 ## [自定义] 返回波次间隔剩余秒数，已停止时返回 0。
 func get_intermission_left() -> float:
 	if intermission_timer.is_stopped():
@@ -89,8 +106,12 @@ func get_intermission_left() -> float:
 	return intermission_timer.time_left
 
 
-## [系统] 每帧调用，更新波次倒计时、分批生成敌人、尝试发射 wave_cleared。
+## [系统] 每帧调用，更新预生成/波次倒计时、分批生成敌人、尝试发射 wave_cleared。
 func _process(delta: float) -> void:
+	# 预生成阶段：仅驱动 pre_spawn_countdown_changed，不扣减 wave_countdown
+	if _pre_spawn_timer != null and _pre_spawn_timer.time_left > 0:
+		emit_signal("pre_spawn_countdown_changed", _pre_spawn_timer.time_left)
+		return
 	if _wave_countdown_left <= 0.0 or _wave_cleared_emitted:
 		return
 	# 限制单帧扣减，避免首帧/切回标签页时 delta 过大导致倒计时瞬间归零、波次提前结束
@@ -199,12 +220,25 @@ func _start_next_wave() -> void:
 	pending_spawn_count = 0
 	for pb in position_batches:
 		pending_spawn_count += pb.spawns.size()
-	# 第 1 批立即生成。
+	# 不在此处生成；由 game 在地图刷新完成后调用 start_pre_spawn_countdown，倒计时结束后生成。
+
+	is_spawning = false
+
+
+## [自定义] 由 game 在地图刷新完成后调用，启动预生成倒计时；倒计时结束后生成第 1 批敌人。
+func start_pre_spawn_countdown() -> void:
+	if _pre_spawn_timer == null:
+		return
+	var duration := maxf(0.1, pre_spawn_countdown)
+	emit_signal("pre_spawn_countdown_started", duration)
+	_pre_spawn_timer.start(duration)
+
+
+## [系统] 预生成倒计时结束，生成第 1 批敌人。
+func _on_pre_spawn_timeout() -> void:
 	if _pending_spawn_batches.size() > 0:
 		_spawn_batch(_pending_spawn_batches[0])
 		_batch_index = 1
-
-	is_spawning = false
 
 
 ## [自定义] 执行一批敌人生成，调用 _queue_batch_spawn 或直接生成。

@@ -28,8 +28,7 @@ signal pause_pressed
 @onready var timer_label: Label = $Root/TopRow/TimerLabel
 @onready var pause_hint: Label = $Root/PauseHint
 
-var _intermission_label: Label  # 波次间隔倒计时
-var _wave_countdown_label: Label  # 波次剩余时间（正上方）
+var _wave_countdown_label: Label  # 波次倒计时（中上）：预生成/间隔时「第X波-X.Xs」，波次进行中「第X波-剩余Xs」
 var _currency_label: Label  # 金币
 var _wave_banner: Label  # 波次横幅（淡出动画）
 var _upgrade_panel: Panel  # 升级三选一面板
@@ -96,7 +95,6 @@ func _ready() -> void:
 	set_level(GameManager.run_level)
 	set_mana(0, 1)
 	set_armor(0)
-	_intermission_label.visible = false
 	_wave_banner.visible = false
 	_upgrade_panel.visible = false
 	_weapon_panel.visible = false
@@ -120,9 +118,8 @@ func _apply_hud_module_backgrounds() -> void:
 	top_row.reparent(top_panel)  # 重父到新 Panel，不可用 reparent(null)
 	top_parent.add_child(top_panel)
 	top_parent.move_child(top_panel, idx)
-	# 金币、间隔倒计时、波次倒计时、波次横幅、按键提示各自用 Panel 包裹
+	# 金币、波次倒计时、波次横幅、按键提示各自用 Panel 包裹（间隔倒计时已合并至中上）
 	_wrap_label_in_panel(_currency_label, Vector2(900, 12), Vector2(120, 24))
-	_wrap_label_in_panel(_intermission_label, Vector2(12, 82), Vector2(180, 28))
 	_wrap_label_in_panel(pause_hint, Vector2(12, 52), Vector2(248, 90))
 	# _wave_countdown_label 和 _wave_banner 使用锚点，需单独处理
 	_wrap_anchored_label_in_panel(_wave_countdown_label)
@@ -202,8 +199,8 @@ func _apply_hud_font_sizes() -> void:
 			lbl.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 	if _currency_label:
 		_currency_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
-	if _intermission_label:
-		_intermission_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
+	if _wave_countdown_label:
+		_wave_countdown_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 
 
 func set_health(current: int, max_value: int) -> void:
@@ -380,27 +377,34 @@ func set_magic_ui(magic_data: Array) -> void:
 		_last_magic_cd_per_slot[i] = remaining
 
 
-func set_intermission_countdown(seconds_left: float) -> void:
-	if seconds_left <= 0.0:
-		_intermission_label.visible = false
-		return
-	_intermission_label.visible = true
-	_intermission_label.text = LocalizationManager.tr_key("hud.next_wave", {"value": "%.1f" % seconds_left})
-
-
 var _last_wave_countdown := -1.0  # 波次倒计时脏检查缓存
+var _pre_spawn_mode := false  # 是否处于预生成倒计时（与波次剩余区分）
 
-func set_wave_countdown(seconds_left: float) -> void:
+## 预生成倒计时：地图刷新后、敌人生成前，中上显示「第 X 波 - X.Xs」。
+func set_pre_spawn_countdown(wave: int, seconds_left: float) -> void:
 	if seconds_left <= 0.0:
-		if _last_wave_countdown > 0.0:  # 仅当从正变零时更新
+		_pre_spawn_mode = false
+		_wave_countdown_label.visible = false
+		return
+	_pre_spawn_mode = true
+	_wave_countdown_label.visible = true
+	_wave_countdown_label.text = LocalizationManager.tr_key("hud.wave_pre_spawn", {"wave": wave, "value": "%.1f" % seconds_left})
+
+
+## 波次剩余倒计时：敌人生成后，中上显示「第 X 波 - 剩余 Xs」。
+func set_wave_countdown(wave: int, seconds_left: float) -> void:
+	if seconds_left <= 0.0:
+		if _last_wave_countdown > 0.0:
 			_last_wave_countdown = 0.0
 			_wave_countdown_label.visible = false
+		_pre_spawn_mode = false
 		return
-	if is_equal_approx(seconds_left, _last_wave_countdown):
+	if is_equal_approx(seconds_left, _last_wave_countdown) and not _pre_spawn_mode:
 		return
+	_pre_spawn_mode = false
 	_last_wave_countdown = seconds_left
 	_wave_countdown_label.visible = true
-	_wave_countdown_label.text = LocalizationManager.tr_key("hud.wave_countdown", {"value": "%.0f" % seconds_left})
+	_wave_countdown_label.text = LocalizationManager.tr_key("hud.wave_countdown", {"wave": wave, "value": "%.0f" % seconds_left})
 
 
 ## 为波次横幅与倒计时 Label 应用描边与字号，使更醒目。
@@ -591,11 +595,6 @@ func _build_runtime_ui() -> void:
 	_currency_label = Label.new()
 	_currency_label.position = Vector2(900, 12)
 	root.add_child(_currency_label)
-
-	_intermission_label = Label.new()
-	_intermission_label.position = Vector2(12, 82)
-	_intermission_label.text = "Next Wave: 0.0s"
-	root.add_child(_intermission_label)
 
 	_wave_countdown_label = Label.new()
 	_wave_countdown_label.anchors_preset = Control.PRESET_TOP_WIDE

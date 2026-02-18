@@ -154,6 +154,9 @@
 - `scripts/wave_manager.gd`
   - 波次推进、敌人构成、难度缩放
   - 清场信号、击杀信号、间隔信号、波次倒计时信号 `wave_countdown_changed`
+  - 预生成倒计时：`pre_spawn_countdown`（默认 3 秒）、`start_pre_spawn_countdown()` 由 game 在地形刷新完成后调用；`pre_spawn_countdown_started`、`pre_spawn_countdown_changed` 供 HUD 显示
+  - 波次开始流程：emit `wave_started` → game 重置玩家、刷新地图 → 地形完成后调用 `start_pre_spawn_countdown` → 倒计时结束才生成第 1 批敌人
+  - `start_next_wave_now()`：跳过间隔，商店点击下一波时调用，立即进入上述流程
   - `wave_duration`：每波最大时长（秒），倒计时归零视为波次结束
   - 波次结束条件：全灭敌人 或 倒计时归零
   - 出生点多人：`spawn_positions_count` 个出生点，单出生点可产生多个敌人，`spawn_telegraph` 显示数量（×N）
@@ -204,7 +207,7 @@
   - HUD 脏检查：`set_mana`、`set_armor`、`set_health`、`set_magic_ui` 等入口在值未变时 early return，减少每帧 StyleBox 重建与 Label 赋值；魔法冷却遮罩按 remaining_cd 变化阈值（0.05s）节流
   - 魔法面板：左下角，横向排列已装备魔法，当前选中绿色边框，独立冷却遮罩；`set_magic_ui(magic_data)` 由 game 每帧传入 `player.get_magic_ui_data()`
   - 多行按键提示：移动、暂停、镜头缩放、魔法、敌人血条（复用 `ResultPanelShared.action_to_text`）
-  - 波次倒计时（正上方）、间隔倒计时与波次横幅
+  - 波次倒计时（中上）：预生成/间隔时「第X波-X.Xs」，波次进行中「第X波-剩余Xs」；波次横幅
   - 波次横幅与倒计时文字特效：描边、缩放动画
   - 各模块独立背景（PanelContainer + StyleBoxTexture 程序生成纹理，九宫格拉伸）
   - 升级/商店卡片间距 24、统一基准字号 18
@@ -268,7 +271,7 @@
 - **攻击速度**：玩家属性 `attack_speed`，系数越高武器冷却越短
 - 流程：
   1. 开局默认装备短刃（blade_short）直接开始波次
-  2. 每波结算先升级（4 选 1，免费，可金币刷新），再进入商店（武器+道具+魔法，购买后刷新或点下一波）
+  2. 每波结算先升级（4 选 1，免费，可金币刷新），再进入商店（武器+道具+魔法，购买后刷新或点下一波）；点击下一波后立即重置玩家、刷新地图、预生成倒计时、生成敌人（无间隔等待）
 
 ### 2.7 魔法系统
 
@@ -440,7 +443,8 @@ flowchart TD
 
 - `wave_duration`：每波最大时长（秒），倒计时归零视为波次结束（默认 20）
   - 倒计时每帧扣减的 delta 被限制为最多 0.5 秒，避免首帧或切回标签页时 delta 过大导致波次瞬间结束
-- `intermission_time`：波次间隔
+- `intermission_time`：波次间隔（当前商店流程已跳过，由 `start_next_wave_now` 直接进入下一波；保留供扩展）
+- `pre_spawn_countdown`：预生成倒计时（秒），地形刷新完成后显示，倒计时结束才生成第 1 批敌人（默认 3）
 - `spawn_min_player_distance`：与玩家的最小出生距离（默认 340）
 - `spawn_positions_count`：出生点数量，单出生点可产生多个敌人（默认 5）
 - `spawn_attempts`：合法出生点采样重试次数

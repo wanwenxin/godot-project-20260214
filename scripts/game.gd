@@ -104,7 +104,9 @@ func _ready() -> void:
 	wave_manager.wave_started.connect(_on_wave_started)
 	wave_manager.kill_count_changed.connect(_on_kill_count_changed)
 	wave_manager.wave_cleared.connect(_on_wave_cleared)
-	wave_manager.wave_countdown_changed.connect(hud.set_wave_countdown)
+	wave_manager.wave_countdown_changed.connect(_on_wave_countdown_changed)
+	wave_manager.pre_spawn_countdown_started.connect(_on_pre_spawn_countdown_started)
+	wave_manager.pre_spawn_countdown_changed.connect(_on_pre_spawn_countdown_changed)
 	wave_manager.intermission_started.connect(_on_intermission_started)
 	hud.upgrade_selected.connect(_on_upgrade_selected)
 	hud.upgrade_refresh_requested.connect(_on_upgrade_refresh_requested)
@@ -175,9 +177,10 @@ func _process(delta: float) -> void:
 
 	if intermission_left > 0.0:
 		intermission_left = maxf(intermission_left - delta, 0.0)
-		hud.set_intermission_countdown(intermission_left)
+		# 间隔倒计时也移至中上，与波次合并显示
+		hud.set_pre_spawn_countdown(wave_manager.current_wave + 1, intermission_left)
 	else:
-		hud.set_intermission_countdown(0.0)
+		hud.set_pre_spawn_countdown(0, 0.0)
 
 	if not _ui_modal_active and Input.is_action_just_pressed("pause"):
 		_toggle_pause()
@@ -263,7 +266,7 @@ func _on_player_damaged(_amount: int) -> void:
 	AudioManager.play_hit()
 
 
-## [系统] 波次 wave_started 信号回调，清除地形并重生成。
+## [系统] 波次 wave_started 信号回调，重置玩家、清除地形并重生成；地形完成后启动预生成倒计时。
 func _on_wave_started(wave: int) -> void:
 	hud.set_wave(wave)
 	hud.show_wave_banner(wave)
@@ -272,6 +275,9 @@ func _on_wave_started(wave: int) -> void:
 	if wave > 1:
 		_clear_terrain()
 		call_deferred("_spawn_terrain_map")
+	else:
+		# wave 1 地形已在 _ready 中生成，直接启动预生成倒计时
+		wave_manager.start_pre_spawn_countdown()
 	AudioManager.play_wave_start()
 
 
@@ -656,6 +662,21 @@ func _on_weapon_sell_requested(weapon_index: int) -> void:
 		hud.refresh_shop_backpack(stats)
 
 
+## [系统] 波次 wave_countdown_changed 信号回调，传递波次号给 HUD 合并显示。
+func _on_wave_countdown_changed(seconds_left: float) -> void:
+	hud.set_wave_countdown(wave_manager.current_wave, seconds_left)
+
+
+## [系统] 预生成倒计时开始，HUD 显示合并的波次+倒计时。
+func _on_pre_spawn_countdown_started(_duration: float) -> void:
+	hud.set_pre_spawn_countdown(wave_manager.current_wave, _duration)
+
+
+## [系统] 预生成倒计时每帧更新。
+func _on_pre_spawn_countdown_changed(seconds_left: float) -> void:
+	hud.set_pre_spawn_countdown(wave_manager.current_wave, seconds_left)
+
+
 ## [系统] 波次 intermission_started 信号回调，记录间隔剩余时间。
 func _on_intermission_started(duration: float) -> void:
 	intermission_left = duration
@@ -822,11 +843,11 @@ func _equip_weapon_to_player(weapon_id: String, need_capacity: bool, random_affi
 	return player.equip_weapon_by_id(weapon_id, random_affix_ids)
 
 
-## [自定义] 完成波次结算：关闭模态、恢复输入、开始波次间隔。
+## [自定义] 完成波次结算：关闭模态、恢复输入，立即开始下一波（重置玩家→刷新地图→倒计时→生成敌人）。
 func _finish_wave_settlement() -> void:
 	_set_ui_modal_active(false)
 	player.input_enabled = true
-	wave_manager.begin_intermission()
+	wave_manager.start_next_wave_now()
 
 
 ## [自定义] 设置模态状态，true 时暂停游戏并隐藏暂停菜单。
@@ -1030,6 +1051,8 @@ func _spawn_terrain_map() -> void:
 	_playable_region = region
 	_spawn_world_bounds(region)
 	call_deferred("_bake_navigation")
+	# 地图刷新完成，启动预生成倒计时；倒计时结束后 wave_manager 生成第 1 批敌人。
+	wave_manager.start_pre_spawn_countdown()
 
 ## [自定义] 在 region 内随机生成 count 个集群中心点。
 func _make_cluster_centers(count: int, region: Rect2, rng: RandomNumberGenerator) -> Array[Vector2]:
