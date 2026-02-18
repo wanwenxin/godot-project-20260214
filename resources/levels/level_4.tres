@@ -4,14 +4,10 @@
 
 [resource]
 script = ExtResource("1")
-melee_count_min = 6
-melee_count_max = 10
-ranged_count_min = 2
-ranged_count_max = 5
-tank_count_min = 1
-tank_count_max = 2
-dasher_count_min = 1
-dasher_count_max = 3
-zone_area_scale = 2.5
-wave_duration = 24.0
-difficulty = 1.2
+use_extended_spawn = true
+zone_area_scale = 2.2
+shallow_water_count_min = 2
+shallow_water_count_max = 4
+wave_duration = 21.0
+difficulty = 0.95
+default_terrain_type = "seaside"

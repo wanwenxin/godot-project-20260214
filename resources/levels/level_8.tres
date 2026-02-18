@@ -5,8 +5,12 @@
 [resource]
 script = ExtResource("1")
 use_extended_spawn = true
-zone_area_scale = 2.2
-wave_duration = 22.0
-difficulty = 1.0
+difficulty = 1.15
+wave_duration = 24.0
 default_terrain_type = "mountain"
+zone_area_scale = 2.4
+obstacle_count_min = 3
+obstacle_count_max = 5
 spawn_batch_count = 4
+elite_spawn_chance_base = 0.08
+elite_spawn_chance_per_wave = 0.025

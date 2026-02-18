@@ -5,12 +5,14 @@
 [resource]
 script = ExtResource("1")
 use_extended_spawn = true
-grass_count_min = 3
-grass_count_max = 5
+difficulty = 1.20
+wave_duration = 25.0
+default_terrain_type = "seaside"
+zone_area_scale = 2.5
 shallow_water_count_min = 2
 shallow_water_count_max = 4
-deep_water_count_min = 1
-deep_water_count_max = 2
-wave_duration = 20.0
-difficulty = 0.90
-default_terrain_type = "seaside"
+obstacle_count_min = 3
+obstacle_count_max = 5
+spawn_batch_count = 4
+elite_spawn_chance_base = 0.10
+elite_spawn_chance_per_wave = 0.028

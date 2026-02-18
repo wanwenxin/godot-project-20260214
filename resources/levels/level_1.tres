@@ -4,5 +4,7 @@
 
 [resource]
 script = ExtResource("1")
-difficulty = 0.85
+use_extended_spawn = true
+difficulty = 0.80
 wave_duration = 18.0
+default_terrain_type = "flat"

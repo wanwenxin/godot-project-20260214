@@ -399,7 +399,7 @@ flowchart TD
 
 ### 4.1 `game.gd`
 
-- `victory_wave`：通关波次（默认 5），达到该波次时显示通关界面并跳过升级/商店流程
+- `victory_wave`：通关波次（由预设关卡数量决定，标准预设为 10 关），达到该波次时显示通关界面并跳过升级/商店流程
 - `grass_count_min` / `grass_count_max`：草丛数量范围（默认 4~9），每关随机
 - `shallow_water_count_min` / `shallow_water_count_max`：浅水数量范围（默认 3~6）
 - `deep_water_count_min` / `deep_water_count_max`：深水数量范围（默认 2~5）
