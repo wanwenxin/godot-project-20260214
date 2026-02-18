@@ -283,6 +283,7 @@
 - **施法速度**：玩家属性 `spell_speed`，系数越高魔法冷却越短；升级与道具可提升
 - 玩家最多装备 3 个魔法，左右方向键切换当前魔法，E 键施放（cast_magic、magic_prev、magic_next）
 - 确认后：`line` 调用 `cast(caster, dir)`，圆区域调用 `cast_at_position(caster, world_pos)`
+- **施法 VFX**：一次性魔法（绯焰弹、霜华刺、冲击波）在施放点实例化 `scenes/vfx/magic_cast_burst.tscn`，短时粒子后自动 queue_free；持续魔法（蚀魂域）在 `burn_zone_node` 的 _ready 中挂接 `scenes/vfx/magic_zone_fire.tscn`，随 zone 存在而持续发射，随 zone 释放而消失。详见 CODE_INDEX「2.6b2 魔法施法 VFX」。
 - 魔法可在商店购买；世界观与命名参考 `docs/WORLD_BACKGROUND.md`
 
 - `scripts/ui/main_menu.gd`

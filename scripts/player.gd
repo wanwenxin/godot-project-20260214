@@ -300,7 +300,7 @@ func get_current_magic_index() -> int:
 	return clampi(_current_magic_index, 0, maxi(0, _equipped_magics.size() - 1))
 
 
-## [自定义] 供 HUD 获取魔法 UI 数据：{id, def, icon_path, remaining_cd, total_cd, is_current}。
+## [自定义] 供 HUD 获取魔法 UI 数据：含 id、name_key、affix_name_keys、icon_path、冷却、is_current。
 func get_magic_ui_data() -> Array:
 	var result: Array = []
 	for i in range(_equipped_magics.size()):
@@ -310,9 +310,20 @@ func get_magic_ui_data() -> Array:
 		var cooldown: float = float(def.get("cooldown", 1.0))
 		var total_cd: float = cooldown / maxf(0.1, spell_speed)
 		var remaining: float = _magic_cooldowns.get(magic_id, 0.0)
+		var name_key: String = str(def.get("name_key", "magic.%s.name" % magic_id))
+		var affix_name_keys: Array[String] = []
+		for key in ["range_affix_id", "effect_affix_id", "element_affix_id"]:
+			var aid: String = str(def.get(key, ""))
+			if aid.is_empty():
+				continue
+			var affix_def: Dictionary = MagicAffixDefs.get_affix_def(aid)
+			if not affix_def.is_empty():
+				affix_name_keys.append(str(affix_def.get("name_key", "")))
 		result.append({
 			"id": magic_id,
 			"def": def,
+			"name_key": name_key,
+			"affix_name_keys": affix_name_keys,
 			"icon_path": str(def.get("icon_path", "")),
 			"remaining_cd": remaining,
 			"total_cd": total_cd,

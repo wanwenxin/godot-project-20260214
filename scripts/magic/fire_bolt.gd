@@ -2,6 +2,7 @@ extends MagicBase
 
 # 火球术：直线弹道，命中敌人造成火焰伤害并附着火元素。
 var _scene: PackedScene  # 弹道场景，运行时加载
+var _burst_scene: PackedScene = preload("res://scenes/vfx/magic_cast_burst.tscn")
 
 
 func _init() -> void:
@@ -34,4 +35,15 @@ func cast(caster: Node2D, target_dir: Vector2) -> bool:
 	bullet.set("bullet_type", "laser")
 	bullet.set("bullet_color", Color(1.0, 0.4, 0.1, 1.0))
 	bullet.set("owner_ref", caster)
+	_spawn_cast_burst(root, caster.global_position, target_dir.normalized(), Color(1.0, 0.45, 0.1, 1.0), false)
 	return true
+
+
+## [自定义] 在指定位置生成一次性施法粒子爆发（硬编码路径：scenes/vfx/magic_cast_burst.tscn）
+func _spawn_cast_burst(parent: Node, pos: Vector2, dir: Vector2, burst_color: Color, radial_360: bool) -> void:
+	var burst: Node2D = _burst_scene.instantiate()
+	burst.set_meta("burst_color", burst_color)
+	burst.set_meta("cast_direction", dir)
+	burst.set_meta("radial_360", radial_360)
+	burst.global_position = pos
+	parent.add_child(burst)

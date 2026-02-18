@@ -31,4 +31,11 @@ func cast(caster: Node2D, target_dir: Vector2) -> bool:
 	bullet.set("bullet_type", "laser")
 	bullet.set("bullet_color", Color(0.4, 0.7, 1.0, 1.0))
 	bullet.set("owner_ref", caster)
+	var burst_scene: PackedScene = preload("res://scenes/vfx/magic_cast_burst.tscn")
+	var burst: Node2D = burst_scene.instantiate()
+	burst.set_meta("burst_color", Color(0.4, 0.75, 1.0, 1.0))
+	burst.set_meta("cast_direction", target_dir.normalized())
+	burst.set_meta("radial_360", false)
+	burst.global_position = caster.global_position
+	root.add_child(burst)
 	return true

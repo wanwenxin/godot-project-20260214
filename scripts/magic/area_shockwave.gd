@@ -30,5 +30,12 @@ func cast_at_position(caster: Node2D, world_pos: Vector2) -> bool:
 			GameManager.add_record_damage_dealt(power)
 			if is_instance_valid(caster) and caster.has_method("try_lifesteal"):
 				caster.try_lifesteal()
+	var burst_scene: PackedScene = preload("res://scenes/vfx/magic_cast_burst.tscn")
+	var burst: Node2D = burst_scene.instantiate()
+	burst.set_meta("burst_color", Color(0.85, 0.85, 0.9, 1.0))
+	burst.set_meta("cast_direction", Vector2.RIGHT)
+	burst.set_meta("radial_360", true)
+	burst.global_position = world_pos
+	tree.current_scene.add_child(burst)
 	AudioManager.play_magic_cast()
 	return true

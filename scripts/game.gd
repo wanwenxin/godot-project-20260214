@@ -526,6 +526,7 @@ func _on_shop_refresh_requested() -> void:
 	var stats: Dictionary = player.get_full_stats_for_pause() if is_instance_valid(player) and player.has_method("get_full_stats_for_pause") else {}
 	stats["wave"] = wave
 	hud.show_weapon_shop(_pending_shop_weapon_options, GameManager.run_currency, player.get_weapon_capacity_left(), wave, stats)
+	hud.set_currency(GameManager.run_currency)
 
 
 ## [系统] HUD weapon_shop_closed 信号回调，关闭商店并开始波次或完成波次结算。

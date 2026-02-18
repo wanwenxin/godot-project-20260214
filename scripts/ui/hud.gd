@@ -75,10 +75,12 @@ var _magic_panel: PanelContainer  # 左下角魔法面板
 # 魔法冷却节流：remaining_cd 变化阈值（秒），低于此值不更新冷却遮罩
 const MAGIC_CD_UPDATE_THRESHOLD := 0.05
 var _last_magic_cd_per_slot: Array[float] = []  # 每槽上次显示的 remaining_cd
-var _magic_slots: Array = []  # 每项 {panel, icon, cd_overlay}
+var _last_magic_current_index := -1  # 上次当前选中槽索引，用于切换时立即更新边框
+var _magic_slots: Array = []  # 每项 {panel, icon, cd_overlay, name_label, affix_label}
 
 const HUD_FONT_SIZE := 18  # 统一基准字号，便于阅读
-const MAGIC_SLOT_SIZE := 56  # 魔法槽尺寸
+const MAGIC_SLOT_SIZE := 72  # 魔法槽图标尺寸（放大便于阅读）
+const MAGIC_SLOT_EXTRA_HEIGHT := 36  # 名称+词条区域高度
 
 
 func _ready() -> void:
@@ -318,13 +320,20 @@ func set_armor(value: int) -> void:
 
 
 ## 更新左下角魔法面板：magic_data 为 get_magic_ui_data() 返回的数组。
-## 魔法冷却遮罩按 remaining_cd 变化阈值（0.05s）节流，减少无效更新。
+## 魔法冷却遮罩按 remaining_cd 变化阈值（0.05s）节流；is_current 变化时立即更新边框。
 func set_magic_ui(magic_data: Array) -> void:
 	if _magic_panel == null:
 		return
 	_magic_panel.visible = not magic_data.is_empty()
-	# 脏检查：若各槽 is_current、icon_path、remaining_cd（阈值内）均未变则跳过
 	var need_update := false
+	var current_index := -1
+	for idx in range(magic_data.size()):
+		if magic_data[idx].get("is_current", false):
+			current_index = idx
+			break
+	if current_index != _last_magic_current_index:
+		need_update = true
+		_last_magic_current_index = current_index
 	if magic_data.size() != _last_magic_cd_per_slot.size():
 		need_update = true
 		_last_magic_cd_per_slot.resize(magic_data.size())
@@ -333,16 +342,10 @@ func set_magic_ui(magic_data: Array) -> void:
 		for i in range(mini(_magic_slots.size(), magic_data.size())):
 			var data: Dictionary = magic_data[i]
 			var remaining: float = float(data.get("remaining_cd", 0.0))
-			var is_current: bool = data.get("is_current", false)
-			var icon_path: String = str(data.get("icon_path", ""))
 			var last_cd: float = _last_magic_cd_per_slot[i] if i < _last_magic_cd_per_slot.size() else -1.0
 			if abs(remaining - last_cd) > MAGIC_CD_UPDATE_THRESHOLD:
 				need_update = true
 				break
-			# 简化：仅按 cd 节流，is_current/icon 变化频率低，若 cd 未超阈值则整体可跳过
-		# 注：is_current 切换时需立即更新边框，故不能仅靠 cd。改为：任意槽有显著变化则更新
-		# 为简化，若 need_update 仍为 false，检查 is_current 与 icon 是否变化（需额外缓存）
-		# 实际中 is_current 仅切换魔法时变，icon 不变，主要开销在 cd_overlay。按 cd 节流即可。
 	if not need_update:
 		return
 	for i in range(_magic_slots.size()):
@@ -350,6 +353,8 @@ func set_magic_ui(magic_data: Array) -> void:
 		var panel: Panel = slot.panel
 		var icon: TextureRect = slot.icon
 		var cd_overlay: ColorRect = slot.cd_overlay
+		var name_label: Label = slot.get("name_label")
+		var affix_label: Label = slot.get("affix_label")
 		if i >= magic_data.size():
 			panel.visible = false
 			continue
@@ -370,7 +375,14 @@ func set_magic_ui(magic_data: Array) -> void:
 			cd_overlay.offset_bottom = 4 + (MAGIC_SLOT_SIZE - 8) * ratio
 		else:
 			cd_overlay.visible = false
-		# 更新缓存供下次脏检查
+		if name_label != null:
+			name_label.text = LocalizationManager.tr_key(str(data.get("name_key", "")))
+		if affix_label != null:
+			var keys: Array = data.get("affix_name_keys", [])
+			var parts: Array[String] = []
+			for k in keys:
+				parts.append(LocalizationManager.tr_key(str(k)))
+			affix_label.text = " · ".join(parts)
 		if i >= _last_magic_cd_per_slot.size():
 			_last_magic_cd_per_slot.resize(i + 1)
 			_last_magic_cd_per_slot.fill(-1.0)
@@ -631,8 +643,8 @@ func _build_runtime_ui() -> void:
 	_magic_panel.anchor_right = 0.0
 	_magic_panel.anchor_bottom = 1.0
 	_magic_panel.offset_left = 12
-	_magic_panel.offset_top = -MAGIC_SLOT_SIZE - 24
-	_magic_panel.offset_right = 12 + MAGIC_SLOT_SIZE * 3 + 16
+	_magic_panel.offset_top = -(MAGIC_SLOT_SIZE + MAGIC_SLOT_EXTRA_HEIGHT) - 24
+	_magic_panel.offset_right = 12 + (MAGIC_SLOT_SIZE + 8) * 3 + 16
 	_magic_panel.offset_bottom = -12
 	_magic_panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
 	root.add_child(_magic_panel)
@@ -641,9 +653,15 @@ func _build_runtime_ui() -> void:
 	_magic_panel.add_child(magic_row)
 	for i in range(3):
 		var slot_panel := Panel.new()
-		slot_panel.custom_minimum_size = Vector2(MAGIC_SLOT_SIZE, MAGIC_SLOT_SIZE)
+		slot_panel.custom_minimum_size = Vector2(MAGIC_SLOT_SIZE + 8, MAGIC_SLOT_SIZE + MAGIC_SLOT_EXTRA_HEIGHT)
 		slot_panel.add_theme_stylebox_override("panel", _make_magic_slot_style(false))
 		magic_row.add_child(slot_panel)
+		var vbox := VBoxContainer.new()
+		vbox.add_theme_constant_override("separation", 2)
+		slot_panel.add_child(vbox)
+		var icon_container := Control.new()
+		icon_container.custom_minimum_size = Vector2(MAGIC_SLOT_SIZE, MAGIC_SLOT_SIZE)
+		vbox.add_child(icon_container)
 		var icon := TextureRect.new()
 		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 		icon.offset_left = 4
@@ -652,7 +670,7 @@ func _build_runtime_ui() -> void:
 		icon.offset_bottom = -4
 		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		slot_panel.add_child(icon)
+		icon_container.add_child(icon)
 		var cd_overlay := ColorRect.new()
 		cd_overlay.anchor_left = 0.0
 		cd_overlay.anchor_right = 1.0
@@ -664,8 +682,19 @@ func _build_runtime_ui() -> void:
 		cd_overlay.offset_bottom = 4
 		cd_overlay.color = Color(0, 0, 0, 0.6)
 		cd_overlay.visible = false
-		slot_panel.add_child(cd_overlay)
-		_magic_slots.append({"panel": slot_panel, "icon": icon, "cd_overlay": cd_overlay})
+		icon_container.add_child(cd_overlay)
+		var name_label := Label.new()
+		name_label.add_theme_font_size_override("font_size", 12)
+		name_label.clip_text = true
+		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		vbox.add_child(name_label)
+		var affix_label := Label.new()
+		affix_label.add_theme_font_size_override("font_size", 10)
+		affix_label.add_theme_color_override("font_color", Color(0.75, 0.8, 0.85))
+		affix_label.clip_text = true
+		affix_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		vbox.add_child(affix_label)
+		_magic_slots.append({"panel": slot_panel, "icon": icon, "cd_overlay": cd_overlay, "name_label": name_label, "affix_label": affix_label})
 	_magic_panel.visible = false
 
 	_upgrade_panel = Panel.new()

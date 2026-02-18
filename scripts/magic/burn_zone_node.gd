@@ -5,6 +5,14 @@ extends Node2D
 var _elapsed := 0.0
 var _tick_cd := 0.0
 
+var _zone_fire_scene: PackedScene = preload("res://scenes/vfx/magic_zone_fire.tscn")  # 持续型区域粒子，与 zone 同生共死
+
+
+## [系统] 挂接持续型火焰粒子（scenes/vfx/magic_zone_fire.tscn），随本节点 queue_free 一起释放
+func _ready() -> void:
+	var vfx: Node2D = _zone_fire_scene.instantiate()
+	add_child(vfx)
+
 
 func _process(delta: float) -> void:
 	_elapsed += delta

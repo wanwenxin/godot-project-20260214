@@ -144,6 +144,15 @@
 | [resources/upgrade_defs.gd](resources/upgrade_defs.gd) | 升级配置（含 spell_speed） |
 | [resources/shop_item_defs.gd](resources/shop_item_defs.gd) | 商店道具配置 |
 
+### 2.6b2 魔法施法 VFX
+
+| 文件 | 职责 | 挂接位置 |
+|------|------|----------|
+| [scripts/vfx/magic_cast_burst.gd](scripts/vfx/magic_cast_burst.gd) | 一次性施法粒子爆发（CPUParticles2D） | fire_bolt、ice_shard、area_shockwave 在 cast/cast_at_position 处实例化 `scenes/vfx/magic_cast_burst.tscn` 并设置 meta（burst_color、cast_direction、radial_360） |
+| [scripts/vfx/magic_zone_fire.gd](scripts/vfx/magic_zone_fire.gd) | 持续型区域粒子（燃烧区域） | burn_zone_node 在 _ready 中实例化 `scenes/vfx/magic_zone_fire.tscn` 并 add_child，随 zone queue_free 一起释放 |
+| [scenes/vfx/magic_cast_burst.tscn](scenes/vfx/magic_cast_burst.tscn) | 一次性爆发场景 | 由魔法脚本运行时实例化 |
+| [scenes/vfx/magic_zone_fire.tscn](scenes/vfx/magic_zone_fire.tscn) | 持续型火焰区域场景 | 由 burn_zone_node 挂为子节点 |
+
 ### 2.6c 词条系统
 
 | 文件 | 职责 | 关键导出/信号 |
