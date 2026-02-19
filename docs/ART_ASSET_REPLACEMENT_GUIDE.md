@@ -41,12 +41,12 @@
 
 | 资源 | 用途 | 尺寸 | 路径 | 格式 |
 |------|------|------|------|------|
-| player_scheme_0 | 角色 1 外观 | 24×24 | `res://assets/characters/player_scheme_0.png` | PNG |
-| player_scheme_1 | 角色 2 外观 | 24×24 | `res://assets/characters/player_scheme_1.png` | PNG |
-| player_scheme_0_sheet | 角色 1 8 方向精灵图 | 192×72 | `res://assets/characters/player_scheme_0_sheet.png` | PNG |
-| player_scheme_1_sheet | 角色 2 8 方向精灵图 | 192×72 | `res://assets/characters/player_scheme_1_sheet.png` | PNG |
+| player_scheme_0 | 角色 1 外观 | 32×32 | `res://assets/characters/player_scheme_0.png` | PNG |
+| player_scheme_1 | 角色 2 外观 | 32×32 | `res://assets/characters/player_scheme_1.png` | PNG |
+| player_scheme_0_sheet | 角色 1 8 方向精灵图 | 256×416 | `res://assets/characters/player_scheme_0_sheet.png` | PNG |
+| player_scheme_1_sheet | 角色 2 8 方向精灵图 | 256×416 | `res://assets/characters/player_scheme_1_sheet.png` | PNG |
 
-精灵图结构：8 列 × 3 行（站立、行走帧1、行走帧2），每格 24×24。方向顺序：E, SE, S, SW, W, NW, N, NE。
+精灵图结构：8 列 × 13 行（站立 1 帧 + 行走 12 帧），每格 32×32。方向顺序：E, SE, S, SW, W, NW, N, NE。精细度需能展示细节。
 
 ---
 
@@ -54,15 +54,16 @@
 
 | 资源 | 用途 | 尺寸 | 路径 | 格式 |
 |------|------|------|------|------|
-| enemy_melee | 近战敌人 | 18×18 | `res://assets/enemies/enemy_melee.png` | PNG |
-| enemy_ranged | 远程敌人 | 18×18 | `res://assets/enemies/enemy_ranged.png` | PNG |
-| enemy_tank | 坦克敌人 | 18×18 | `res://assets/enemies/enemy_tank.png` | PNG |
-| enemy_boss | Boss | 18×18 | `res://assets/enemies/enemy_boss.png` | PNG |
-| enemy_aquatic | 水中敌人 | 18×18 | `res://assets/enemies/enemy_aquatic.png` | PNG |
-| enemy_dasher | 冲刺敌人 | 18×18 | `res://assets/enemies/enemy_dasher.png` | PNG |
-| enemy_*_sheet | 6 种敌人 8 方向精灵图 | 144×54 | `res://assets/enemies/enemy_*_sheet.png` | PNG |
+| enemy_melee | 近战敌人 | 24×24 | `res://assets/enemies/enemy_melee.png` | PNG |
+| enemy_ranged | 远程敌人 | 24×24 | `res://assets/enemies/enemy_ranged.png` | PNG |
+| enemy_tank | 坦克敌人 | 24×24 | `res://assets/enemies/enemy_tank.png` | PNG |
+| enemy_boss | Boss | 72×72 | `res://assets/enemies/enemy_boss.png` | PNG（BOSS 尺寸单独） |
+| enemy_aquatic | 水中敌人 | 24×24 | `res://assets/enemies/enemy_aquatic.png` | PNG |
+| enemy_dasher | 冲刺敌人 | 24×24 | `res://assets/enemies/enemy_dasher.png` | PNG |
+| enemy_*_sheet | 普通敌人 8 方向精灵图 | 192×168 | `res://assets/enemies/enemy_*_sheet.png` | PNG |
+| enemy_*_boss_sheet | BOSS 8 方向精灵图 | 576×504 | `res://assets/enemies/enemy_*_boss_sheet.png` | PNG |
 
-精灵图结构：8 列 × 3 行（站立、行走帧1、行走帧2），每格 18×18。
+精灵图结构：普通敌人 8 列 × 7 行（站立 1 帧 + 行走 6 帧），每格 24×24；BOSS 8 列 × 7 行，每格 72×72。精细度需能展示细节。
 
 ---
 
