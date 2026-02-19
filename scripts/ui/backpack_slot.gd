@@ -5,6 +5,7 @@ class_name BackpackSlot
 # 缺图时使用 make_color_texture 生成占位图。武器槽支持合并模式点击。
 # 支持点击交换：第一次点击选中（绿色描边），第二次点击同类型另一槽交换，右键取消。
 const SLOT_SIZE := 48
+const SLOT_SIZE_COMPACT := 44  # 紧凑模式槽位尺寸，可在 BackpackPanel 中配置使用以多显示几项
 const PLACEHOLDER_COLOR := Color(0.5, 0.55, 0.6, 1.0)
 const NAME_FONT_SIZE := 12
 

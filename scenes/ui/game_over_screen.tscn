@@ -67,7 +67,8 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 20
 theme_override_constants/side_margin = 16
-theme_override_constants/top_margin = 16
+theme_override_constants/top_margin = 20
+focus_neighbor_bottom = NodePath("../MenuButton")
 tab_position = 0
 
 [node name="ScoreTabContainer" type="VBoxContainer" parent="Root/Panel/Margin/VBox/TabContainer"]
@@ -88,4 +89,5 @@ theme_override_constants/separation = 12
 
 [node name="MenuButton" type="Button" parent="Root/Panel/Margin/VBox"]
 layout_mode = 2
+focus_neighbor_top = NodePath("../TabContainer")
 text = "Back to Menu"

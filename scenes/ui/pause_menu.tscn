@@ -69,7 +69,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 20
 theme_override_constants/side_margin = 16
-theme_override_constants/top_margin = 16
+theme_override_constants/top_margin = 20
 tab_position = 0
 
 [node name="SystemTab" type="VBoxContainer" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs"]
@@ -102,10 +102,12 @@ autowrap_mode = 3
 
 [node name="ResumeButton" type="Button" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox"]
 layout_mode = 2
+focus_neighbor_bottom = NodePath("../MainMenuButton")
 text = "Resume"
 
 [node name="MainMenuButton" type="Button" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox"]
 layout_mode = 2
+focus_neighbor_top = NodePath("../ResumeButton")
 text = "Main Menu"
 
 [node name="BackpackTabContainer" type="VBoxContainer" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs"]

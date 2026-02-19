@@ -62,6 +62,7 @@ func _make_scroll_vbox() -> VBoxContainer:
 
 func _make_scroll_vbox_for_parent(parent: Control) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", ITEM_SEP)

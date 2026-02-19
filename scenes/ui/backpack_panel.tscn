@@ -45,8 +45,8 @@ text = "Cancel"
 [node name="WeaponGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/LeftVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
 
 [node name="MagicSep" type="HSeparator" parent="ContentPanel/ContentMargin/LeftVBox"]
 layout_mode = 2
@@ -60,8 +60,8 @@ text = "Magics"
 [node name="MagicGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/LeftVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
 
 [node name="ItemSep" type="HSeparator" parent="ContentPanel/ContentMargin/LeftVBox"]
 layout_mode = 2
@@ -75,8 +75,11 @@ text = "Items"
 [node name="ItemGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/LeftVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="PanelSeparator" type="VSeparator" parent="."]
+layout_mode = 2
 
 [node name="DetailPanel" type="PanelContainer" parent="."]
 custom_minimum_size = Vector2(280, 0)
@@ -92,6 +95,7 @@ theme_override_constants/margin_bottom = 8
 
 [node name="DetailScroll" type="ScrollContainer" parent="DetailPanel/DetailMargin"]
 layout_mode = 2
+vertical_scroll_mode = 1
 
 [node name="DetailContent" type="VBoxContainer" parent="DetailPanel/DetailMargin/DetailScroll"]
 layout_mode = 2

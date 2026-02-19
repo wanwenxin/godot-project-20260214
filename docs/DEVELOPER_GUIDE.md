@@ -460,6 +460,22 @@ flowchart TD
 **经验**
 - `XP_BASE`、`XP_CURVE`：经验曲线基数与指数（升级所需 = XP_BASE × level^XP_CURVE）
 
+### 4.0b `UiThemeConfig`（resources/ui_theme_config.gd）
+
+修改 [resources/ui_theme.tres](resources/ui_theme.tres) 或 [resources/ui_theme_config.gd](resources/ui_theme_config.gd) 可统一调整 UI 主题、边距、字体与视觉层次。
+
+**颜色**
+- `modal_backdrop`、`modal_panel_bg`、`modal_panel_border`：模态背景、面板背景、边框
+- `content_panel_bg`、`detail_panel_bg`：背包 ContentPanel/DetailPanel 背景色（略深/略浅区分）
+
+**边距与间距**
+- `margin_default`、`margin_small`、`margin_tight`：常用边距（默认 32/24/16）
+- `tab_font_size`、`content_font_size`：Tab 与内容区字号（默认 20/18）
+- `separation_default`、`separation_tight`：容器间距（默认 12/8）
+
+**可访问性**
+- `font_scale`：字体缩放系数（默认 1.0），供多语言/无障碍适配；使用 `get_scaled_font_size(base_size)` 获取缩放后字号
+
 ### 4.1 `game.gd`
 
 - `victory_wave`：通关波次（由预设关卡数量决定，标准预设为 10 关），达到该波次时显示通关界面并跳过升级/商店流程
@@ -827,6 +843,29 @@ ObjectPool.recycle_enemy(enemy)
 - `scenes/ui/pause_menu.tscn`：PauseTabs 填满，BackpackTabContainer/StatsContainer 直接作为 Tab 子节点
 - `scenes/ui/settings_menu.tscn`、`encyclopedia_menu.tscn`：去掉 CenterContainer 与固定宽高
 - `scenes/ui/backpack_overlay.tscn`、`hud.tscn`：BackpackScroll 填满或改为 BackpackTabContainer
+
+### 8.3.2 UI 优化建议实现（2026-02-19）
+
+**布局与信息密度**
+- Tab 标签：`top_margin = 20`、`side_margin = 16`，使标签更紧凑
+- 背包网格：`h_separation`/`v_separation` 降至 6；`BackpackSlot.SLOT_SIZE_COMPACT = 44` 可选紧凑槽位
+
+**响应式与边距**
+- 全屏面板根节点 `anchors_preset = 15`，子级用 `size_flags` 填满
+- 边距常量：`UiThemeConfig.margin_default`/`margin_small`/`margin_tight` 供各面板引用
+
+**滚动条**
+- ScrollContainer 显式 `vertical_scroll_mode = 1`（SCROLL_MODE_AUTO）按需显示
+
+**视觉层次**
+- ContentPanel/DetailPanel 使用 `get_panel_stylebox_for_bg()` 区分背景色，中间 VSeparator 强化分区
+
+**可访问性**
+- 暂停、设置、结算等关键按钮设置 `focus_neighbor_*` 支持键盘/手柄导航
+- `UiThemeConfig.font_scale`、`get_scaled_font_size()` 预留字体缩放
+
+**性能扩展点**
+- 若某 Tab 将来有上百条目，可考虑 ItemList 或虚拟列表，仅渲染可见项；当前规模暂不实现
 
 ---
 

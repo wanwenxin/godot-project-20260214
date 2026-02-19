@@ -41,6 +41,7 @@ func _init() -> void:
 	var content_width := TOOLTIP_WIDTH - MARGIN * 2
 	_scroll.custom_minimum_size = Vector2(content_width, 0)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	margin.add_child(_scroll)
 	# 简单模式：单 Label，文本区宽度为父级 90%
 	_label = Label.new()

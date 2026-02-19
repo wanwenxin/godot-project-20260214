@@ -30,6 +30,13 @@ var _swap_slot_type: String = ""
 var _swap_panel_ref: PanelContainer = null  # 当前选中槽位的父 Panel，用于绿色描边
 
 
+## [系统] 应用 ContentPanel/DetailPanel 背景区分样式，强化视觉层次。
+func _ready() -> void:
+	var theme_cfg := UiThemeConfig.load_theme()
+	$ContentPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_for_bg(theme_cfg.content_panel_bg))
+	$DetailPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_for_bg(theme_cfg.detail_panel_bg))
+
+
 ## [系统] 右键取消交换模式。
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
