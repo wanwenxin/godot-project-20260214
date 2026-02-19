@@ -21,6 +21,20 @@ var _merge_base_index: int = -1
 var _merge_weapon_id: String = ""
 var _merge_weapon_tier: int = -1
 var _slot_style: StyleBoxFlat = null  # 槽位边框样式缓存，复用减少分配
+# 点击交换模式：第一次点击选中，第二次点击同类型另一槽交换，右键取消
+var _swap_mode: bool = false
+var _swap_first_index: int = -1
+var _swap_slot_type: String = ""
+var _swap_panel_ref: PanelContainer = null  # 当前选中槽位的父 Panel，用于绿色描边
+
+
+## [系统] 右键取消交换模式。
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var ev := event as InputEventMouseButton
+		if ev.button_index == MOUSE_BUTTON_RIGHT and ev.pressed and _swap_mode:
+			_exit_swap_mode()
+			get_viewport().set_input_as_handled()
 
 
 ## 向上查找 CanvasLayer（暂停菜单），用于挂载 tooltip 保证同视口显示。
@@ -72,6 +86,7 @@ func set_stats(stats: Dictionary, shop_context: bool = false) -> void:
 	_shop_context = shop_context
 	_shop_wave = int(stats.get("wave", 0))
 	_exit_merge_mode()
+	_exit_swap_mode()
 	if _tooltip_popup == null:
 		_tooltip_popup = BackpackTooltipPopup.new()
 		_tooltip_popup.synthesize_requested.connect(_on_synthesize_requested)
@@ -133,6 +148,15 @@ func _get_slot_style() -> StyleBoxFlat:
 	return _slot_style
 
 
+## 返回选中状态的槽位样式（绿色描边）。
+func _get_selected_slot_style() -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.set_border_width_all(2)
+	s.border_color = Color(0.2, 0.9, 0.3, 1.0)
+	s.bg_color = Color(0.08, 0.09, 0.1, 0.6)
+	return s
+
+
 func _wrap_slot_in_panel(slot: BackpackSlot) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _get_slot_style())
@@ -151,10 +175,11 @@ func _make_weapon_slot(w: Dictionary, weapon_upgrades: Array, weapon_index: int,
 		tier_color = TierConfig.get_tier_color(int(w.get("tier", 0)))
 	var display_name := LocalizationManager.tr_key("weapon.%s.name" % str(w.get("id", "")))
 	var tip_data: Dictionary = _build_weapon_tooltip_data(w, weapon_upgrades, weapon_index, weapon_details)
-	# 传递 slot_type 和 slot_index 用于拖拽
+	# 传递 slot_type 和 slot_index 用于点击交换
 	slot.configure(icon_path, color_hint, "", _tooltip_popup, display_name, tier_color, tip_data, weapon_index, "weapon", weapon_index)
 	slot.slot_clicked.connect(_on_weapon_slot_clicked)
-	slot.slot_dropped.connect(_on_weapon_slot_dropped)
+	slot.slot_swap_clicked.connect(_on_slot_swap_clicked)
+	slot.slot_swap_cancel_requested.connect(_exit_swap_mode)
 	return _wrap_slot_in_panel(slot)
 
 
@@ -296,9 +321,10 @@ func _make_magic_slot(m: Dictionary, magic_index: int) -> PanelContainer:
 		tier_color = TierConfig.get_tier_color(int(m.get("tier", 0)))
 	var display_name := LocalizationManager.tr_key("magic.%s.name" % str(m.get("id", "")))
 	var tip_data: Dictionary = _build_magic_tooltip_data(m, def)
-	# 传递 slot_type 和 slot_index 用于拖拽
+	# 传递 slot_type 和 slot_index 用于点击交换
 	slot.configure(icon_path, BackpackSlot.PLACEHOLDER_COLOR, "", _tooltip_popup, display_name, tier_color, tip_data, -1, "magic", magic_index)
-	slot.slot_dropped.connect(_on_magic_slot_dropped)
+	slot.slot_swap_clicked.connect(_on_slot_swap_clicked)
+	slot.slot_swap_cancel_requested.connect(_exit_swap_mode)
 	return _wrap_slot_in_panel(slot)
 
 
@@ -493,6 +519,66 @@ func _exit_merge_mode() -> void:
 					(slot as BackpackSlot).set_merge_selectable(false)
 
 
+## 退出点击交换模式，移除选中槽位的绿色描边。
+func _exit_swap_mode() -> void:
+	if _swap_panel_ref != null:
+		_swap_panel_ref.add_theme_stylebox_override("panel", _get_slot_style())
+		_swap_panel_ref = null
+	_swap_mode = false
+	_swap_first_index = -1
+	_swap_slot_type = ""
+
+
+## 查找指定 slot_index 和 slot_type 的槽位所在 Panel。
+func _find_panel_for_slot(slot_index: int, slot_type: String) -> PanelContainer:
+	var grid: HFlowContainer = _weapon_grid if slot_type == "weapon" else _magic_grid
+	if grid == null:
+		return null
+	for i in grid.get_child_count():
+		var panel: Node = grid.get_child(i)
+		if panel.get_child_count() > 0:
+			var slot: Node = panel.get_child(0)
+			if slot is BackpackSlot and (slot as BackpackSlot).get_slot_index() == slot_index and (slot as BackpackSlot).get_slot_type() == slot_type:
+				return panel as PanelContainer
+	return null
+
+
+## [自定义] 点击交换：第一次点击选中，第二次点击同类型另一槽交换。
+func _on_slot_swap_clicked(slot_index: int, slot_type: String) -> void:
+	if _merge_mode:
+		return
+	if not _swap_mode:
+		# 进入交换模式，选中当前槽位
+		_swap_mode = true
+		_swap_first_index = slot_index
+		_swap_slot_type = slot_type
+		var panel := _find_panel_for_slot(slot_index, slot_type)
+		if panel != null:
+			if _swap_panel_ref != null:
+				_swap_panel_ref.add_theme_stylebox_override("panel", _get_slot_style())
+			_swap_panel_ref = panel
+			panel.add_theme_stylebox_override("panel", _get_selected_slot_style())
+	else:
+		# 已在交换模式，点击另一槽位则交换
+		if slot_type != _swap_slot_type or slot_index == _swap_first_index:
+			return
+		var game = get_tree().current_scene
+		var p = game.get_player_for_pause() if game != null and game.has_method("get_player_for_pause") else null
+		if _swap_slot_type == "weapon":
+			if GameManager.reorder_run_weapons(_swap_first_index, slot_index):
+				if p != null and p.has_method("sync_weapons_from_run"):
+					p.sync_weapons_from_run(GameManager.get_run_weapons())
+				_last_stats_hash = ""
+				if p != null and p.has_method("get_full_stats_for_pause"):
+					set_stats(p.get_full_stats_for_pause(), _shop_context)
+		else:
+			if p != null and p.has_method("reorder_magics") and p.reorder_magics(_swap_first_index, slot_index):
+				_last_stats_hash = ""
+				if p.has_method("get_full_stats_for_pause"):
+					set_stats(p.get_full_stats_for_pause(), _shop_context)
+		_exit_swap_mode()
+
+
 ## [自定义] 设置武器排序模式并刷新显示。
 func set_sort_mode(mode_index: int) -> void:
 	_current_sort_mode = clampi(mode_index, 0, SORT_MODES.size() - 1)
@@ -559,45 +645,3 @@ func batch_sell_by_tier(max_tier: int) -> Array[int]:
 			sold_indices.append(i)
 	
 	return sold_indices
-
-
-## [自定义] 武器槽拖拽换位处理。
-func _on_weapon_slot_dropped(from_index: int, to_index: int, _slot_type: String) -> void:
-	if from_index == to_index:
-		return
-	# 调用 GameManager 重新排序武器
-	if GameManager.reorder_run_weapons(from_index, to_index):
-		# 刷新显示
-		var game = get_tree().current_scene
-		if game != null and game.has_method("get_player_for_pause"):
-			var p = game.get_player_for_pause()
-			if p != null and p.has_method("sync_weapons_from_run"):
-				p.sync_weapons_from_run(GameManager.get_run_weapons())
-		# 触发重建
-		_last_stats_hash = ""
-		# 如果当前正在显示，刷新 stats
-		if _shop_context:
-			var stats: Dictionary = {}
-			if game != null and game.has_method("get_player_for_pause"):
-				var p = game.get_player_for_pause()
-				if p != null and p.has_method("get_full_stats_for_pause"):
-					stats = p.get_full_stats_for_pause()
-			set_stats(stats, _shop_context)
-
-
-## [自定义] 魔法槽拖拽换位处理。
-func _on_magic_slot_dropped(from_index: int, to_index: int, _slot_type: String) -> void:
-	if from_index == to_index:
-		return
-	# 调用 Player 重新排序魔法
-	var game = get_tree().current_scene
-	if game != null and game.has_method("get_player_for_pause"):
-		var p = game.get_player_for_pause()
-		if p != null and p.has_method("reorder_magics"):
-			if p.reorder_magics(from_index, to_index):
-				# 触发重建
-				_last_stats_hash = ""
-				var stats: Dictionary = {}
-				if p.has_method("get_full_stats_for_pause"):
-					stats = p.get_full_stats_for_pause()
-				set_stats(stats, _shop_context)

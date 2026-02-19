@@ -873,10 +873,8 @@ func _roll_shop_items(count: int) -> Array[Dictionary]:
 	return result
 
 
-## [自定义] 将武器装备到玩家，need_capacity 为 true 时检查容量。
-func _equip_weapon_to_player(weapon_id: String, need_capacity: bool, random_affix_ids: Array = []) -> bool:
-	if need_capacity and player.get_weapon_capacity_left() <= 0:
-		return false
+## [自定义] 将武器装备到玩家。武器持有无上限，need_capacity 已废弃，保留参数兼容调用方。
+func _equip_weapon_to_player(weapon_id: String, _need_capacity: bool = false, random_affix_ids: Array = []) -> bool:
 	return player.equip_weapon_by_id(weapon_id, random_affix_ids)
 
 

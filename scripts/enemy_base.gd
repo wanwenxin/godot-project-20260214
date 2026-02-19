@@ -462,7 +462,7 @@ func _on_hurt_area_body_entered(body: Node) -> void:
 	if not _can_contact_damage:
 		return
 	if body.is_in_group("players") and body.has_method("take_damage"):
-		body.take_damage(contact_damage)
+		body.take_damage(contact_damage, true)  # 碰撞伤害，受碰撞专用无敌保护
 		_can_contact_damage = false
 		# 进入短 CD，防止玩家与敌人重叠时持续掉血过快。
 		contact_timer.start()
@@ -473,7 +473,7 @@ func _on_contact_timer_timeout() -> void:
 	if hurt_area != null:
 		for body in hurt_area.get_overlapping_bodies():
 			if body.is_in_group("players") and body.has_method("take_damage"):
-				body.take_damage(contact_damage)
+				body.take_damage(contact_damage, true)  # 碰撞伤害，受碰撞专用无敌保护
 				contact_timer.start()
 				return
 	_can_contact_damage = true

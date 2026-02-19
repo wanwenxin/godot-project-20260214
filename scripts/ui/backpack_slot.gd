@@ -3,13 +3,14 @@ class_name BackpackSlot
 
 # 背包槽：图标 + 名称（按品级着色），鼠标悬浮时立即显示自定义 Tooltip。
 # 缺图时使用 make_color_texture 生成占位图。武器槽支持合并模式点击。
-# 支持拖拽换位。
+# 支持点击交换：第一次点击选中（绿色描边），第二次点击同类型另一槽交换，右键取消。
 const SLOT_SIZE := 48
 const PLACEHOLDER_COLOR := Color(0.5, 0.55, 0.6, 1.0)
 const NAME_FONT_SIZE := 12
 
 signal slot_clicked(weapon_index: int)
-signal slot_dropped(from_index: int, to_index: int, slot_type: String)
+signal slot_swap_clicked(slot_index: int, slot_type: String)
+signal slot_swap_cancel_requested
 
 var _icon_rect: TextureRect
 var _name_label: Label
@@ -81,8 +82,23 @@ func _on_mouse_exited() -> void:
 func _on_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var ev := event as InputEventMouseButton
-		if ev.button_index == MOUSE_BUTTON_LEFT and ev.pressed and _merge_selectable and _weapon_index >= 0:
-			slot_clicked.emit(_weapon_index)
+		if ev.button_index == MOUSE_BUTTON_LEFT and ev.pressed:
+			if _merge_selectable and _weapon_index >= 0:
+				slot_clicked.emit(_weapon_index)
+			elif _slot_type != "" and _slot_index >= 0:
+				slot_swap_clicked.emit(_slot_index, _slot_type)
+		elif ev.button_index == MOUSE_BUTTON_RIGHT and ev.pressed and _slot_type != "":
+			slot_swap_cancel_requested.emit()
+
+
+## 返回槽位索引，供背包面板查找对应 Panel 以设置选中描边。
+func get_slot_index() -> int:
+	return _slot_index
+
+
+## 返回槽位类型（"weapon" 或 "magic"），供背包面板判断是否同类型可交换。
+func get_slot_type() -> String:
+	return _slot_type
 
 
 ## 设置合并模式下是否可选为素材；不可选时置灰。
@@ -91,38 +107,3 @@ func set_merge_selectable(selectable: bool) -> void:
 	modulate = Color(1, 1, 1, 1) if selectable else Color(0.5, 0.5, 0.5, 0.8)
 
 
-# ---- 拖拽支持 ----
-
-func _get_drag_data(_at_position: Vector2) -> Variant:
-	if _slot_index < 0 or _slot_type == "":
-		return null
-	var data := {
-		"from_index": _slot_index,
-		"slot_type": _slot_type
-	}
-	# 创建拖拽预览
-	var preview := TextureRect.new()
-	if _icon_rect and _icon_rect.texture:
-		preview.texture = _icon_rect.texture
-	preview.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
-	preview.modulate.a = 0.7
-	set_drag_preview(preview)
-	return data
-
-
-func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
-	if not data is Dictionary:
-		return false
-	var d: Dictionary = data
-	# 只能同类型槽位之间拖拽
-	return d.get("slot_type", "") == _slot_type and _slot_index >= 0
-
-
-func _drop_data(_at_position: Vector2, data: Variant) -> void:
-	if not data is Dictionary:
-		return
-	var d: Dictionary = data
-	var from_index: int = int(d.get("from_index", -1))
-	if from_index < 0 or from_index == _slot_index:
-		return
-	slot_dropped.emit(from_index, _slot_index, _slot_type)

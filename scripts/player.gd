@@ -40,8 +40,8 @@ var _base_max_health := 100  # 角色基础血量上限，供词条叠加
 var _base_max_mana := 50  # 角色基础魔力上限，供词条叠加
 var _base_speed := 160.0  # 角色基础移速，供词条叠加
 var _magic_cooldowns: Dictionary = {}  # magic_id -> 剩余冷却秒数
-var _invulnerable_timer := 0.0
-var _pending_damages: Array[int] = []  # 帧内缓冲，帧末取最大后统一结算
+var _contact_invulnerable_timer := 0.0  # 仅碰撞伤害生效的无敌时间，远程伤害无无敌
+var _pending_damages: Array = []  # 帧内缓冲，每项 {amount, from_contact}，帧末取最大后统一结算
 var _character_data := {}
 var _character_traits: CharacterTraitsBase  # 角色特质，参与伤害等数值计算
 var _last_direction_index := 0  # 8 方向索引，用于精灵图
@@ -53,9 +53,8 @@ var _cached_nearest_enemy: Node2D
 var _terrain_effects: Dictionary = {}
 var _terrain_speed_multiplier := 1.0
 var _equipped_weapons: Array = []  # 已装备武器节点或 null（失败项），与 run_weapons 索引 1:1
-var _equipped_magics: Array = []  # 已装备魔法，最多 3 个，每项为 {def, instance}
+var _equipped_magics: Array = []  # 已装备魔法，数量由角色 usable_magic_count 决定，每项为 {def, instance}
 var _current_magic_index := 0  # 当前选中的魔法槽位，左右方向键切换
-const MAX_MAGICS := 3
 var _weapon_visuals: Array[Sprite2D] = []  # 武器环上的色块图标，随装备刷新
 const DEFAULT_TRAITS = preload("res://scripts/characters/character_traits_base.gd")
 const WEAPON_FALLBACK_SCRIPTS := {
@@ -79,9 +78,9 @@ const WEAPON_FALLBACK_SCRIPTS := {
 ## [系统] 节点入树时调用，设置碰撞层、初始化精灵与血量。
 func _ready() -> void:
 	add_to_group("players")
-	# 玩家仅与敌人发生实体碰撞，子弹通过 Area2D 处理。
+	# 玩家不受敌人阻挡（collision_mask 不含 layer 2），接触伤害由敌人 HurtArea 检测。
 	collision_layer = 1
-	collision_mask = 2 | 8
+	collision_mask = 8
 	scale = Vector2(GameConstants.PLAYER_SCALE, GameConstants.PLAYER_SCALE)
 	_update_sprite(0)
 	current_health = max_health
@@ -152,8 +151,8 @@ func _physics_process(delta: float) -> void:
 			heal(heal_amount)
 	current_mana = minf(current_mana + mana_regen * delta, float(max_mana))
 
-	if _invulnerable_timer > 0.0:
-		_invulnerable_timer -= delta
+	if _contact_invulnerable_timer > 0.0:
+		_contact_invulnerable_timer -= delta
 		var blink := int(Time.get_ticks_msec() / 80.0) % 2 == 0
 		sprite.modulate = Color(1.0, 1.0, 1.0, 0.45 if blink else 1.0)
 	else:
@@ -172,10 +171,18 @@ func _physics_process(delta: float) -> void:
 
 	# 帧末结算缓冲伤害：多伤害源只取最大。
 	if _pending_damages.size() > 0:
-		var max_amount: int = _pending_damages.max()
+		var max_amount: int = 0
+		var had_contact: bool = false
+		for d in _pending_damages:
+			var amt: int = int(d.get("amount", 0))
+			if amt > max_amount:
+				max_amount = amt
+			if d.get("from_contact", false):
+				had_contact = true
 		_pending_damages.clear()
 		current_health = max(current_health - max_amount, 0)
-		_invulnerable_timer = invulnerable_duration
+		if had_contact:
+			_contact_invulnerable_timer = invulnerable_duration
 		emit_signal("health_changed", current_health, max_health)
 		emit_signal("damaged", max_amount)
 		if current_health <= 0:
@@ -184,14 +191,13 @@ func _physics_process(delta: float) -> void:
 
 
 ## [自定义] 受到伤害，护甲减伤后缓冲到帧末与同帧其他伤害取最大后统一结算。
-func take_damage(amount: int) -> void:
-	# 无敌计时器 > 0 时忽略后续伤害，避免多次碰撞瞬间秒杀。
-	if _invulnerable_timer > 0.0:
+## from_contact=true 为碰撞伤害，受 _contact_invulnerable_timer 保护；远程伤害无无敌。
+func take_damage(amount: int, from_contact: bool = false) -> void:
+	if from_contact and _contact_invulnerable_timer > 0.0:
 		return
 	# 护甲减伤：至少造成 1 点伤害
 	var actual: int = maxi(1, amount - armor)
-	# 缓冲到帧末，与同帧其他伤害源取最大后统一结算。
-	_pending_damages.append(actual)
+	_pending_damages.append({"amount": actual, "from_contact": from_contact})
 
 
 ## [自定义] 恢复血量，不超过上限。
@@ -249,7 +255,7 @@ func set_move_inertia(value: float) -> void:
 	inertia_factor = clampf(value, 0.0, GameConstants.INERTIA_FACTOR_MAX)
 
 
-## [自定义] 装备魔法，最多 MAX_MAGICS 个；若已装备同 id 则升级品级。动态加载：script_path 来自 MagicDefs，
+## [自定义] 装备魔法，最多 get_usable_magic_count() 个；若已装备同 id 则升级品级。动态加载：script_path 来自 MagicDefs，
 ## ResourceLoader.exists 校验后 load()，失败返回 false；用 (GDScript).new() 实例化 MagicBase。
 func equip_magic(magic_id: String) -> bool:
 	for m in _equipped_magics:
@@ -258,7 +264,7 @@ func equip_magic(magic_id: String) -> bool:
 			m["tier"] = tier
 			_apply_magic_tier_to_instance(m)
 			return true
-	if _equipped_magics.size() >= MAX_MAGICS:
+	if _equipped_magics.size() >= get_usable_magic_count():
 		return false
 	var def := MagicDefs.get_magic_by_id(magic_id)
 	if def.is_empty():
@@ -304,9 +310,9 @@ func get_current_magic_index() -> int:
 ## [自定义] 供 HUD 获取魔法 UI 数据：含 id、name_key、affix_name_keys、icon_path、冷却、is_current。
 func get_magic_ui_data() -> Array:
 	var result: Array = []
-	const MAX_MAGIC_SLOTS := 3
-	# 始终返回 3 个槽位，空槽用占位数据
-	for i in range(MAX_MAGIC_SLOTS):
+	var slot_count: int = get_usable_magic_count()
+	# 返回与角色 usable_magic_count 一致的槽位数量，空槽用占位数据
+	for i in range(slot_count):
 		if i < _equipped_magics.size():
 			var mag: Dictionary = _equipped_magics[i]
 			var def: Dictionary = mag.get("def", {})
@@ -645,14 +651,15 @@ func get_equipped_weapon_details() -> Array[Dictionary]:
 				"type": str(def.get("type", "melee")),
 				"tier": wtier,
 				"tier_color": TierConfig.get_tier_color(wtier),
-				"icon_path": "",
+				"icon_path": str(def.get("icon_path", "")),
 				"color_hint": Color(0.8, 0.8, 0.8, 1.0),
 				"damage": 0,
 				"cooldown": 0.0,
 				"range": 0.0,
 				"type_affix_id": str(def.get("type_affix_id", "")),
 				"theme_affix_id": str(def.get("theme_affix_id", "")),
-				"random_affix_ids": w_run.get("random_affix_ids", []).duplicate()
+				"random_affix_ids": w_run.get("random_affix_ids", []).duplicate(),
+				"usable": is_usable
 			}
 			result.append(d)
 	return result
@@ -667,6 +674,11 @@ func get_usable_weapon_slots_left() -> int:
 ## [自定义] 获取可用武器槽位总数。
 func get_usable_weapon_count() -> int:
 	return int(_character_data.get("usable_weapon_count", GameManager.DEFAULT_USABLE_WEAPON_COUNT))
+
+
+## [自定义] 获取可用魔法槽位总数，由角色 usable_magic_count 决定，默认 3。
+func get_usable_magic_count() -> int:
+	return int(_character_data.get("usable_magic_count", GameManager.DEFAULT_USABLE_MAGIC_COUNT))
 
 
 ## [自定义] 获取还可装备到可用槽位的武器数量（容量剩余）。

@@ -198,8 +198,8 @@ func _apply_runtime_styles_and_refs() -> void:
 	_shop_tab_container.set_tab_title(0, LocalizationManager.tr_key("shop.tab_shop"))
 	_shop_tab_container.set_tab_title(1, LocalizationManager.tr_key("shop.tab_backpack"))
 	_shop_tab_container.set_tab_title(2, LocalizationManager.tr_key("shop.tab_stats"))
-	# 魔法槽：从场景 Slot0/1/2 组装 _magic_slots
-	for i in range(3):
+	# 魔法槽：从场景 Slot0~5 组装 _magic_slots，支持最多 6 个槽位（由角色 usable_magic_count 决定实际显示数）
+	for i in range(6):
 		var slot := _magic_panel.get_node("MagicRow/Slot%d" % i)
 		var vbox: VBoxContainer = slot.get_node("VBox")
 		var icon_container: Control = vbox.get_node("IconContainer")
@@ -546,7 +546,8 @@ func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_le
 		_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title_wave", {"wave": completed_wave})
 	else:
 		_weapon_title_label.text = LocalizationManager.tr_key("weapon.shop_title")
-	_weapon_tip_label.text = "  " + LocalizationManager.tr_key("weapon.shop_tip", {"gold": current_gold, "capacity": capacity_left})  # 首行缩进 2 格
+	var capacity_str := "∞" if capacity_left <= 0 else str(capacity_left)
+	_weapon_tip_label.text = "  " + LocalizationManager.tr_key("weapon.shop_tip", {"gold": current_gold, "capacity": capacity_str})  # 首行缩进 2 格
 	_fill_weapon_buttons(options, true, current_gold, capacity_left)
 	if _shop_tab_container:
 		_shop_tab_container.set_tab_hidden(1, false)

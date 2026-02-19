@@ -316,6 +316,165 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 text_overrun_behavior = 3
 
+[node name="Slot3" type="Panel" parent="Root/MagicPanel/MagicRow" unique_id=360799474]
+custom_minimum_size = Vector2(100, 138)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/MagicPanel/MagicRow/Slot3" unique_id=2067690073]
+layout_mode = 0
+theme_override_constants/separation = 2
+
+[node name="IconContainer" type="Control" parent="Root/MagicPanel/MagicRow/Slot3/VBox" unique_id=791773776]
+custom_minimum_size = Vector2(92, 92)
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="Root/MagicPanel/MagicRow/Slot3/VBox/IconContainer" unique_id=1846838838]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CdOverlay" type="ColorRect" parent="Root/MagicPanel/MagicRow/Slot3/VBox/IconContainer" unique_id=606913193]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="NameLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot3/VBox" unique_id=1087142677]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="AffixLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot3/VBox" unique_id=1711451977]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1)
+theme_override_font_sizes/font_size = 10
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="Slot4" type="Panel" parent="Root/MagicPanel/MagicRow" unique_id=293961868]
+custom_minimum_size = Vector2(100, 138)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/MagicPanel/MagicRow/Slot4" unique_id=453099411]
+layout_mode = 0
+theme_override_constants/separation = 2
+
+[node name="IconContainer" type="Control" parent="Root/MagicPanel/MagicRow/Slot4/VBox" unique_id=301035]
+custom_minimum_size = Vector2(92, 92)
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="Root/MagicPanel/MagicRow/Slot4/VBox/IconContainer" unique_id=1501857018]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CdOverlay" type="ColorRect" parent="Root/MagicPanel/MagicRow/Slot4/VBox/IconContainer" unique_id=41536096]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="NameLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot4/VBox" unique_id=1513534568]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="AffixLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot4/VBox" unique_id=198938859]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1)
+theme_override_font_sizes/font_size = 10
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="Slot5" type="Panel" parent="Root/MagicPanel/MagicRow" unique_id=1074278953]
+custom_minimum_size = Vector2(100, 138)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/MagicPanel/MagicRow/Slot5" unique_id=36922346]
+layout_mode = 0
+theme_override_constants/separation = 2
+
+[node name="IconContainer" type="Control" parent="Root/MagicPanel/MagicRow/Slot5/VBox" unique_id=1111107544]
+custom_minimum_size = Vector2(92, 92)
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="Root/MagicPanel/MagicRow/Slot5/VBox/IconContainer" unique_id=1786277325]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CdOverlay" type="ColorRect" parent="Root/MagicPanel/MagicRow/Slot5/VBox/IconContainer" unique_id=1881290602]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="NameLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot5/VBox" unique_id=1878102396]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="AffixLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot5/VBox" unique_id=435862131]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1)
+theme_override_font_sizes/font_size = 10
+clip_text = true
+text_overrun_behavior = 3
+
 [node name="UpgradePanel" type="Panel" parent="Root" unique_id=1994741714]
 visible = false
 layout_mode = 1
@@ -448,11 +607,6 @@ theme_override_constants/separation = 12
 custom_minimum_size = Vector2(100, 40)
 layout_mode = 2
 text = "Refresh"
-
-[node name="SkipBtn" type="Button" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/BtnRow" unique_id=1750460743]
-custom_minimum_size = Vector2(100, 40)
-layout_mode = 2
-text = "Skip"
 
 [node name="WeaponPanel" type="Panel" parent="Root" unique_id=1311039559]
 visible = false

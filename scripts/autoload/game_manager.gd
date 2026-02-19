@@ -8,6 +8,7 @@ const SCENE_CHARACTER_SELECT := "res://scenes/character_select.tscn"
 const SCENE_GAME := "res://scenes/game.tscn"
 const MAX_WEAPONS := 6
 const DEFAULT_USABLE_WEAPON_COUNT := 6  # 默认可用武器槽位数
+const DEFAULT_USABLE_MAGIC_COUNT := 3  # 默认可用魔法槽位数，与武器生效数量逻辑一致
 const WEAPON_DEFS_RESOURCE = preload("res://resources/weapon_defs.gd")
 const LEVEL_PRESET_PATHS := [
 	"res://resources/presets/preset_standard.tres",
@@ -35,7 +36,8 @@ var characters := [
 		"bullet_pierce": 0,
 		"color_scheme": 0,
 		"traits_path": "res://scripts/characters/rapid_shooter_traits.gd",
-		"usable_weapon_count": 6  # 默认可用武器槽位
+		"usable_weapon_count": 6,  # 默认可用武器槽位
+		"usable_magic_count": 3  # 默认可用魔法槽位，与武器生效数量逻辑一致
 	},
 	{
 		"id": 1,
@@ -50,7 +52,8 @@ var characters := [
 		"bullet_pierce": 1,
 		"color_scheme": 1,
 		"traits_path": "res://scripts/characters/heavy_gunner_traits.gd",
-		"usable_weapon_count": 6
+		"usable_weapon_count": 6,
+		"usable_magic_count": 3
 	}
 ]
 

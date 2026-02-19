@@ -92,7 +92,7 @@
   - 键盘+触控移动融合
   - 支持可配置移动惯性（`inertia_factor`）
   - 自动索敌与开火
-  - 无敌帧/受伤/死亡
+  - 受伤/死亡；**碰撞与无敌**：`collision_mask = 8`（不检测 layer 2 敌人），玩家可穿过敌人，接触伤害由敌人 HurtArea 触发；`take_damage(amount, from_contact)`：`from_contact=true` 为碰撞伤害，有 `_contact_invulnerable_timer` 无敌；远程伤害（`from_contact=false`）无无敌时间
   - 扩展属性：血量上限、魔力上限、护甲、近战/远程伤害加成、血量/魔力恢复、吸血概率（由词条系统聚合）
   - 魔法槽（最多 3 个），按 Q/E/R 释放
   - 升级应用：玩家相关升级走词条系统，武器相关升级传递至每把武器
@@ -297,7 +297,7 @@
 - **统一施法流程**：所有魔法均为按键 → 进入准备施法 → 显示施法范围 → 左键确认 / 右键取消；`range_type` 决定范围形状与确认后的调用方式
 - **魔法施法覆盖层**：`scripts/ui/magic_targeting_overlay.gd` 按 `range_type` 显示：`line` 直线（角色到鼠标）、`mouse_circle` 鼠标圆心圆、`char_circle` 角色圆心圆；左键施放、右键/Esc 取消
 - **施法速度**：玩家属性 `spell_speed`，系数越高魔法冷却越短；升级与道具可提升
-- 玩家最多装备 3 个魔法，左右方向键切换当前魔法，E 键施放（cast_magic、magic_prev、magic_next）
+- 玩家魔法槽位数量由角色 `usable_magic_count` 决定（默认 3），左右方向键切换当前魔法，E 键施放（cast_magic、magic_prev、magic_next）
 - 确认后：`line` 调用 `cast(caster, dir)`，圆区域调用 `cast_at_position(caster, world_pos)`
 - **施法 VFX**：一次性魔法（绯焰弹、霜华刺、冲击波）在施放点实例化 `scenes/vfx/magic_cast_burst.tscn`，短时粒子后自动 queue_free；持续魔法（蚀魂域）在 `burn_zone_node` 的 _ready 中挂接 `scenes/vfx/magic_zone_fire.tscn`，随 zone 存在而持续发射，随 zone 释放而消失。详见 CODE_INDEX「2.6b2 魔法施法 VFX」。
 - 魔法可在商店购买；世界观与命名参考 `docs/WORLD_BACKGROUND.md`
@@ -522,6 +522,8 @@ flowchart TD
 
 - `characters`：角色模板（含多弹/穿透字段）
 - `characters[].traits_path`：角色特质脚本路径，供 Player 加载并参与数值计算
+- `characters[].usable_weapon_count`：可用武器槽位数，默认 6
+- `characters[].usable_magic_count`：可用魔法槽位数，默认 3，与武器生效数量逻辑一致
 - `weapon_defs`：启动时从 `resources/weapon_defs.gd::WEAPON_DEFS` 载入
 
 ### 4.4 `terrain_zone.gd`
@@ -836,25 +838,26 @@ ObjectPool.recycle_enemy(enemy)
 - 玩家必须选择一项升级才能继续
 
 **相关文件**：
-- `scripts/ui/hud.gd`：移除 `SkipBtn` 引用
-- `scenes/ui/hud.tscn`：删除 `SkipBtn` 节点（或通过脚本隐藏）
+- `scenes/ui/hud.tscn`：已删除 `SkipBtn` 节点
 
-### 9.3 魔法 UI 始终显示
+### 9.3 魔法 UI 与动态槽位
 
 **改动内容**：
 - 魔法面板始终显示，无论是否有魔法
-- 无魔法时显示 3 个空槽位
-- `get_magic_ui_data()` 始终返回 3 个槽位结构
+- 魔法槽位数量由角色 `usable_magic_count` 决定（默认 3），与武器 `usable_weapon_count` 逻辑一致
+- `get_magic_ui_data()` 返回与 `get_usable_magic_count()` 一致的槽位数量，空槽用占位数据
+- HUD 预置 Slot0~5，按 `magic_data.size()` 显示/隐藏
 
 **相关文件**：
-- `scripts/ui/hud.gd`：`set_magic_ui()` 始终设置 `_magic_panel.visible = true`
-- `scripts/player.gd`：`get_magic_ui_data()` 始终返回 3 个槽位
+- `scripts/ui/hud.gd`：`set_magic_ui()` 始终设置 `_magic_panel.visible = true`，`_magic_slots` 支持最多 6 个槽
+- `scripts/player.gd`：`get_usable_magic_count()`、`get_magic_ui_data()` 按角色配置返回槽位
+- `scripts/autoload/game_manager.gd`：`characters` 中每角色含 `usable_magic_count`（默认 3）
 
 ### 9.4 背包武器无上限 + 仅前 N 把可用
 
 **改动内容**：
 - 移除武器持有上限（`MAX_WEAPONS`），可无限购买
-- 添加 `usable_weapon_count` 角色配置，默认可用 6 把
+- 添加 `usable_weapon_count`、`usable_magic_count` 角色配置，武器默认 6 把、魔法默认 3 个
 - 仅前 N 把武器参与战斗，超出部分仅存储在背包中
 - 武器详情添加 `usable` 标记
 
@@ -863,15 +866,15 @@ ObjectPool.recycle_enemy(enemy)
 - `scripts/player.gd`：`get_usable_weapon_count()`、`sync_weapons_from_run()` 仅同步前 N 把
 - `scripts/ui/backpack_panel.gd`：显示所有武器，但标记不可用状态
 
-### 9.5 背包武器与魔法拖拽换位
+### 9.5 背包武器与魔法点击交换
 
 **改动内容**：
-- 背包武器和魔法支持拖拽换位
-- 同类槽位之间可拖拽（武器↔武器，魔法↔魔法）
+- 背包武器和魔法支持点击交换：第一次点击选中（绿色描边），第二次点击同类型另一槽交换，右键取消
+- 同类槽位之间可交换（武器↔武器，魔法↔魔法）
 
 **相关文件**：
-- `scripts/ui/backpack_slot.gd`：实现 `_get_drag_data()`、`_can_drop_data()`、`_drop_data()`，新增 `slot_dropped` 信号
-- `scripts/ui/backpack_panel.gd`：处理 `slot_dropped` 信号，调用 `reorder_run_weapons()` 或 `reorder_magics()`
+- `scripts/ui/backpack_slot.gd`：`slot_swap_clicked(slot_index, slot_type)`、`slot_swap_cancel_requested` 信号；`get_slot_index()`、`get_slot_type()` 供面板查找
+- `scripts/ui/backpack_panel.gd`：`_on_slot_swap_clicked` 处理交换逻辑，`_exit_swap_mode` 取消选中，`_unhandled_input` 检测右键取消；调用 `reorder_run_weapons()` 或 `reorder_magics()`
 
 **相关文件**：
 - `scripts/ui/backpack_panel.gd`:`set_sort_mode()`、`set_filter_type()`、`batch_sell_by_tier()`
