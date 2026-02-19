@@ -8,6 +8,7 @@ signal merge_completed  # 合并成功后发出，供商店覆盖层刷新
 const BASE_FONT_SIZE := 18
 const SEP := "────"  # 分割线，无空行
 
+@onready var _instructions_label: Label = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/InstructionsLabel
 @onready var _weapon_grid: HFlowContainer = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponGrid
 @onready var _magic_grid: HFlowContainer = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/MagicGrid
 @onready var _item_grid: HFlowContainer = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/ItemGrid
@@ -30,11 +31,20 @@ var _swap_slot_type: String = ""
 var _swap_panel_ref: PanelContainer = null  # 当前选中槽位的父 Panel，用于绿色描边
 
 
-## [系统] 应用 ContentPanel/DetailPanel 背景区分样式（无边框，去除白边）。
+## [系统] 应用 ContentPanel/DetailPanel 背景区分样式（无边框，去除白边），设置操作说明文案。
 func _ready() -> void:
 	var theme_cfg := UiThemeConfig.load_theme()
 	$ContentPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_borderless(theme_cfg.content_panel_bg))
 	$DetailPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_borderless(theme_cfg.detail_panel_bg))
+	_refresh_instructions_label()
+	if LocalizationManager.language_changed.is_connected(_refresh_instructions_label) == false:
+		LocalizationManager.language_changed.connect(_refresh_instructions_label)
+
+
+## [自定义] 刷新操作说明文案。
+func _refresh_instructions_label() -> void:
+	if _instructions_label:
+		_instructions_label.text = LocalizationManager.tr_key("backpack.instructions")
 
 
 ## [系统] 右键取消交换模式。

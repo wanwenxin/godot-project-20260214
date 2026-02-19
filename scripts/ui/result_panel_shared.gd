@@ -227,10 +227,10 @@ static func _make_weapon_card(w: Dictionary) -> Control:
 	card_style.set_border_width_all(1)
 	card_style.border_color = Color(0.35, 0.36, 0.40, 1.0)
 	card_style.set_corner_radius_all(4)
-	card_style.content_margin_left = 10
-	card_style.content_margin_right = 10
-	card_style.content_margin_top = 10
-	card_style.content_margin_bottom = 10
+	card_style.content_margin_left = 16
+	card_style.content_margin_right = 16
+	card_style.content_margin_top = 16
+	card_style.content_margin_bottom = 16
 	card.add_theme_stylebox_override("panel", card_style)
 	var inner := VBoxContainer.new()
 	inner.add_theme_constant_override("separation", 4)

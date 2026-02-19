@@ -109,6 +109,7 @@
   "backpack.sell_price": "Sell price: {price} gold",
   "backpack.open": "Backpack",
   "backpack.detail_placeholder": "Click or hover to view details",
+  "backpack.instructions": "Click to swap · Right-click to cancel · Hover for details",
   "common.close": "Close",
   "common.yes": "Yes",
   "common.no": "No",

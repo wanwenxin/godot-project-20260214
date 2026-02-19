@@ -109,6 +109,7 @@
   "backpack.sell_price": "售卖价: {price} 金币",
   "backpack.open": "背包",
   "backpack.detail_placeholder": "点击或悬浮查看详情",
+  "backpack.instructions": "点击交换位置 · 右键取消 · 悬浮查看详情",
   "common.close": "关闭",
   "common.yes": "是",
   "common.no": "否",

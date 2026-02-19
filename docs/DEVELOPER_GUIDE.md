@@ -859,6 +859,11 @@ ObjectPool.recycle_enemy(enemy)
 - 全屏面板根节点 `anchors_preset = 15`，子级用 `size_flags` 填满
 - 边距常量：`UiThemeConfig.margin_default`/`margin_small`/`margin_tight` 供各面板引用
 
+**面板 padding 统一标准**（以波次间商店背包页为基准）
+- 所有面板内容区与边框/边缘至少保持 16px 距离（`margin_tight`）
+- HUD 升级面板、武器/商店面板：`UpgradeMargin`/`WeaponMargin` 使用 16
+- 背包 ContentPanel/DetailPanel、结算/图鉴卡片：`content_margin` 或 `MarginContainer` 使用 16
+
 **滚动条**
 - ScrollContainer 显式 `vertical_scroll_mode = 1`（SCROLL_MODE_AUTO）按需显示
 

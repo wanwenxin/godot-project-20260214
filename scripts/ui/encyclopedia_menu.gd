@@ -102,10 +102,10 @@ func _add_entry(vbox: VBoxContainer, title: String, details: String, icon_path: 
 	text_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_vbox.custom_minimum_size.x = TEXT_MIN_WIDTH
 	var m := MarginContainer.new()
-	m.add_theme_constant_override("margin_left", 0)
-	m.add_theme_constant_override("margin_right", 10)
-	m.add_theme_constant_override("margin_top", 8)
-	m.add_theme_constant_override("margin_bottom", 8)
+	m.add_theme_constant_override("margin_left", 16)
+	m.add_theme_constant_override("margin_right", 16)
+	m.add_theme_constant_override("margin_top", 16)
+	m.add_theme_constant_override("margin_bottom", 16)
 	text_vbox.add_child(m)
 	var inner_vbox := VBoxContainer.new()
 	inner_vbox.add_theme_constant_override("separation", 4)
