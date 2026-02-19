@@ -44,6 +44,8 @@ var _terrain_speed_multiplier := 1.0
 @onready var hurt_area: Area2D = $HurtArea
 
 var _health_bar: ProgressBar
+# 血条上方横向排布的元素附着小图标容器；不足 5 点时对应图标闪烁
+var _element_icons_container: HBoxContainer = null
 var _knockback_velocity := Vector2.ZERO
 var _out_of_water_cd := 0.0  # 离水伤害 CD
 var _last_direction_index := 0  # 8 方向索引
@@ -71,6 +73,7 @@ func _ready() -> void:
 	collision_mask = 1 | 8
 	current_health = max_health
 	_create_health_bar()
+	_create_element_icons_container()
 	_refresh_health_bar()
 	set_healthbar_visible(GameManager.enemy_healthbar_visible)
 	if hurt_area:
@@ -97,6 +100,8 @@ func _process(delta: float) -> void:
 	_update_direction_sprite()
 	# 元素衰减与双元素反应：每累计 1 秒执行一次。
 	_tick_element_decay(delta)
+	# 元素图标：不足 5 点时闪烁
+	_update_element_icons_blink()
 	# 水中专属敌人离水时持续扣血。
 	if not is_water_only():
 		return
@@ -165,6 +170,7 @@ func take_damage(amount: int, _elemental: String = "", _element_amount: int = 0)
 	_refresh_health_bar()
 	if _elemental != "" and _element_amount > 0:
 		_element_amounts[_elemental] = _element_amounts.get(_elemental, 0) + _element_amount
+		_refresh_element_icons()
 	if current_health <= 0 and not _is_dying:
 		_is_dying = true
 		_begin_death_sequence()
@@ -206,6 +212,7 @@ func _tick_element_decay(delta: float) -> void:
 	if _element_amounts[elem_b] <= 0:
 		_element_amounts.erase(elem_b)
 	_trigger_element_reaction(elem_a, elem_b, consumed)
+	_refresh_element_icons()
 
 
 ## [自定义] 双元素等量消耗后根据两种元素类型与消耗量触发反应效果；反应仅造成无元素伤害，避免二次附着。
@@ -430,6 +437,8 @@ func _recompute_terrain_speed() -> void:
 func set_healthbar_visible(value: bool) -> void:
 	if _health_bar:
 		_health_bar.visible = value
+	if _element_icons_container:
+		_element_icons_container.visible = value
 
 
 func _create_health_bar() -> void:
@@ -442,6 +451,85 @@ func _create_health_bar() -> void:
 	_health_bar.position = Vector2(-18.0, -30.0)
 	_health_bar.z_index = 20
 	add_child(_health_bar)
+
+
+## [自定义] 在血条上方创建横向排布的元素图标容器；无附着时隐藏，有附着时显示小图标，不足 5 点由 _update_element_icons_blink 闪烁。
+func _create_element_icons_container() -> void:
+	_element_icons_container = HBoxContainer.new()
+	_element_icons_container.position = Vector2(-18.0, -38.0)
+	_element_icons_container.custom_minimum_size = Vector2(36.0, 8.0)
+	_element_icons_container.z_index = 20
+	_element_icons_container.add_theme_constant_override("separation", 2)
+	_element_icons_container.visible = false
+	add_child(_element_icons_container)
+
+
+## [自定义] 根据元素类型返回小图标纹理；有图用资源，无图用纯色占位。
+func _get_element_icon_texture(element_key: String) -> Texture2D:
+	var path: String = ""
+	match element_key:
+		"fire":
+			path = "res://assets/magic/icon_fire.png"
+		"ice":
+			path = "res://assets/magic/icon_ice.png"
+		"lightning":
+			return VisualAssetRegistry.make_color_texture(Color(1.0, 0.95, 0.2, 1.0), Vector2i(8, 8))
+		"poison":
+			return VisualAssetRegistry.make_color_texture(Color(0.5, 0.2, 0.7, 1.0), Vector2i(8, 8))
+		"physical":
+			return VisualAssetRegistry.make_color_texture(Color(0.6, 0.6, 0.65, 1.0), Vector2i(8, 8))
+		_:
+			return VisualAssetRegistry.make_color_texture(Color(0.7, 0.7, 0.7, 1.0), Vector2i(8, 8))
+	if path != "" and ResourceLoader.exists(path):
+		var tex := VisualAssetRegistry.get_texture_cached(path)
+		if tex != null:
+			return tex
+	return VisualAssetRegistry.make_color_texture(Color(0.8, 0.3, 0.2, 1.0), Vector2i(8, 8))
+
+
+## [自定义] 根据 _element_amounts 同步图标列表：有元素则显示横向小图标，无则隐藏容器。
+func _refresh_element_icons() -> void:
+	if _element_icons_container == null:
+		return
+	while _element_icons_container.get_child_count() > 0:
+		var c: Node = _element_icons_container.get_child(0)
+		_element_icons_container.remove_child(c)
+		c.queue_free()
+	if _element_amounts.is_empty():
+		_element_icons_container.visible = false
+		return
+	_element_icons_container.visible = _health_bar != null and _health_bar.visible
+	var keys: Array[String] = []
+	for k in _element_amounts.keys():
+		if _element_amounts[k] > 0:
+			keys.append(k)
+	keys.sort()
+	for k in keys:
+		var amount: int = _element_amounts[k]
+		var rect := TextureRect.new()
+		rect.custom_minimum_size = Vector2(8.0, 8.0)
+		rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rect.texture = _get_element_icon_texture(k)
+		rect.set_meta("element", k)
+		rect.set_meta("amount", amount)
+		_element_icons_container.add_child(rect)
+
+
+## [自定义] 每帧更新元素图标闪烁：附着量不足 5 的图标按时间闪烁（半透明/不透明交替）。
+func _update_element_icons_blink() -> void:
+	if _element_icons_container == null or not _element_icons_container.visible:
+		return
+	var period_ms := 250
+	var half := int(Time.get_ticks_msec() / period_ms) % 2
+	var dim: bool = half == 1
+	for c in _element_icons_container.get_children():
+		if not c is TextureRect:
+			continue
+		var amount: int = c.get_meta("amount", 0)
+		if amount < 5:
+			c.modulate.a = 0.45 if dim else 1.0
+		else:
+			c.modulate.a = 1.0
 
 
 func _refresh_health_bar() -> void:
