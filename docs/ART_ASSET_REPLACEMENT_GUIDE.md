@@ -130,17 +130,20 @@ HUD 小模块（TopRow、金币、倒计时、按键提示、波次横幅）与�
 
 ### 3.1 推荐工具
 
-- **Pixellab MCP**：通过 Cursor MCP 调用 `create_map_object` 生成武器/道具/魔法/元素图标（96×96 像素，透明背景）；已替换资产记录于 [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md)，生成前可查阅避免重复
+- **Pixellab MCP**：通过 Cursor MCP 调用 `create_map_object` 生成武器/道具/魔法/元素图标（96×96 像素，透明背景）；**生成前须参考** [ART_STYLE_GUIDE.md](ART_STYLE_GUIDE.md) 保证风格一致；已替换资产记录于 [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md)，生成前可查阅避免重复。**仅使用 Pixellab 生成**，若接口失败仅提示哪些失败，不调用其他接口替代。
 - **Stable Diffusion / Midjourney / DALL·E**：生成概念图或高分辨率图
 - **Cursor 内置 GenerateImage**：可生成简单图标或 UI 元素
 - **Piskel / Aseprite**：像素风格编辑（AI 生成后微调）
 
 ### 3.1.1 Pixellab 生成图标流程
 
-1. 调用 `create_map_object`：`description`（对象描述）、`width`/`height`（96）、`view`（`high top-down`）、`mode`（basic）
-2. 轮询 `get_map_object(object_id)` 直至完成
-3. 从返回的 URL 下载 PNG 并保存到 `assets/` 对应路径
-4. 在 [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md) 中打标，记录路径、类别、描述词、生成时间
+1. **参考** [ART_STYLE_GUIDE.md](ART_STYLE_GUIDE.md) 的固定参数与描述词规范
+2. 调用 `create_map_object`：按风格文档使用 `width`/`height`（96）、`view`（`high top-down`）、`outline`、`shading`、`detail` 等
+3. 轮询 `get_map_object(object_id)` 直至完成
+4. 从返回的 URL 下载 PNG 并保存到 `assets/` 对应路径
+5. 在 [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md) 中打标，记录路径、类别、描述词、生成时间
+
+**失败处理**：若 Pixellab 调用失败，仅提示哪些资产生成失败，不调用其他接口（如 GenerateImage）替代。
 
 ### 3.2 生成提示词（Prompt）示例
 

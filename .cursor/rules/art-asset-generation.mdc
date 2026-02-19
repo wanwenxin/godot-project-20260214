@@ -1,0 +1,16 @@
+---
+description: 生成美术资源时须参考美术风格文档；仅使用 Pixellab 生成，失败时仅提示
+alwaysApply: true
+---
+
+# 美术资源生成规范
+
+## 1. 生成前须参考美术风格文档
+
+每次生成美术资源文件（武器、道具、魔法、元素状态图标等）时，**必须先阅读** `docs/ART_STYLE_GUIDE.md`，按其中参数与描述词规范执行，保证与现有 Pixellab 生成资产风格一致。
+
+## 2. 仅使用 Pixellab 生成
+
+- **唯一工具**：仅使用 Pixellab MCP（`create_map_object`、`get_map_object`）生成图标
+- **失败处理**：若 Pixellab 接口调用失败（如限流 429、生成失败等），**仅提示哪些资产生成失败**，不调用其他接口（如 GenerateImage、gen_icons.py 等）替代生成
+- **已替换记录**：生成前查阅 `docs/PIXELLAB_REPLACED_ASSETS.md`，跳过已打标资产

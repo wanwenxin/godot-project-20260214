@@ -1,6 +1,6 @@
 # 代码索引目录
 
-按业务流程与功能模块组织的文件索引，便于开发者快速定位与理解工程细节。架构概览参见 [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)。美术资源替换说明参见 [ART_ASSET_REPLACEMENT_GUIDE.md](ART_ASSET_REPLACEMENT_GUIDE.md)。Pixellab 已替换资产记录参见 [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md)。
+按业务流程与功能模块组织的文件索引，便于开发者快速定位与理解工程细节。架构概览参见 [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)。美术资源替换说明参见 [ART_ASSET_REPLACEMENT_GUIDE.md](ART_ASSET_REPLACEMENT_GUIDE.md)。美术风格规范参见 [ART_STYLE_GUIDE.md](ART_STYLE_GUIDE.md)。Pixellab 已替换资产记录参见 [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md)。
 
 ---
 
