@@ -17,6 +17,7 @@ const ACTION_NAME_KEYS := {
 	"move_down": "settings.key.move_down",
 	"pause": "settings.key.pause",
 	"toggle_enemy_hp": "settings.key.toggle_hp",
+	"toggle_key_hints": "settings.key.toggle_key_hints",
 	"camera_zoom_in": "settings.key.camera_zoom_in",
 	"camera_zoom_out": "settings.key.camera_zoom_out",
 	"cast_magic": "settings.key.cast_magic",

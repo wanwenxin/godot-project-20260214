@@ -188,6 +188,8 @@ func _process(delta: float) -> void:
 		_toggle_pause()
 	if Input.is_action_just_pressed("toggle_enemy_hp"):
 		_toggle_enemy_healthbar_visibility()
+	if Input.is_action_just_pressed("toggle_key_hints"):
+		hud.toggle_key_hints_expanded()
 	# 非模态时响应摄像机缩放按键
 	if not _ui_modal_active:
 		if Input.is_action_just_pressed("camera_zoom_in"):

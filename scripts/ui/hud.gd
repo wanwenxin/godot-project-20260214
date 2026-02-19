@@ -27,7 +27,7 @@ signal pause_pressed  # 触控暂停键按下
 @onready var wave_label: Label = $Root/TopRowPanel/TopRow/WaveLabel
 @onready var kill_label: Label = $Root/TopRowPanel/TopRow/KillLabel
 @onready var timer_label: Label = $Root/TopRowPanel/TopRow/TimerLabel
-@onready var pause_hint: Label = $Root/PauseHintPanel/PauseHint
+@onready var key_hints_label: Label = $Root/PauseHintPanel/PauseHint  # 按键提示标签
 @onready var _modal_backdrop: ColorRect = $Root/ModalBackdrop
 @onready var _currency_label: Label = $Root/CurrencyPanel/CurrencyLabel
 @onready var _wave_countdown_label: Label = $Root/WaveCountdownPanel/WaveCountdownLabel
@@ -82,6 +82,9 @@ var _last_magic_cd_per_slot: Array[float] = []  # 每槽上次显示的 remainin
 var _last_magic_current_index := -1  # 上次当前选中槽索引，切换时立即更新边框
 var _magic_slots: Array = []  # 每项 {panel, icon, cd_overlay, name_label, affix_label}
 
+# ---- 按键提示面板 ----
+var _key_hints_expanded: bool = false  # 是否展开显示全部按键提示
+
 # ---- 样式与布局常量 ----
 const HUD_FONT_SIZE := 18  # 顶部标签统一字号
 const MAGIC_SLOT_SIZE := 92  # 魔法槽图标区域边长（像素）
@@ -116,7 +119,7 @@ func _apply_hud_module_backgrounds() -> void:
 	var style := _make_hud_panel_style()
 	$Root/TopRowPanel.add_theme_stylebox_override("panel", style)
 	$Root/CurrencyPanel.add_theme_stylebox_override("panel", style)
-	$Root/PauseHintPanel.add_theme_stylebox_override("panel", style)
+	$Root/PauseHintPanel.add_theme_stylebox_override("panel", style)  # 保持场景节点名不变
 	$Root/WaveCountdownPanel.add_theme_stylebox_override("panel", style)
 	$Root/WaveBannerPanel.add_theme_stylebox_override("panel", style)
 
@@ -155,7 +158,7 @@ func _make_magic_slot_style(is_current: bool) -> StyleBoxFlat:
 
 ## [自定义] 为顶部各 Label 与金币/波次倒计时标签统一设置 HUD_FONT_SIZE。
 func _apply_hud_font_sizes() -> void:
-	for lbl in [health_label, mana_label, wave_label, kill_label, timer_label, pause_hint]:
+	for lbl in [health_label, mana_label, wave_label, kill_label, timer_label, key_hints_label]:
 		if lbl is Label:
 			lbl.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 	if _currency_label:
@@ -183,8 +186,6 @@ func _apply_runtime_styles_and_refs() -> void:
 		btn.pressed.connect(_on_upgrade_button_pressed.bind(btn))
 		_upgrade_buttons.append(btn)
 	_upgrade_refresh_btn.pressed.connect(func() -> void: emit_signal("upgrade_refresh_requested"))
-	var skip_btn: Button = root.get_node("UpgradePanel/UpgradeMargin/CenterContainer/VBox/BtnRow/SkipBtn")
-	skip_btn.pressed.connect(func() -> void: emit_signal("upgrade_selected", "skip"))
 	# 武器：四个选项按钮与图标
 	for i in range(4):
 		var card := root.get_node("WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard%d" % i)
@@ -280,8 +281,14 @@ func set_survival_time(value: float) -> void:
 
 
 ## [自定义] 控制左下角暂停/按键提示的显隐（如进入商店后隐藏）。
-func set_pause_hint(show_hint: bool) -> void:
-	pause_hint.visible = show_hint
+func set_key_hints_visible(show_hint: bool) -> void:
+	key_hints_label.visible = show_hint
+
+
+## [自定义] 设置暂停提示文本的显隐，显示/隐藏左下角的暂停按键提示。
+func set_pause_hint(visible: bool) -> void:
+	if key_hints_label:
+		key_hints_label.visible = visible
 
 
 ## [自定义] 设置金币显示。脏检查后更新 _currency_label 的本地化文案。
@@ -347,7 +354,8 @@ func set_armor(value: int) -> void:
 func set_magic_ui(magic_data: Array) -> void:
 	if _magic_panel == null:
 		return
-	_magic_panel.visible = not magic_data.is_empty()
+	# 魔法面板始终显示，无论是否有魔法
+	_magic_panel.visible = true
 	var need_update := false
 	var current_index := -1
 	for idx in range(magic_data.size()):
@@ -675,23 +683,40 @@ func _on_weapon_button_pressed(btn: Button) -> void:
 		emit_signal("weapon_shop_selected", weapon_id)
 
 
-## [自定义] 应用当前语言的静态文案：暂停提示、升级/武器标题与说明、Tab 标题、暂停按钮等。
+## [自定义] 应用当前语言的静态文案：按键提示、升级/武器标题与说明、Tab 标题、暂停按钮等。
 func _apply_localized_static_texts() -> void:
-	pause_hint.text = _build_key_hints_text()
+	key_hints_label.text = _build_key_hints_text(_key_hints_expanded)
 	if _upgrade_title_label:
 		_upgrade_title_label.text = LocalizationManager.tr_key("hud.upgrade_title")
 	_apply_upgrade_weapon_tip_texts()
 
 
-## [自定义] 构建多行按键提示文本（移动/暂停/缩放/魔法/血条），供 HUD 左下角 pause_hint 显示。
-func _build_key_hints_text() -> String:
-	return "\n".join([
-		LocalizationManager.tr_key("pause.key_hint.move", {"keys": ResultPanelShared.action_to_text(["move_up", "move_down", "move_left", "move_right"])}),
-		LocalizationManager.tr_key("pause.key_hint.pause", {"key": ResultPanelShared.action_to_text(["pause"])}),
-		LocalizationManager.tr_key("pause.key_hint.camera_zoom", {"keys": ResultPanelShared.action_to_text(["camera_zoom_in", "camera_zoom_out"])}),
-		LocalizationManager.tr_key("pause.key_hint.magic", {"keys": ResultPanelShared.action_to_text(["cast_magic", "magic_prev", "magic_next"])}),
-		LocalizationManager.tr_key("pause.key_hint.enemy_hp", {"key": ResultPanelShared.action_to_text(["toggle_enemy_hp"])})
-	])
+## [自定义] 构建多行按键提示文本，供 HUD 左下角 key_hints_label 显示。
+## expanded: false 时仅显示 2 行（移动+暂停），true 时显示全部按键。
+func _build_key_hints_text(expanded: bool = false) -> String:
+	if expanded:
+		# 展开模式：显示全部按键
+		return "\n".join([
+			LocalizationManager.tr_key("pause.key_hint.move", {"keys": ResultPanelShared.action_to_text(["move_up", "move_down", "move_left", "move_right"])}),
+			LocalizationManager.tr_key("pause.key_hint.pause", {"key": ResultPanelShared.action_to_text(["pause"])}),
+			LocalizationManager.tr_key("pause.key_hint.camera_zoom", {"keys": ResultPanelShared.action_to_text(["camera_zoom_in", "camera_zoom_out"])}),
+			LocalizationManager.tr_key("pause.key_hint.magic", {"keys": ResultPanelShared.action_to_text(["cast_magic", "magic_prev", "magic_next"])}),
+			LocalizationManager.tr_key("pause.key_hint.enemy_hp", {"key": ResultPanelShared.action_to_text(["toggle_enemy_hp"])}),
+			LocalizationManager.tr_key("hud.key_hints.toggle", {"key": ResultPanelShared.action_to_text(["toggle_key_hints"])})
+		])
+	else:
+		# 收起模式：仅显示 2 行核心按键
+		return "\n".join([
+			LocalizationManager.tr_key("pause.key_hint.move", {"keys": ResultPanelShared.action_to_text(["move_up", "move_down", "move_left", "move_right"])}),
+			LocalizationManager.tr_key("pause.key_hint.pause", {"key": ResultPanelShared.action_to_text(["pause"])}),
+			LocalizationManager.tr_key("hud.key_hints.toggle_short", {"key": ResultPanelShared.action_to_text(["toggle_key_hints"])})
+		])
+
+
+## [自定义] 切换按键提示展开/收起状态。
+func toggle_key_hints_expanded() -> void:
+	_key_hints_expanded = not _key_hints_expanded
+	key_hints_label.text = _build_key_hints_text(_key_hints_expanded)
 
 
 ## [自定义] 更新升级说明、武器标题与商店 Tab/下一波/暂停按钮的本地化文案（依赖 _last_currency、_weapon_mode）。

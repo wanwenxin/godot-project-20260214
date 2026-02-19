@@ -304,32 +304,49 @@ func get_current_magic_index() -> int:
 ## [自定义] 供 HUD 获取魔法 UI 数据：含 id、name_key、affix_name_keys、icon_path、冷却、is_current。
 func get_magic_ui_data() -> Array:
 	var result: Array = []
-	for i in range(_equipped_magics.size()):
-		var mag: Dictionary = _equipped_magics[i]
-		var def: Dictionary = mag.get("def", {})
-		var magic_id: String = str(def.get("id", ""))
-		var cooldown: float = float(def.get("cooldown", 1.0))
-		var total_cd: float = cooldown / maxf(0.1, spell_speed)
-		var remaining: float = _magic_cooldowns.get(magic_id, 0.0)
-		var name_key: String = str(def.get("name_key", "magic.%s.name" % magic_id))
-		var affix_name_keys: Array[String] = []
-		for key in ["range_affix_id", "effect_affix_id", "element_affix_id"]:
-			var aid: String = str(def.get(key, ""))
-			if aid.is_empty():
-				continue
-			var affix_def: Dictionary = MagicAffixDefs.get_affix_def(aid)
-			if not affix_def.is_empty():
-				affix_name_keys.append(str(affix_def.get("name_key", "")))
-		result.append({
-			"id": magic_id,
-			"def": def,
-			"name_key": name_key,
-			"affix_name_keys": affix_name_keys,
-			"icon_path": str(def.get("icon_path", "")),
-			"remaining_cd": remaining,
-			"total_cd": total_cd,
-			"is_current": (i == _current_magic_index)
-		})
+	const MAX_MAGIC_SLOTS := 3
+	# 始终返回 3 个槽位，空槽用占位数据
+	for i in range(MAX_MAGIC_SLOTS):
+		if i < _equipped_magics.size():
+			var mag: Dictionary = _equipped_magics[i]
+			var def: Dictionary = mag.get("def", {})
+			var magic_id: String = str(def.get("id", ""))
+			var cooldown: float = float(def.get("cooldown", 1.0))
+			var total_cd: float = cooldown / maxf(0.1, spell_speed)
+			var remaining: float = _magic_cooldowns.get(magic_id, 0.0)
+			var name_key: String = str(def.get("name_key", "magic.%s.name" % magic_id))
+			var affix_name_keys: Array[String] = []
+			for key in ["range_affix_id", "effect_affix_id", "element_affix_id"]:
+				var aid: String = str(def.get(key, ""))
+				if aid.is_empty():
+					continue
+				var affix_def: Dictionary = MagicAffixDefs.get_affix_def(aid)
+				if not affix_def.is_empty():
+					affix_name_keys.append(str(affix_def.get("name_key", "")))
+			result.append({
+				"id": magic_id,
+				"def": def,
+				"name_key": name_key,
+				"affix_name_keys": affix_name_keys,
+				"icon_path": str(def.get("icon_path", "")),
+				"remaining_cd": remaining,
+				"total_cd": total_cd,
+				"is_current": (i == _current_magic_index),
+				"empty": false
+			})
+		else:
+			# 空槽位
+			result.append({
+				"id": "",
+				"def": {},
+				"name_key": "",
+				"affix_name_keys": [],
+				"icon_path": "",
+				"remaining_cd": 0.0,
+				"total_cd": 1.0,
+				"is_current": (i == _current_magic_index),
+				"empty": true
+			})
 	return result
 
 
@@ -505,13 +522,18 @@ func _recompute_terrain_speed() -> void:
 		_terrain_speed_multiplier = minf(_terrain_speed_multiplier, float(_terrain_effects[key]))
 
 
-## [自定义] 根据 run_weapons 同步装备；清除旧武器，按 {id, tier, random_affix_ids} 重新装备；失败项 append null。
+## [自定义] 根据 run_weapons 同步装备；仅同步前 usable_count 把到可用槽位。
 func sync_weapons_from_run(run_weapons_list: Array) -> void:
 	for w in _equipped_weapons:
 		if w != null and is_instance_valid(w):
 			w.queue_free()
 	_equipped_weapons.clear()
-	for w_dict in run_weapons_list:
+	# 获取角色配置的可用武器槽位数
+	var usable_count: int = int(_character_data.get("usable_weapon_count", GameManager.DEFAULT_USABLE_WEAPON_COUNT))
+	# 仅同步前 usable_count 把武器
+	var sync_count := mini(run_weapons_list.size(), usable_count)
+	for i in range(sync_count):
+		var w_dict = run_weapons_list[i]
 		var wid: String = str(w_dict.get("id", ""))
 		var wtier: int = int(w_dict.get("tier", 0))
 		var random_affix_ids: Array = w_dict.get("random_affix_ids", [])
@@ -569,13 +591,15 @@ func has_weapon_id(weapon_id: String) -> bool:
 
 
 ## [自定义] 按 run_weapons 索引 1:1 返回武器详情，供暂停/结算/背包 UI 使用。
+## 返回所有武器详情，但添加 "usable" 标记表示是否在可用槽位内。
 func get_equipped_weapon_details() -> Array[Dictionary]:
-	# 按 run_weapons 索引 1:1 返回，保证 weapon_details[i] 对应 run_weapons[i]，供合并逻辑使用。
 	var result: Array[Dictionary] = []
 	var run_list: Array = GameManager.get_run_weapons()
+	var usable_count: int = get_usable_weapon_count()
 	for idx in range(run_list.size()):
 		var w_run: Dictionary = run_list[idx] if idx < run_list.size() else {}
 		var item = _equipped_weapons[idx] if idx < _equipped_weapons.size() else null
+		var is_usable: bool = idx < usable_count
 		if item != null and is_instance_valid(item):
 			var def := GameManager.get_weapon_def_by_id(str(item.weapon_id))
 			var wtier: int = int(item.tier) if "tier" in item else 0
@@ -593,7 +617,8 @@ func get_equipped_weapon_details() -> Array[Dictionary]:
 				"range": float(item.attack_range),
 				"type_affix_id": str(def.get("type_affix_id", "")),
 				"theme_affix_id": str(def.get("theme_affix_id", "")),
-				"random_affix_ids": w_run.get("random_affix_ids", []).duplicate()
+				"random_affix_ids": w_run.get("random_affix_ids", []).duplicate(),
+				"usable": is_usable
 			}
 			if item is WeaponMeleeBase:
 				var melee_item: WeaponMeleeBase = item
@@ -633,8 +658,44 @@ func get_equipped_weapon_details() -> Array[Dictionary]:
 	return result
 
 
+## [自定义] 获取还可装备到可用槽位的武器数量。
+func get_usable_weapon_slots_left() -> int:
+	var usable_count: int = int(_character_data.get("usable_weapon_count", GameManager.DEFAULT_USABLE_WEAPON_COUNT))
+	return maxi(0, usable_count - _equipped_weapons.size())
+
+
+## [自定义] 获取可用武器槽位总数。
+func get_usable_weapon_count() -> int:
+	return int(_character_data.get("usable_weapon_count", GameManager.DEFAULT_USABLE_WEAPON_COUNT))
+
+
+## [自定义] 获取还可装备到可用槽位的武器数量（容量剩余）。
 func get_weapon_capacity_left() -> int:
-	return maxi(0, GameManager.MAX_WEAPONS - _equipped_weapons.size())
+	var usable_count: int = get_usable_weapon_count()
+	var current_count: int = _equipped_weapons.size()
+	return maxi(0, usable_count - current_count)
+
+
+## [自定义] 拖拽换位武器。
+func reorder_weapons(from_index: int, to_index: int) -> bool:
+	if GameManager.reorder_run_weapons(from_index, to_index):
+		sync_weapons_from_run(GameManager.get_run_weapons())
+		return true
+	return false
+
+
+## [自定义] 拖拽换位魔法。
+func reorder_magics(from_index: int, to_index: int) -> bool:
+	if from_index < 0 or from_index >= _equipped_magics.size():
+		return false
+	if to_index < 0 or to_index >= _equipped_magics.size():
+		return false
+	if from_index == to_index:
+		return true
+	var item = _equipped_magics[from_index]
+	_equipped_magics.remove_at(from_index)
+	_equipped_magics.insert(to_index, item)
+	return true
 
 
 ## 供暂停菜单：返回完整属性、武器、道具、魔法详情。

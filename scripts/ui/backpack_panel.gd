@@ -113,8 +113,9 @@ func _build_all_sections(weapon_details: Array, magic_details: Array, item_ids: 
 		_weapon_grid.add_child(slot)
 	# 魔法区
 	_magic_label.text = LocalizationManager.tr_key("backpack.section_magics")
-	for m in magic_details:
-		var slot := _make_magic_slot(m as Dictionary)
+	for i in range(magic_details.size()):
+		var m: Dictionary = magic_details[i]
+		var slot := _make_magic_slot(m, i)
 		_magic_grid.add_child(slot)
 	# 道具区
 	_item_label.text = LocalizationManager.tr_key("backpack.section_items")
@@ -150,8 +151,10 @@ func _make_weapon_slot(w: Dictionary, weapon_upgrades: Array, weapon_index: int,
 		tier_color = TierConfig.get_tier_color(int(w.get("tier", 0)))
 	var display_name := LocalizationManager.tr_key("weapon.%s.name" % str(w.get("id", "")))
 	var tip_data: Dictionary = _build_weapon_tooltip_data(w, weapon_upgrades, weapon_index, weapon_details)
-	slot.configure(icon_path, color_hint, "", _tooltip_popup, display_name, tier_color, tip_data, weapon_index)
+	# 传递 slot_type 和 slot_index 用于拖拽
+	slot.configure(icon_path, color_hint, "", _tooltip_popup, display_name, tier_color, tip_data, weapon_index, "weapon", weapon_index)
 	slot.slot_clicked.connect(_on_weapon_slot_clicked)
+	slot.slot_dropped.connect(_on_weapon_slot_dropped)
 	return _wrap_slot_in_panel(slot)
 
 
@@ -284,7 +287,7 @@ func _format_weapon_affix_value(effect_type: String, base_val: Variant) -> Strin
 	return "+%d" % int(base_val)
 
 
-func _make_magic_slot(m: Dictionary) -> PanelContainer:
+func _make_magic_slot(m: Dictionary, magic_index: int) -> PanelContainer:
 	var slot := BackpackSlot.new()
 	var def := MagicDefs.get_magic_by_id(str(m.get("id", "")))
 	var icon_path: String = str(m.get("icon_path", def.get("icon_path", "")))
@@ -293,7 +296,9 @@ func _make_magic_slot(m: Dictionary) -> PanelContainer:
 		tier_color = TierConfig.get_tier_color(int(m.get("tier", 0)))
 	var display_name := LocalizationManager.tr_key("magic.%s.name" % str(m.get("id", "")))
 	var tip_data: Dictionary = _build_magic_tooltip_data(m, def)
-	slot.configure(icon_path, BackpackSlot.PLACEHOLDER_COLOR, "", _tooltip_popup, display_name, tier_color, tip_data)
+	# 传递 slot_type 和 slot_index 用于拖拽
+	slot.configure(icon_path, BackpackSlot.PLACEHOLDER_COLOR, "", _tooltip_popup, display_name, tier_color, tip_data, -1, "magic", magic_index)
+	slot.slot_dropped.connect(_on_magic_slot_dropped)
 	return _wrap_slot_in_panel(slot)
 
 
@@ -554,3 +559,45 @@ func batch_sell_by_tier(max_tier: int) -> Array[int]:
 			sold_indices.append(i)
 	
 	return sold_indices
+
+
+## [自定义] 武器槽拖拽换位处理。
+func _on_weapon_slot_dropped(from_index: int, to_index: int, _slot_type: String) -> void:
+	if from_index == to_index:
+		return
+	# 调用 GameManager 重新排序武器
+	if GameManager.reorder_run_weapons(from_index, to_index):
+		# 刷新显示
+		var game = get_tree().current_scene
+		if game != null and game.has_method("get_player_for_pause"):
+			var p = game.get_player_for_pause()
+			if p != null and p.has_method("sync_weapons_from_run"):
+				p.sync_weapons_from_run(GameManager.get_run_weapons())
+		# 触发重建
+		_last_stats_hash = ""
+		# 如果当前正在显示，刷新 stats
+		if _shop_context:
+			var stats: Dictionary = {}
+			if game != null and game.has_method("get_player_for_pause"):
+				var p = game.get_player_for_pause()
+				if p != null and p.has_method("get_full_stats_for_pause"):
+					stats = p.get_full_stats_for_pause()
+			set_stats(stats, _shop_context)
+
+
+## [自定义] 魔法槽拖拽换位处理。
+func _on_magic_slot_dropped(from_index: int, to_index: int, _slot_type: String) -> void:
+	if from_index == to_index:
+		return
+	# 调用 Player 重新排序魔法
+	var game = get_tree().current_scene
+	if game != null and game.has_method("get_player_for_pause"):
+		var p = game.get_player_for_pause()
+		if p != null and p.has_method("reorder_magics"):
+			if p.reorder_magics(from_index, to_index):
+				# 触发重建
+				_last_stats_hash = ""
+				var stats: Dictionary = {}
+				if p.has_method("get_full_stats_for_pause"):
+					stats = p.get_full_stats_for_pause()
+				set_stats(stats, _shop_context)

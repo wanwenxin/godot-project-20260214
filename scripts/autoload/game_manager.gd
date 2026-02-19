@@ -7,6 +7,7 @@ const DESIGN_VIEWPORT := Vector2i(1280, 720)
 const SCENE_CHARACTER_SELECT := "res://scenes/character_select.tscn"
 const SCENE_GAME := "res://scenes/game.tscn"
 const MAX_WEAPONS := 6
+const DEFAULT_USABLE_WEAPON_COUNT := 6  # 默认可用武器槽位数
 const WEAPON_DEFS_RESOURCE = preload("res://resources/weapon_defs.gd")
 const LEVEL_PRESET_PATHS := [
 	"res://resources/presets/preset_standard.tres",
@@ -33,7 +34,8 @@ var characters := [
 		"spread_degrees": 0.0,
 		"bullet_pierce": 0,
 		"color_scheme": 0,
-		"traits_path": "res://scripts/characters/rapid_shooter_traits.gd"
+		"traits_path": "res://scripts/characters/rapid_shooter_traits.gd",
+		"usable_weapon_count": 6  # 默认可用武器槽位
 	},
 	{
 		"id": 1,
@@ -47,7 +49,8 @@ var characters := [
 		"spread_degrees": 16.0,
 		"bullet_pierce": 1,
 		"color_scheme": 1,
-		"traits_path": "res://scripts/characters/heavy_gunner_traits.gd"
+		"traits_path": "res://scripts/characters/heavy_gunner_traits.gd",
+		"usable_weapon_count": 6
 	}
 ]
 
@@ -556,12 +559,11 @@ func get_run_weapons() -> Array:
 	return result
 
 
-## [自定义] 添加武器；仅做容量检查与 append，不自动合成。
+## [自定义] 添加武器；无上限，仅检查定义存在。
 func add_run_weapon(weapon_id: String, random_affix_ids: Array = []) -> bool:
 	if get_weapon_def_by_id(weapon_id).is_empty():
 		return false
-	if run_weapons.size() >= MAX_WEAPONS:
-		return false
+	# 移除容量限制，武器无上限
 	run_weapons.append({"id": weapon_id, "tier": 0, "random_affix_ids": random_affix_ids.duplicate()})
 	return true
 
@@ -599,8 +601,52 @@ func merge_run_weapons(base_index: int, material_index: int) -> bool:
 	return true
 
 
-## [自定义] 检查是否可添加该武器（定义存在且未满容量）。
+## [自定义] 检查是否可添加该武器（定义存在即可，无容量上限）。
 func can_add_run_weapon(weapon_id: String) -> bool:
-	if get_weapon_def_by_id(weapon_id).is_empty():
+	return not get_weapon_def_by_id(weapon_id).is_empty()
+
+
+## [自定义] 交换武器位置（拖拽换位）。
+func reorder_run_weapons(from_index: int, to_index: int) -> bool:
+	if from_index < 0 or from_index >= run_weapons.size():
 		return false
-	return run_weapons.size() < MAX_WEAPONS
+	if to_index < 0 or to_index >= run_weapons.size():
+		return false
+	if from_index == to_index:
+		return true
+	var item = run_weapons[from_index]
+	run_weapons.remove_at(from_index)
+	run_weapons.insert(to_index, item)
+	return true
+
+
+## [自定义] 交换魔法位置（拖拽换位）。
+func reorder_run_magics(from_index: int, to_index: int) -> bool:
+	# 魔法存储在 run_items 中，type == "magic" 的项
+	var magic_items: Array[int] = []
+	for i in range(run_items.size()):
+		var def := _get_item_def_by_id(run_items[i])
+		if str(def.get("type", "")) == "magic":
+			magic_items.append(i)
+	if from_index < 0 or from_index >= magic_items.size():
+		return false
+	if to_index < 0 or to_index >= magic_items.size():
+		return false
+	if from_index == to_index:
+		return true
+	var actual_from = magic_items[from_index]
+	var actual_to = magic_items[to_index]
+	var item = run_items[actual_from]
+	run_items.remove_at(actual_from)
+	run_items.insert(actual_to, item)
+	return true
+
+
+## [自定义] 按 id 查找道具定义，未找到返回空字典。
+func _get_item_def_by_id(item_id: String) -> Dictionary:
+	var shop_item_defs = load("res://resources/shop_item_defs.gd") as GDScript
+	var shop_item_class = shop_item_defs.new()
+	for item in shop_item_class.ITEM_POOL:
+		if str(item.get("id", "")) == item_id:
+			return item.duplicate(true)
+	return {}

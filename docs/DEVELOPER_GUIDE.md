@@ -811,6 +811,79 @@ ObjectPool.recycle_enemy(enemy)
 
 **过滤类型**：`""`（全部）、`"melee"`、`"ranged"`
 
+---
+
+## 9. HUD 按键提示与背包改动（2026-02-19）
+
+### 9.1 按键提示改名与按 I 切换
+
+**改动内容**：
+- `PauseHint` 改名为 `KeyHints`，显示「按键提示」
+- 默认显示 2 行核心按键（移动+暂停）
+- 按 I 键可展开/收起，显示全部按键
+
+**相关文件**：
+- `scripts/ui/hud.gd`：`key_hints_label`、`_build_key_hints_text()`、`toggle_key_hints_expanded()`
+- `scripts/game.gd`：处理 `toggle_key_hints` 输入
+- `project.godot`：新增 `toggle_key_hints` 输入动作（绑定 I 键）
+- `scripts/ui/settings_menu.gd`：ACTION_NAME_KEYS 增加 `toggle_key_hints`
+- `i18n/zh-CN.json`、`i18n/en-US.json`：新增相关本地化 key
+
+### 9.2 升级面板移除跳过按钮
+
+**改动内容**：
+- 移除升级面板的「跳过」按钮
+- 玩家必须选择一项升级才能继续
+
+**相关文件**：
+- `scripts/ui/hud.gd`：移除 `SkipBtn` 引用
+- `scenes/ui/hud.tscn`：删除 `SkipBtn` 节点（或通过脚本隐藏）
+
+### 9.3 魔法 UI 始终显示
+
+**改动内容**：
+- 魔法面板始终显示，无论是否有魔法
+- 无魔法时显示 3 个空槽位
+- `get_magic_ui_data()` 始终返回 3 个槽位结构
+
+**相关文件**：
+- `scripts/ui/hud.gd`：`set_magic_ui()` 始终设置 `_magic_panel.visible = true`
+- `scripts/player.gd`：`get_magic_ui_data()` 始终返回 3 个槽位
+
+### 9.4 背包武器无上限 + 仅前 N 把可用
+
+**改动内容**：
+- 移除武器持有上限（`MAX_WEAPONS`），可无限购买
+- 添加 `usable_weapon_count` 角色配置，默认可用 6 把
+- 仅前 N 把武器参与战斗，超出部分仅存储在背包中
+- 武器详情添加 `usable` 标记
+
+**相关文件**：
+- `scripts/autoload/game_manager.gd`：`DEFAULT_USABLE_WEAPON_COUNT`、移除容量检查、`reorder_run_weapons()`
+- `scripts/player.gd`：`get_usable_weapon_count()`、`sync_weapons_from_run()` 仅同步前 N 把
+- `scripts/ui/backpack_panel.gd`：显示所有武器，但标记不可用状态
+
+### 9.5 背包武器与魔法拖拽换位
+
+**改动内容**：
+- 背包武器和魔法支持拖拽换位
+- 同类槽位之间可拖拽（武器↔武器，魔法↔魔法）
+
+**相关文件**：
+- `scripts/ui/backpack_slot.gd`：实现 `_get_drag_data()`、`_can_drop_data()`、`_drop_data()`，新增 `slot_dropped` 信号
+- `scripts/ui/backpack_panel.gd`：处理 `slot_dropped` 信号，调用 `reorder_run_weapons()` 或 `reorder_magics()`
+
+**相关文件**：
+- `scripts/ui/backpack_panel.gd`:`set_sort_mode()`、`set_filter_type()`、`batch_sell_by_tier()`
+
+**排序模式**：
+- 0 = 默认
+- 1 = 品级高到低
+- 2 = 品级低到高
+- 3 = 类型分组
+
+**过滤类型**：`""`（全部）、`"melee"`、`"ranged"`
+
 ### 8.4 动态波次难度
 
 波次系统现在支持动态难度调整：
