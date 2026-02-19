@@ -18,6 +18,20 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-19：商店 TabContainer 下层重复面板
+
+- **现象**：商店面板（WeaponPanel）内，Tab 标签下方出现一层重复的面板背景
+- **原因**：TabContainer 默认有 `panel` 主题样式绘制内容区背景，与外层 WeaponPanel 的 modal 样式叠加，形成双层面板
+- **修复**：`tab_container_selected_scale.gd` 在 `_ready` 中 `add_theme_stylebox_override("panel", StyleBoxEmpty.new())` 移除 TabContainer 内容区背景
+- **预防**：TabContainer 置于 Panel 内时，可移除其 panel 主题以避免重复背景
+
+### 2026-02-19：角色信息面板属性文本贴边
+
+- **现象**：角色信息面板（暂停菜单属性 Tab、HUD 商店角色信息 Tab）内属性文本紧贴边框，无内边距
+- **原因**：`build_player_stats_block` 返回的 VBoxContainer 直接加入父容器，未包裹 MarginContainer；且返回的 MarginContainer 未设置 size_flags，在父容器中不扩展时布局异常
+- **修复**：`result_panel_shared.gd` 新增 `_wrap_in_margin`，用 MarginContainer（margin_tight=16px）包裹返回值；为 MarginContainer 设置 `size_flags_horizontal/vertical = SIZE_EXPAND_FILL` 确保正确填充父容器
+- **预防**：面板内容区需统一内边距时，用 MarginContainer 包裹并设置 size_flags 以正确扩展
+
 ### 2026-02-19：背包面板 UI 修复
 
 - **现象**：背包滚动条无效；商店背包两侧空白；文字贴边；背包有白边；首次进入战斗与波次间商店面板样式不一致

@@ -94,7 +94,7 @@ func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = nu
 		_add_stat_row(player_grid, LocalizationManager.tr_key("pause.stat_lifesteal"), "%.0f%%" % (float(stats.get("lifesteal_chance", 0)) * 100.0))
 	vbox.add_child(player_grid)
 	if stats_only:
-		return vbox
+		return _wrap_in_margin(vbox)
 	# 武器区
 	var weapon_details: Array = stats.get("weapon_details", [])
 	var weapon_section := _make_section_header(LocalizationManager.tr_key("pause.section_weapons"))
@@ -164,7 +164,21 @@ func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = nu
 		for m in magic_details:
 			magic_row.add_child(_make_magic_chip(m))
 		vbox.add_child(magic_row)
-	return vbox
+	return _wrap_in_margin(vbox)
+
+
+## [自定义] 将内容区包裹 MarginContainer，使角色信息面板内边距与边框保持 margin_tight 距离。
+static func _wrap_in_margin(inner: Control) -> Control:
+	var theme_cfg := UiThemeConfig.load_theme()
+	var margin := MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_theme_constant_override("margin_left", theme_cfg.margin_tight)
+	margin.add_theme_constant_override("margin_right", theme_cfg.margin_tight)
+	margin.add_theme_constant_override("margin_top", theme_cfg.margin_tight)
+	margin.add_theme_constant_override("margin_bottom", theme_cfg.margin_tight)
+	margin.add_child(inner)
+	return margin
 
 
 static func _make_item_chip(item_id: String) -> Control:

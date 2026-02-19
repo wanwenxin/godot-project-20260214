@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/settings_menu.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/tab_container_selected_scale.gd" id="2"]
 
 [node name="SettingsMenu" type="Control"]
 layout_mode = 3
@@ -67,6 +68,7 @@ text = "Settings"
 horizontal_alignment = 1
 
 [node name="Tabs" type="TabContainer" parent="Panel/OuterMargin/VBox"]
+script = ExtResource("2")
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/side_margin = 16

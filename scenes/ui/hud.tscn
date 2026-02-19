@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://33xpookbdwpf"]
 
 [ext_resource type="Script" uid="uid://2ap8y7xxhloa" path="res://scripts/ui/hud.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/tab_container_selected_scale.gd" id="2"]
 
 [node name="HUD" type="CanvasLayer" unique_id=644381109]
 process_mode = 2
@@ -642,6 +643,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 12
 
 [node name="ShopTabContainer" type="TabContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox" unique_id=1757939530]
+script = ExtResource("2")
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/side_margin = 16

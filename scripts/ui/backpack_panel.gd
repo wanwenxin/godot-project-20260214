@@ -144,7 +144,7 @@ func set_stats(stats: Dictionary, shop_context: bool = false) -> void:
 
 func _build_all_sections(weapon_details: Array, magic_details: Array, item_ids: Array, weapon_upgrades: Array) -> void:
 	# 武器区：设置场景内标题与取消按钮，仅向 _weapon_grid 填充槽位
-	_weapon_label.text = LocalizationManager.tr_key("backpack.section_weapons")
+	_weapon_label.text = LocalizationManager.tr_key("backpack.section_equipment")
 	_cancel_btn.text = LocalizationManager.tr_key("backpack.synthesize_cancel")
 	_cancel_btn.visible = _merge_mode
 	if not _cancel_btn.pressed.is_connected(_exit_merge_mode):

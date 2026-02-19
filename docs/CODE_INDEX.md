@@ -185,6 +185,8 @@
 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | 死亡结算 | `show_result` |
 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 通关结算 | `show_result` |
 | [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | 结算面板共享 UI | `build_score_block`、`build_player_stats_block`（支持完整 stats 字典） |
+| [scripts/ui/tab_container_selected_scale.gd](scripts/ui/tab_container_selected_scale.gd) | TabContainer 扩展，注入 TabBarSelectedScale 使选中标签放大，并移除内容区 panel 背景 | 挂到所有 TabContainer |
+| [scripts/ui/tab_bar_selected_scale.gd](scripts/ui/tab_bar_selected_scale.gd) | TabBar 扩展，选中标签整体放大（字号+尺寸）为 tab_selected_scale 倍 | 由 TabContainerSelectedScale 注入 |
 | [scripts/ui/magic_targeting_overlay.gd](scripts/ui/magic_targeting_overlay.gd) | 魔法施法覆盖层，按 range_type 显示直线/鼠标圆心圆/角色圆心圆 | `start_targeting`、`cast_confirmed`、`cast_cancelled` |
 
 ### 2.8 资源与工具
@@ -192,7 +194,7 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/pixel_generator.gd](scripts/pixel_generator.gd) | 运行时生成像素图 | `generate_bullet_sprite_by_type`、`generate_pickup_sprite` |
-| [resources/ui_theme_config.gd](resources/ui_theme_config.gd) + [resources/ui_theme.tres](resources/ui_theme.tres) | UI 主题：颜色、边距、字体类型常量、StyleBox；`load_theme()`、`get_scaled_font_size()` | `font_size_title/subtitle/list/body/hint/hud`、`margin_tight`、`panel_padding`、`separation_grid` |
+| [resources/ui_theme_config.gd](resources/ui_theme_config.gd) + [resources/ui_theme.tres](resources/ui_theme.tres) | UI 主题：颜色、边距、字体类型常量、StyleBox；`load_theme()`、`get_scaled_font_size()` | `font_size_title/subtitle/list/body/hint/hud`、`margin_tight`、`panel_padding`、`tab_selected_scale`、`separation_grid` |
 | [resources/terrain_color_config.gd](resources/terrain_color_config.gd) | 地形色块 Resource 脚本 | 供 terrain_colors.tres 使用 |
 | [resources/default_terrain_colors.gd](resources/default_terrain_colors.gd) | 默认地形配色（flat/seaside/mountain），供 ColorRect 回退 | `get_floor_colors` |
 | [resources/texture_path_config.gd](resources/texture_path_config.gd) | 纹理路径 Resource 脚本（可选，部分场景仍可参考） | 人物/敌人/武器等美术路径 |

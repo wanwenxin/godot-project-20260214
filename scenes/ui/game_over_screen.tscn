@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/game_over_screen.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/tab_container_selected_scale.gd" id="2"]
 
 [node name="GameOverScreen" type="CanvasLayer"]
 layer = 100
@@ -63,6 +64,7 @@ layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="TabContainer" type="TabContainer" parent="Root/Panel/Margin/VBox"]
+script = ExtResource("2")
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 20

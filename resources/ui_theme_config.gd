@@ -28,6 +28,9 @@ const THEME_PATH := "res://resources/ui_theme.tres"
 
 ## 字体与间距常量（兼容旧引用），供 Tab、内容区、列表等引用。
 @export var tab_font_size: int = 22
+
+## 当前选中 Tab 标签相对未选中标签的放大倍率（如 1.3 表示选中标签为 1.3 倍大），供 TabBarSelectedScale 引用。
+@export var tab_selected_scale: float = 1.3
 @export var content_font_size: int = 20
 @export var separation_default: int = 12
 @export var separation_tight: int = 8

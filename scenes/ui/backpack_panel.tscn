@@ -48,10 +48,11 @@ theme_override_constants/separation = 8
 
 [node name="WeaponLabel" type="Label" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponHeader"]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
 theme_override_font_sizes/font_size = 22
 horizontal_alignment = 1
-text = "Weapons"
+text = "装备"
 
 [node name="CancelButton" type="Button" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponHeader"]
 visible = false
@@ -72,7 +73,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
 theme_override_font_sizes/font_size = 22
 horizontal_alignment = 1
-text = "Magics"
+text = "魔法"
 
 [node name="MagicGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
@@ -88,7 +89,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
 theme_override_font_sizes/font_size = 22
 horizontal_alignment = 1
-text = "Items"
+text = "道具"
 
 [node name="ItemGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2

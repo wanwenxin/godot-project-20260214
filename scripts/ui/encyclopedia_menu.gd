@@ -192,6 +192,7 @@ func _build_items_tab() -> void:
 
 func _build_weapons_tab() -> void:
 	var weapons_sub := TabContainer.new()
+	weapons_sub.set_script(preload("res://scripts/ui/tab_container_selected_scale.gd"))
 	weapons_sub.custom_minimum_size = Vector2(0, 360)
 	var vbox_melee := _make_scroll_vbox_for_parent(weapons_sub)
 	var vbox_ranged := _make_scroll_vbox_for_parent(weapons_sub)
@@ -249,8 +250,10 @@ func _build_magic_tab() -> void:
 
 func _build_affixes_tab() -> void:
 	var affixes_sub := TabContainer.new()
+	affixes_sub.set_script(preload("res://scripts/ui/tab_container_selected_scale.gd"))
 	affixes_sub.custom_minimum_size = Vector2(0, 360)
 	var magic_sub := TabContainer.new()
+	magic_sub.set_script(preload("res://scripts/ui/tab_container_selected_scale.gd"))
 	magic_sub.custom_minimum_size = Vector2(0, 320)
 	var vbox_magic_range := _make_scroll_vbox_for_parent(magic_sub)
 	var vbox_magic_effect := _make_scroll_vbox_for_parent(magic_sub)
