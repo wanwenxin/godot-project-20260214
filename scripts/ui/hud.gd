@@ -1,62 +1,68 @@
 extends CanvasLayer
 
-# HUD 与结算层：
-# - 战斗中显示 HP/波次/击杀/时间/金币
-# - 升级三选一、武器商店、开局武器选择（运行时构建）
-# - 触控虚拟按键（移动 + 暂停）
-signal upgrade_selected(upgrade_id: String)
-signal upgrade_refresh_requested  # 玩家点击刷新，消耗金币重新随机 4 项
-signal start_weapon_selected(weapon_id: String)
-signal weapon_shop_selected(weapon_id: String)
-signal weapon_shop_refresh_requested  # 商店刷新
-signal weapon_shop_closed  # 下一波，关闭商店
+# 战斗 HUD 与模态 UI 层：负责战斗中顶部状态、左下魔法槽、升级/商店/开局武器选择等界面。
+# - 顶部：血量/魔力/护甲、波次、击杀数、生存时间、金币、预生成/波次倒计时、波次横幅、暂停按键提示
+# - 左下：魔法槽（最多 3 个，图标+冷却遮罩+名称+词条），触控时显示虚拟移动键与暂停键
+# - 模态：升级四选一面板（含刷新）、武器商店/开局选择面板（Tab：商店/背包/角色信息），全屏遮罩
+# 运行时通过 _build_runtime_ui 创建金币/倒计时/横幅/升级/武器面板等节点，场景中仅保留 Root 与 TopRow 等基础结构。
+
+# ---- 信号（由 game.gd 等连接） ----
+signal upgrade_selected(upgrade_id: String)  # 玩家选择了某项升级或 skip
+signal upgrade_refresh_requested  # 玩家点击刷新，消耗金币重新随机 4 项升级
+signal start_weapon_selected(weapon_id: String)  # 开局武器选择完成
+signal weapon_shop_selected(weapon_id: String)  # 商店内购买/选择武器或道具
+signal weapon_shop_refresh_requested  # 商店 Tab 内点击刷新商品
+signal weapon_shop_closed  # 点击「下一波」，关闭商店并进入下一波
 signal backpack_requested  # 商店内请求打开背包（可选全屏入口）
-signal backpack_sell_requested(weapon_index: int)  # 商店背包 Tab 内售卖武器
-signal backpack_merge_completed  # 商店背包 Tab 内合并完成，需刷新
-signal mobile_move_changed(direction: Vector2)
-signal pause_pressed
+signal backpack_sell_requested(weapon_index: int)  # 商店背包 Tab 内售卖指定索引武器
+signal backpack_merge_completed  # 商店背包 Tab 内合并完成，需刷新背包与角色信息
+signal mobile_move_changed(direction: Vector2)  # 触控移动键按下/抬起后，当前归一化方向
+signal pause_pressed  # 触控暂停键按下
 
-@onready var health_bar: ProgressBar = $Root/TopRow/HealthBox/HPBlock/HealthBar
-@onready var health_label: Label = $Root/TopRow/HealthBox/HPBlock/HealthLabel
-@onready var mana_bar: ProgressBar = $Root/TopRow/HealthBox/MPBlock/ManaBar
-@onready var mana_label: Label = $Root/TopRow/HealthBox/MPBlock/ManaLabel
-@onready var wave_label: Label = $Root/TopRow/WaveLabel
-@onready var kill_label: Label = $Root/TopRow/KillLabel
-@onready var timer_label: Label = $Root/TopRow/TimerLabel
-@onready var pause_hint: Label = $Root/PauseHint
+# ---- 场景节点引用（hud.tscn 中已存在） ----
+@onready var health_bar: ProgressBar = $Root/TopRow/HealthBox/HPBlock/HealthBar  # 血量进度条
+@onready var health_label: Label = $Root/TopRow/HealthBox/HPBlock/HealthLabel  # 血量数值 "当前/最大"
+@onready var mana_bar: ProgressBar = $Root/TopRow/HealthBox/MPBlock/ManaBar  # 魔力进度条
+@onready var mana_label: Label = $Root/TopRow/HealthBox/MPBlock/ManaLabel  # 魔力数值
+@onready var wave_label: Label = $Root/TopRow/WaveLabel  # 当前波次数
+@onready var kill_label: Label = $Root/TopRow/KillLabel  # 本局击杀数
+@onready var timer_label: Label = $Root/TopRow/TimerLabel  # 生存时间
+@onready var pause_hint: Label = $Root/PauseHint  # 暂停/移动/缩放/魔法等按键提示（多行）
 
-var _wave_countdown_label: Label  # 波次倒计时（中上）：预生成/间隔时「第X波-X.Xs」，波次进行中「第X波-剩余Xs」
-var _currency_label: Label  # 金币
-var _wave_banner: Label  # 波次横幅（淡出动画）
-var _upgrade_panel: Panel  # 升级三选一面板
-var _upgrade_title_label: Label
-var _upgrade_tip_label: Label
-var _upgrade_buttons: Array[Button] = []
-var _upgrade_icons: Array[TextureRect] = []
-var _upgrade_refresh_btn: Button  # 刷新按钮
-var _weapon_panel: Panel  # 武器商店/开局选择面板
-var _weapon_title_label: Label
-var _weapon_tip_label: Label
-var _weapon_buttons: Array[Button] = []
-var _weapon_icons: Array[TextureRect] = []
-var _shop_refresh_btn: Button  # 商店 Tab 内刷新按钮
-var _shop_backpack_panel: VBoxContainer  # 背包 Tab 内嵌 BackpackPanel
-var _shop_next_btn: Button
-var _shop_tab_container: TabContainer  # 商店/背包/角色信息 Tab
-var _shop_stats_container: Control  # 角色信息 Tab 内容容器，用于刷新
-var _last_shop_stats_hash: String = ""  # 脏检查：stats 未变时跳过角色信息 Tab 重建
-var _modal_backdrop: ColorRect  # 全屏遮罩，升级/商店时显示
-var _weapon_mode := ""  # "start" 或 "shop"，区分开局选择与波次商店
-var _touch_panel: Control  # 触控按钮容器
+# ---- 运行时创建的 UI 节点 ----
+var _wave_countdown_label: Label  # 波次倒计时（中上）：预生成时「第X波-X.Xs」，波次中「第X波-剩余Xs」
+var _currency_label: Label  # 金币数量标签（右上区域）
+var _wave_banner: Label  # 波次开始时的横幅，淡出动画后隐藏
+var _upgrade_panel: Panel  # 升级四选一模态面板
+var _upgrade_title_label: Label  # 升级面板标题
+var _upgrade_tip_label: Label  # 升级面板说明（金币等）
+var _upgrade_buttons: Array[Button] = []  # 四个升级选项按钮
+var _upgrade_icons: Array[TextureRect] = []  # 四个升级图标
+var _upgrade_refresh_btn: Button  # 升级面板内刷新按钮
+var _weapon_panel: Panel  # 武器商店/开局选择模态面板
+var _weapon_title_label: Label  # 武器面板标题
+var _weapon_tip_label: Label  # 武器面板说明
+var _weapon_buttons: Array[Button] = []  # 商店/开局四个选项按钮
+var _weapon_icons: Array[TextureRect] = []  # 四个选项图标
+var _shop_refresh_btn: Button  # 商店 Tab 内刷新商品按钮
+var _shop_backpack_panel: VBoxContainer  # 背包 Tab 内嵌的 BackpackPanel 实例
+var _shop_next_btn: Button  # 「下一波」按钮
+var _shop_tab_container: TabContainer  # 商店/背包/角色信息三 Tab
+var _shop_stats_container: Control  # 角色信息 Tab 内容容器，由 ResultPanelShared 构建
+var _last_shop_stats_hash: String = ""  # 脏检查：stats 哈希未变时跳过角色信息 Tab 重建
+var _modal_backdrop: ColorRect  # 全屏半透明遮罩，升级/商店时置于底层
+var _weapon_mode := ""  # "start" 或 "shop"，区分开局武器选择与波次商店
+var _touch_panel: Control  # 触控时移动键容器（L/R/U/D）
 var _pause_touch_btn: Button  # 触控暂停按钮
-# 触控方向状态字典，组合成归一化向量后回传给 Player。
-var _move_state := {
+var _move_state := {  # 触控方向键按下状态，用于合成 mobile_move_changed 的 direction
 	"left": false,
 	"right": false,
 	"up": false,
 	"down": false
 }
-var _last_health_current := 0  # 语言切换时重绘用
+
+# ---- 脏检查缓存（避免每帧重复赋值与 StyleBox 重建；语言切换时用于重绘） ----
+var _last_health_current := 0
 var _last_health_max := 0
 var _last_exp_current := 0
 var _last_exp_threshold := 50
@@ -68,18 +74,21 @@ var _last_currency := 0
 var _last_mana_current := 0.0
 var _last_mana_max := 1.0
 var _last_armor := 0
-var _magic_panel: PanelContainer  # 左下角魔法面板
-# 魔法冷却节流：remaining_cd 变化阈值（秒），低于此值不更新冷却遮罩
-const MAGIC_CD_UPDATE_THRESHOLD := 0.05
-var _last_magic_cd_per_slot: Array[float] = []  # 每槽上次显示的 remaining_cd
-var _last_magic_current_index := -1  # 上次当前选中槽索引，用于切换时立即更新边框
+
+# ---- 魔法面板 ----
+var _magic_panel: PanelContainer  # 左下角魔法槽容器（最多 3 槽）
+const MAGIC_CD_UPDATE_THRESHOLD := 0.05  # 魔法冷却 remaining_cd 变化超过此值（秒）才刷新遮罩，节流
+var _last_magic_cd_per_slot: Array[float] = []  # 每槽上次显示的 remaining_cd，用于节流
+var _last_magic_current_index := -1  # 上次当前选中槽索引，切换时立即更新边框
 var _magic_slots: Array = []  # 每项 {panel, icon, cd_overlay, name_label, affix_label}
 
-const HUD_FONT_SIZE := 18  # 统一基准字号，便于阅读
-const MAGIC_SLOT_SIZE := 92  # 魔法槽图标尺寸（放大便于阅读）
-const MAGIC_SLOT_EXTRA_HEIGHT := 46  # 名称+词条区域高度
+# ---- 样式与布局常量 ----
+const HUD_FONT_SIZE := 18  # 顶部标签统一字号
+const MAGIC_SLOT_SIZE := 92  # 魔法槽图标区域边长（像素）
+const MAGIC_SLOT_EXTRA_HEIGHT := 46  # 魔法槽名称+词条区域高度
 
 
+## [系统] 节点入树时调用：构建运行时 UI、触控、本地化，初始化各 set_* 显示并隐藏模态/横幅。
 func _ready() -> void:
 	LocalizationManager.language_changed.connect(_on_language_changed)
 	_build_runtime_ui()
@@ -102,6 +111,7 @@ func _ready() -> void:
 	_apply_hud_module_backgrounds()
 
 
+## [自定义] 为 TopRow、金币、暂停提示、波次倒计时/横幅等标签外包 Panel，应用半透明背景样式。
 func _apply_hud_module_backgrounds() -> void:
 	# TopRow 用 PanelContainer 包裹，半透明背景
 	var top_row := $Root/TopRow
@@ -125,6 +135,7 @@ func _apply_hud_module_backgrounds() -> void:
 	_wrap_anchored_label_in_panel(_wave_banner)
 
 
+## [自定义] 返回 HUD 用 Panel 的 StyleBox（圆角边框+半透明背景），供 TopRow、金币等复用。
 func _make_hud_panel_style() -> StyleBox:
 	var tex := VisualAssetRegistry.make_panel_frame_texture(
 		Vector2i(48, 48),
@@ -146,6 +157,7 @@ func _make_hud_panel_style() -> StyleBox:
 	return style
 
 
+## [自定义] 返回魔法槽 Panel 的 StyleBox；is_current 时边框加粗并高亮绿色。
 func _make_magic_slot_style(is_current: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.set_corner_radius_all(4)
@@ -155,6 +167,7 @@ func _make_magic_slot_style(is_current: bool) -> StyleBoxFlat:
 	return style
 
 
+## [自定义] 将 lbl 重父到新 PanelContainer，并设置 offset 与 min_size，应用 HUD 面板样式。
 func _wrap_label_in_panel(lbl: Label, pos: Vector2, min_size: Vector2) -> void:
 	if lbl == null:
 		return
@@ -171,6 +184,7 @@ func _wrap_label_in_panel(lbl: Label, pos: Vector2, min_size: Vector2) -> void:
 	parent.move_child(panel, idx)
 
 
+## [自定义] 将使用锚点的 lbl 重父到新 PanelContainer，复制其锚点与 offset，应用 HUD 面板样式。
 func _wrap_anchored_label_in_panel(lbl: Label) -> void:
 	if lbl == null:
 		return
@@ -192,6 +206,7 @@ func _wrap_anchored_label_in_panel(lbl: Label) -> void:
 	parent.move_child(panel, idx)
 
 
+## [自定义] 为顶部各 Label 与运行时创建的金币/波次倒计时标签统一设置 HUD_FONT_SIZE。
 func _apply_hud_font_sizes() -> void:
 	for lbl in [health_label, mana_label, wave_label, kill_label, timer_label, pause_hint]:
 		if lbl is Label:
@@ -202,6 +217,7 @@ func _apply_hud_font_sizes() -> void:
 		_wave_countdown_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 
 
+## [自定义] 设置血量显示。脏检查：值未变则跳过；否则更新进度条与分段颜色（绿/橘黄/红）及 "当前/最大" 文本。
 func set_health(current: int, max_value: int) -> void:
 	# 脏检查：值未变则跳过，减少每帧 StyleBox 重建与 Label 赋值
 	if current == _last_health_current and max_value == _last_health_max:
@@ -232,6 +248,7 @@ func set_health(current: int, max_value: int) -> void:
 	health_label.text = "%d/%d" % [current, max_value]
 
 
+## [自定义] 设置当前波次显示。脏检查后更新 wave_label 的本地化文案。
 func set_wave(value: int) -> void:
 	if value == _last_wave:
 		return
@@ -239,6 +256,7 @@ func set_wave(value: int) -> void:
 	wave_label.text = LocalizationManager.tr_key("hud.wave", {"value": value})
 
 
+## [自定义] 设置本局击杀数显示。脏检查后更新 kill_label 的本地化文案。
 func set_kills(value: int) -> void:
 	if value == _last_kills:
 		return
@@ -246,6 +264,7 @@ func set_kills(value: int) -> void:
 	kill_label.text = LocalizationManager.tr_key("hud.kills", {"value": value})
 
 
+## [自定义] 设置生存时间显示（秒）。脏检查后更新 timer_label 的本地化文案。
 func set_survival_time(value: float) -> void:
 	if is_equal_approx(value, _last_time):
 		return
@@ -253,10 +272,12 @@ func set_survival_time(value: float) -> void:
 	timer_label.text = LocalizationManager.tr_key("hud.time", {"value": "%.1f" % value})
 
 
+## [自定义] 控制左下角暂停/按键提示的显隐（如进入商店后隐藏）。
 func set_pause_hint(show_hint: bool) -> void:
 	pause_hint.visible = show_hint
 
 
+## [自定义] 设置金币显示。脏检查后更新 _currency_label 的本地化文案。
 func set_currency(value: int) -> void:
 	if value == _last_currency:
 		return
@@ -264,6 +285,7 @@ func set_currency(value: int) -> void:
 	_currency_label.text = LocalizationManager.tr_key("hud.gold", {"value": value})
 
 
+## [自定义] 更新经验缓存（战斗 HUD 已无经验条，仅供语言切换时重绘与内部一致）。
 func set_experience(current: int, threshold: int) -> void:
 	# 战斗 HUD 已移除经验条，仅更新缓存供语言切换等使用
 	var th := maxi(threshold, 1)
@@ -273,6 +295,7 @@ func set_experience(current: int, threshold: int) -> void:
 	_last_exp_threshold = th
 
 
+## [自定义] 更新等级缓存（战斗 HUD 已无等级展示，仅供语言切换等一致）。
 func set_level(level: int) -> void:
 	if level == _last_level:
 		return
@@ -280,6 +303,7 @@ func set_level(level: int) -> void:
 	# 战斗 HUD 已移除等级展示，仅保留缓存
 
 
+## [自定义] 设置魔力条与魔力数值。脏检查后更新 mana_bar 的 fill/background 样式与 mana_label 文本。
 func set_mana(current: float, max_value: float) -> void:
 	var max_val := maxf(max_value, 1.0)
 	# 脏检查：魔力变化频率低，值未变则跳过
@@ -304,6 +328,7 @@ func set_mana(current: float, max_value: float) -> void:
 		mana_label.text = "%d/%d" % [int(current), int(_last_mana_max)]
 
 
+## [自定义] 更新护甲缓存（战斗 HUD 已无护甲展示，仅供语言切换等一致）。
 func set_armor(value: int) -> void:
 	if value == _last_armor:
 		return
@@ -311,8 +336,7 @@ func set_armor(value: int) -> void:
 	# 战斗 HUD 已移除护甲展示，仅保留缓存
 
 
-## 更新左下角魔法面板：magic_data 为 get_magic_ui_data() 返回的数组。
-## 魔法冷却遮罩按 remaining_cd 变化阈值（0.05s）节流；is_current 变化时立即更新边框。
+## [自定义] 更新左下角魔法面板：magic_data 为 Player.get_magic_ui_data() 返回的数组；刷新图标、冷却遮罩、名称与词条。冷却按 MAGIC_CD_UPDATE_THRESHOLD 节流，当前槽切换时立即更新边框。
 func set_magic_ui(magic_data: Array) -> void:
 	if _magic_panel == null:
 		return
@@ -384,7 +408,7 @@ func set_magic_ui(magic_data: Array) -> void:
 var _last_wave_countdown := -1.0  # 波次倒计时脏检查缓存
 var _pre_spawn_mode := false  # 是否处于预生成倒计时（与波次剩余区分）
 
-## 预生成倒计时：地图刷新后、敌人生成前，中上显示「第 X 波 - X.Xs」。
+## [自定义] 预生成倒计时：地图刷新后、敌人生成前，中上显示「第 X 波 - X.Xs」；seconds_left<=0 时隐藏。
 func set_pre_spawn_countdown(wave: int, seconds_left: float) -> void:
 	if seconds_left <= 0.0:
 		_pre_spawn_mode = false
@@ -395,7 +419,7 @@ func set_pre_spawn_countdown(wave: int, seconds_left: float) -> void:
 	_wave_countdown_label.text = LocalizationManager.tr_key("hud.wave_pre_spawn", {"wave": wave, "value": "%.1f" % seconds_left})
 
 
-## 波次剩余倒计时：敌人生成后，中上显示「第 X 波 - 剩余 Xs」。
+## [自定义] 波次剩余倒计时：敌人生成后，中上显示「第 X 波 - 剩余 Xs」；脏检查与 _pre_spawn_mode 区分预生成。
 func set_wave_countdown(wave: int, seconds_left: float) -> void:
 	if seconds_left <= 0.0:
 		if _last_wave_countdown > 0.0:
@@ -411,13 +435,14 @@ func set_wave_countdown(wave: int, seconds_left: float) -> void:
 	_wave_countdown_label.text = LocalizationManager.tr_key("hud.wave_countdown", {"wave": wave, "value": "%.0f" % seconds_left})
 
 
-## 为波次横幅与倒计时 Label 应用描边与字号，使更醒目。
+## [自定义] 为波次横幅与倒计时 Label 应用描边（outline_size=4）与字号 22，使更醒目。
 func _apply_wave_label_effects(lbl: Label) -> void:
 	lbl.add_theme_color_override("font_outline_color", Color(0.1, 0.1, 0.15, 1.0))
 	lbl.add_theme_constant_override("outline_size", 4)
 	lbl.add_theme_font_size_override("font_size", 22)
 
 
+## [自定义] 显示波次横幅（如「第 N 波」），播放缩放+淡出动画，动画结束后隐藏。
 func show_wave_banner(wave: int) -> void:
 	_wave_banner.visible = true
 	_wave_banner.text = LocalizationManager.tr_key("hud.wave_banner", {"wave": wave})
@@ -430,6 +455,7 @@ func show_wave_banner(wave: int) -> void:
 	tween.finished.connect(func() -> void: _wave_banner.visible = false)
 
 
+## [自定义] 显示升级四选一面板：填充 options 的标题/描述/图标/upgrade_id，显示遮罩与刷新按钮（refresh_cost 控制禁用）。
 func show_upgrade_options(options: Array[Dictionary], current_gold: int, refresh_cost: int = 2) -> void:
 	_show_modal_backdrop(true)
 	_upgrade_panel.visible = true
@@ -471,11 +497,13 @@ func show_upgrade_options(options: Array[Dictionary], current_gold: int, refresh
 		_upgrade_refresh_btn.text = LocalizationManager.tr_key("hud.upgrade_refresh", {"cost": refresh_cost})
 
 
+## [自定义] 隐藏升级面板并关闭模态遮罩。
 func hide_upgrade_options() -> void:
 	_upgrade_panel.visible = false
 	_show_modal_backdrop(false)
 
 
+## [自定义] 显示开局武器选择：仅商店 Tab 可见，隐藏刷新与下一波按钮，填充 options。
 func show_start_weapon_pick(options: Array[Dictionary]) -> void:
 	_weapon_mode = "start"
 	_show_modal_backdrop(true)
@@ -494,6 +522,7 @@ func show_start_weapon_pick(options: Array[Dictionary]) -> void:
 		_shop_tab_container.current_tab = 0
 
 
+## [自定义] 显示波次后武器商店：三 Tab 可见，刷新/下一波显示，填充选项、背包与角色信息 Tab（stats 脏检查）。
 func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_left: int, completed_wave: int = 0, stats: Dictionary = {}) -> void:
 	_weapon_mode = "shop"
 	_show_modal_backdrop(true)
@@ -520,13 +549,14 @@ func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_le
 		_shop_tab_container.current_tab = 0
 
 
+## [自定义] 隐藏武器/商店面板并关闭模态遮罩。
 func hide_weapon_panel() -> void:
 	_weapon_mode = ""
 	_weapon_panel.visible = false
 	_show_modal_backdrop(false)
 
 
-## 更新商店 Tab 内刷新按钮的文案与可用状态。
+## [自定义] 更新商店 Tab 内刷新按钮的文案（消耗金币）与可用状态（金币是否足够）。
 func _update_shop_refresh_btn(wave: int) -> void:
 	if not _shop_refresh_btn:
 		return
@@ -536,22 +566,24 @@ func _update_shop_refresh_btn(wave: int) -> void:
 	_shop_refresh_btn.disabled = not can_afford
 
 
-## 商店背包 Tab 内售卖/合并后刷新。由 game 在完成售卖或合并后调用。
+## [自定义] 商店背包 Tab 内售卖/合并后刷新。由 game 在完成售卖或合并后调用，更新背包与角色信息 Tab。
 func refresh_shop_backpack(stats: Dictionary) -> void:
 	if _shop_backpack_panel and _shop_backpack_panel.has_method("set_stats"):
 		_shop_backpack_panel.set_stats(stats, true)
 	_update_shop_stats_tab(stats)
 
 
+## [系统] 背包 Tab 内售卖按钮按下时转发 backpack_sell_requested(weapon_index)。
 func _on_shop_backpack_sell_requested(weapon_index: int) -> void:
 	emit_signal("backpack_sell_requested", weapon_index)
 
 
+## [系统] 背包 Tab 内合并完成时转发 backpack_merge_completed。
 func _on_shop_backpack_merge_completed() -> void:
 	emit_signal("backpack_merge_completed")
 
 
-## 轻量哈希：stats 关键字段，用于角色信息 Tab 脏检查。
+## [自定义] 对 stats（武器/魔法/道具/波次/血量等）做轻量哈希，用于角色信息 Tab 脏检查，避免无变化时重建。
 func _hash_shop_stats(stats: Dictionary) -> String:
 	var w: Array = stats.get("weapon_details", [])
 	var m: Array = stats.get("magic_details", [])
@@ -570,7 +602,7 @@ func _hash_shop_stats(stats: Dictionary) -> String:
 	return "%d|%d|%d|%d|%s|%s|%s" % [w.size(), m.size(), i.size(), wave, "|".join(parts), hp, extra]
 
 
-## 更新角色信息 Tab 内容。
+## [自定义] 更新角色信息 Tab 内容：若 stats 哈希变化则清空容器并由 ResultPanelShared.build_player_stats_block 重建。
 func _update_shop_stats_tab(stats: Dictionary) -> void:
 	if not _shop_stats_container:
 		return
@@ -584,7 +616,7 @@ func _update_shop_stats_tab(stats: Dictionary) -> void:
 	_shop_stats_container.add_child(block)
 
 
-# 运行时构建：金币、间隔/波次倒计时、波次横幅、升级面板、武器面板、全屏遮罩。
+## [自定义] 运行时构建 UI：全屏遮罩、金币标签、波次倒计时/横幅、魔法面板、升级四选一面板、武器商店面板（含 Tab 与下一波按钮）。
 func _build_runtime_ui() -> void:
 	var root := $Root
 	_modal_backdrop = ColorRect.new()
@@ -906,7 +938,7 @@ func _build_runtime_ui() -> void:
 	_shop_next_btn = shop_next
 
 
-# 触控设备下创建 L/R/U/D 移动键与暂停键，通过 mobile_move_changed 回传方向。
+## [自定义] 触控设备下在 _touch_panel 中创建 L/R/U/D 移动键，在 Root 下创建暂停键；移动键按下/抬起更新 _move_state 并发射 mobile_move_changed。
 func _setup_touch_controls() -> void:
 	if not DisplayServer.is_touchscreen_available():
 		return
@@ -945,6 +977,7 @@ func _setup_touch_controls() -> void:
 	_pause_touch_btn = pause_btn
 
 
+## [自定义] 根据 _move_state 合成归一化方向向量并发射 mobile_move_changed。
 func _emit_mobile_move() -> void:
 	var x := int(_move_state["right"]) - int(_move_state["left"])
 	var y := int(_move_state["down"]) - int(_move_state["up"])
@@ -952,6 +985,7 @@ func _emit_mobile_move() -> void:
 	emit_signal("mobile_move_changed", direction)
 
 
+## [系统] 升级选项按钮按下：读取 meta upgrade_id 并发射 upgrade_selected。
 func _on_upgrade_button_pressed(btn: Button) -> void:
 	if not btn.has_meta("upgrade_id"):
 		return
@@ -961,6 +995,7 @@ func _on_upgrade_button_pressed(btn: Button) -> void:
 	emit_signal("upgrade_selected", upgrade_id)
 
 
+## [系统] 武器/商店选项按钮按下：根据 _weapon_mode 发射 start_weapon_selected 或 weapon_shop_selected(weapon_id)。
 func _on_weapon_button_pressed(btn: Button) -> void:
 	if not btn.has_meta("weapon_id"):
 		return
@@ -973,6 +1008,7 @@ func _on_weapon_button_pressed(btn: Button) -> void:
 		emit_signal("weapon_shop_selected", weapon_id)
 
 
+## [自定义] 应用当前语言的静态文案：暂停提示、升级/武器标题与说明、Tab 标题、暂停按钮等。
 func _apply_localized_static_texts() -> void:
 	pause_hint.text = _build_key_hints_text()
 	if _upgrade_title_label:
@@ -980,7 +1016,7 @@ func _apply_localized_static_texts() -> void:
 	_apply_upgrade_weapon_tip_texts()
 
 
-## 构建多行按键提示文本，供 HUD 左下角显示。
+## [自定义] 构建多行按键提示文本（移动/暂停/缩放/魔法/血条），供 HUD 左下角 pause_hint 显示。
 func _build_key_hints_text() -> String:
 	return "\n".join([
 		LocalizationManager.tr_key("pause.key_hint.move", {"keys": ResultPanelShared.action_to_text(["move_up", "move_down", "move_left", "move_right"])}),
@@ -991,6 +1027,7 @@ func _build_key_hints_text() -> String:
 	])
 
 
+## [自定义] 更新升级说明、武器标题与商店 Tab/下一波/暂停按钮的本地化文案（依赖 _last_currency、_weapon_mode）。
 func _apply_upgrade_weapon_tip_texts() -> void:
 	if _upgrade_tip_label:
 		_upgrade_tip_label.text = LocalizationManager.tr_key("hud.upgrade_tip", {"gold": _last_currency})
@@ -1006,6 +1043,7 @@ func _apply_upgrade_weapon_tip_texts() -> void:
 		_shop_next_btn.text = LocalizationManager.tr_key("weapon.shop_next_wave")
 
 
+## [系统] 语言切换时重应用静态文案并按缓存重设血量/经验/等级/魔力/护甲/波次/击杀/时间/金币显示。
 func _on_language_changed(_language_code: String) -> void:
 	_apply_localized_static_texts()
 	set_health(_last_health_current, _last_health_max)
@@ -1019,7 +1057,7 @@ func _on_language_changed(_language_code: String) -> void:
 	set_currency(_last_currency)
 
 
-# 填充商店/开局按钮：支持武器与道具；is_shop 时道具不检查槽位，武器检查 capacity_left。
+## [自定义] 填充商店/开局四个选项按钮：图标、标题、stats 文案、价格与禁用状态；支持 weapon/attribute/magic，is_shop 时武器检查金币与容量。
 func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gold: int, _capacity_left: int) -> void:
 	var button_index := 0
 	for option in options:
@@ -1075,7 +1113,7 @@ func _fill_weapon_buttons(options: Array[Dictionary], is_shop: bool, current_gol
 		_weapon_icons[i].visible = false
 
 
-## 商店魔法卡片：威力、消耗、冷却 + 三类词条名称。
+## [自定义] 构建商店魔法卡片 stats 文案：威力、魔力消耗、冷却 + 范围/效果/元素词条名称（来自 MagicDefs/MagicAffixDefs）。
 func _build_magic_shop_stats_text(item_id: String, option: Dictionary) -> String:
 	var def := MagicDefs.get_magic_by_id(item_id)
 	if def.is_empty():
@@ -1094,6 +1132,7 @@ func _build_magic_shop_stats_text(item_id: String, option: Dictionary) -> String
 	return " · ".join(parts)
 
 
+## [自定义] 构建道具（attribute）卡片的 stats 文案：描述 + 数值（lifesteal 等为百分比）。
 func _build_item_stats_text(option: Dictionary) -> String:
 	var desc := LocalizationManager.tr_key(str(option.get("desc_key", "")))
 	var val = option.get("base_value")
@@ -1104,10 +1143,12 @@ func _build_item_stats_text(option: Dictionary) -> String:
 	return "%s +%d" % [desc, int(val)]
 
 
+## [自定义] 为升级/武器等模态 Panel 应用主题中的 modal 样式（来自 UiThemeConfig）。
 func _apply_modal_panel_style(panel: Panel) -> void:
 	panel.add_theme_stylebox_override("panel", _get_ui_theme().get_modal_panel_stylebox())
 
 
+## [自定义] 为模态面板添加全屏不透明背景色；pass_input=true 时鼠标穿透（如结算面板按钮可点）。
 func _add_opaque_backdrop_to_panel(panel: Control, pass_input := false) -> void:
 	# 为操作面板添加全屏不透明背景色，确保遮住下层游戏画面
 	# pass_input=true 时使用 IGNORE，让点击穿透到下层按钮（如结算面板的重试/回主菜单）
@@ -1126,16 +1167,19 @@ func _add_opaque_backdrop_to_panel(panel: Control, pass_input := false) -> void:
 	panel.move_child(backdrop, 0)
 
 
+## [自定义] 控制全屏模态遮罩的显隐（升级/商店打开时 true，关闭时 false）。
 func _show_modal_backdrop(backdrop_visible: bool) -> void:
 	if not _modal_backdrop:
 		return
 	_modal_backdrop.visible = backdrop_visible
 
 
+## [自定义] 返回当前 UI 主题配置（模态背景色、模态 Panel 样式等）。
 func _get_ui_theme() -> UiThemeConfig:
 	return UiThemeConfig.load_theme()
 
 
+## [自定义] 构建武器卡片的 stats 文案：伤害、冷却、射程/弹速/扩散/穿透等；若有 random_affix_ids 则追加词条名称行。
 func _build_weapon_stats_text(option: Dictionary) -> String:
 	var stats: Dictionary = option.get("stats", {})
 	var lines: Array[String] = []
