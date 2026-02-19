@@ -15,7 +15,7 @@ signal wave_countdown_changed(seconds_left: float)
 signal pre_spawn_countdown_started(duration: float)
 signal pre_spawn_countdown_changed(seconds_left: float)
 
-@export var wave_duration := 20.0
+@export var wave_duration := GameConstants.WAVE_DURATION_DEFAULT
 @export var melee_scene: PackedScene
 @export var ranged_scene: PackedScene
 @export var tank_scene: PackedScene = preload("res://scenes/enemies/enemy_tank.tscn")
@@ -29,17 +29,17 @@ signal pre_spawn_countdown_changed(seconds_left: float)
 @export var spawn_attempts := 24
 @export var spawn_region_margin := 24.0
 @export var telegraph_enabled := true
-@export var telegraph_duration := 0.9
+@export var telegraph_duration := GameConstants.TELEGRAPH_DURATION_DEFAULT
 @export var telegraph_show_ring := true
 @export var telegraph_show_countdown := true
-@export var intermission_time := 3.5
-@export var pre_spawn_countdown := 3.0  # 地图刷新后、敌人生成前的倒计时秒数
-@export var coin_drop_chance := 0.38
-@export var heal_drop_chance := 0.17
+@export var intermission_time := GameConstants.INTERMISSION_TIME_DEFAULT
+@export var pre_spawn_countdown := GameConstants.PRE_SPAWN_COUNTDOWN_DEFAULT  # 地图刷新后、敌人生成前的倒计时秒数
+@export var coin_drop_chance := GameConstants.COIN_DROP_CHANCE_DEFAULT
+@export var heal_drop_chance := GameConstants.HEAL_DROP_CHANCE_DEFAULT
 @export var boss_bonus_coin_count := Vector2i(2, 3)
-@export var spawn_batch_count := 3
-@export var spawn_batch_interval := 6.0
-@export var spawn_positions_count := 5  # 出生点数量，单出生点可产生多个敌人
+@export var spawn_batch_count := GameConstants.SPAWN_BATCH_COUNT_DEFAULT
+@export var spawn_batch_interval := GameConstants.SPAWN_BATCH_INTERVAL_DEFAULT
+@export var spawn_positions_count := GameConstants.SPAWN_POSITIONS_COUNT_DEFAULT  # 出生点数量，单出生点可产生多个敌人
 
 var current_wave := 0  # 当前波次编号
 var kill_count := 0  # 本局总击杀数
@@ -143,10 +143,10 @@ func _start_next_wave() -> void:
 	var cfg: LevelConfig = GameManager.get_current_level_config(current_wave)
 	if cfg == null:
 		cfg = _get_fallback_level_config()
-	wave_duration = cfg.wave_duration if cfg != null else 20.0
-	spawn_batch_count = int(cfg.spawn_batch_count) if cfg != null else 3
-	spawn_batch_interval = cfg.spawn_batch_interval if cfg != null else 6.0
-	spawn_positions_count = int(cfg.spawn_positions_count) if cfg != null else 5
+	wave_duration = cfg.wave_duration if cfg != null else GameConstants.WAVE_DURATION_DEFAULT
+	spawn_batch_count = int(cfg.spawn_batch_count) if cfg != null else GameConstants.SPAWN_BATCH_COUNT_DEFAULT
+	spawn_batch_interval = cfg.spawn_batch_interval if cfg != null else GameConstants.SPAWN_BATCH_INTERVAL_DEFAULT
+	spawn_positions_count = int(cfg.spawn_positions_count) if cfg != null else GameConstants.SPAWN_POSITIONS_COUNT_DEFAULT
 	_wave_countdown_left = wave_duration
 	emit_signal("wave_started", current_wave)
 	_current_intermission = 0.0

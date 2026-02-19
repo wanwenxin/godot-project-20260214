@@ -6,7 +6,7 @@ extends Node2D
 # 到时后发出 telegraph_finished，实际敌人再落地。
 signal telegraph_finished
 
-@export var duration := 0.9
+@export var duration := GameConstants.TELEGRAPH_DURATION_DEFAULT
 @export var show_ring := true
 @export var show_countdown := true
 @export var spawn_count := 1  # 本出生点将生成的敌人数量，用于显示

@@ -35,16 +35,16 @@ extends Resource
 @export var grass_cluster_items := Vector2i(3, 6) # 草地集群物品数量
 
 @export_group("Enemies")
-@export var melee_count_min := 6 # 近战敌人数量最小值
-@export var melee_count_max := 10 # 近战敌人数量最大值
-@export var ranged_count_min := 2 # 远程敌人数量最小值
-@export var ranged_count_max := 5 # 远程敌人数量最大值
-@export var tank_count_min := 0 # 坦克敌人数量最小值
-@export var tank_count_max := 1 # 坦克敌人数量最大值
+@export var melee_count_min := 18 # 近战敌人数量最小值（大幅增加刷新数量）
+@export var melee_count_max := 28 # 近战敌人数量最大值
+@export var ranged_count_min := 0 # 远程敌人数量最小值（减少远程）
+@export var ranged_count_max := 2 # 远程敌人数量最大值
+@export var tank_count_min := 2 # 坦克敌人数量最小值
+@export var tank_count_max := 4 # 坦克敌人数量最大值
 @export var aquatic_count_min := 0 # 水生敌人数量最小值
-@export var aquatic_count_max := 2 # 水生敌人数量最大值
-@export var dasher_count_min := 0 # 冲刺敌人数量最小值
-@export var dasher_count_max := 2 # 冲刺敌人数量最大值
+@export var aquatic_count_max := 3 # 水生敌人数量最大值
+@export var dasher_count_min := 2 # 冲刺敌人数量最小值
+@export var dasher_count_max := 5 # 冲刺敌人数量最大值
 @export var boss_count := 0 # boss数量
 @export var use_extended_spawn := false # 为 true 时使用 normal/elite/boss 池
 @export var elite_spawn_chance_base := 0.05 # 精英基础概率
@@ -53,9 +53,9 @@ extends Resource
 @export_group("Wave")
 @export var wave_duration := 20.0 # 波次持续时间
 @export var difficulty := 1.0 # 难度
-@export var spawn_batch_count := 3 # 生成批次数量
+@export var spawn_batch_count := 4 # 生成批次数量
 @export var spawn_batch_interval := 6.0 # 生成批次间隔时间
-@export var spawn_positions_count := 5 # 出生点数量，单出生点可产生多个敌人
+@export var spawn_positions_count := 8 # 出生点数量，单出生点可产生多个敌人
 
 
 func get_terrain_params() -> Dictionary:
@@ -117,7 +117,7 @@ func _get_extended_spawn_orders(wave: int, game_node: Node, rng: RandomNumberGen
 		normal_ids.append_array(["melee", "ranged", "tank", "aquatic", "dasher"])
 	if boss_ids.is_empty():
 		boss_ids.append("boss")
-	var total := clampi(6 + wave * 2, 4, 25)
+	var total := clampi(14 + wave * 4, 10, 50)  # 大幅增加每波敌人数
 	var elite_chance := elite_spawn_chance_base + wave * elite_spawn_chance_per_wave
 	var boss_num := 1 if (wave % 5 == 0 and wave > 0) else boss_count
 	var elite_count := 0
@@ -127,8 +127,23 @@ func _get_extended_spawn_orders(wave: int, game_node: Node, rng: RandomNumberGen
 	var normal_count := total - boss_num - elite_count
 	var hp_base := 0.9 + wave * 0.05
 	var speed_base := 1.0 + wave * 0.06
+	# 区分远程与近战，减少远程数量：约 15% 远程、85% 近战/其他
+	var ranged_ids: Array[String] = []
+	var melee_ids: Array[String] = []
+	for eid in normal_ids:
+		var def: Dictionary = EnemyDefs.get_enemy_def(eid)
+		if int(def.get("behavior_mode", 0)) == EnemyDefs.BEHAVIOR_KEEP_DISTANCE:
+			ranged_ids.append(eid)
+		else:
+			melee_ids.append(eid)
+	if melee_ids.is_empty():
+		melee_ids.append_array(normal_ids)
 	for _i in range(normal_count):
-		var eid: String = normal_ids[rng.randi() % normal_ids.size()]
+		var eid: String
+		if ranged_ids.is_empty() or rng.randf() >= 0.15:
+			eid = melee_ids[rng.randi() % melee_ids.size()]
+		else:
+			eid = ranged_ids[rng.randi() % ranged_ids.size()]
 		var def: Dictionary = EnemyDefs.get_enemy_def(eid)
 		var hp_s := def.get("hp_scale", 1.0) as float * hp_base
 		var sp_s := def.get("speed_scale", 1.0) as float * speed_base
@@ -147,13 +162,13 @@ func _get_extended_spawn_orders(wave: int, game_node: Node, rng: RandomNumberGen
 
 func _get_legacy_spawn_orders(wave: int, game_node: Node, scenes: Dictionary, rng: RandomNumberGenerator) -> Array:
 	var orders: Array = []
-	var melee_c := clampi(rng.randi_range(melee_count_min, melee_count_max), 0, 20)
-	var ranged_c := clampi(rng.randi_range(ranged_count_min, ranged_count_max), 0, 10)
-	var tank_c := clampi(rng.randi_range(tank_count_min, tank_count_max), 0, 5)
+	var melee_c := clampi(rng.randi_range(melee_count_min, melee_count_max), 0, 40)
+	var ranged_c := clampi(rng.randi_range(ranged_count_min, ranged_count_max), 0, 8)
+	var tank_c := clampi(rng.randi_range(tank_count_min, tank_count_max), 0, 8)
 	var aquatic_c := 0
 	if game_node != null and game_node.has_method("has_water_spawn_positions") and game_node.has_water_spawn_positions():
-		aquatic_c = clampi(rng.randi_range(aquatic_count_min, aquatic_count_max), 0, 4)
-	var dasher_c := clampi(rng.randi_range(dasher_count_min, dasher_count_max), 0, 4)
+		aquatic_c = clampi(rng.randi_range(aquatic_count_min, aquatic_count_max), 0, 6)
+	var dasher_c := clampi(rng.randi_range(dasher_count_min, dasher_count_max), 0, 8)
 	var hp_base := 0.9 + wave * 0.06
 	var speed_base := 1.0 + wave * 0.08
 	for _i in range(melee_c):

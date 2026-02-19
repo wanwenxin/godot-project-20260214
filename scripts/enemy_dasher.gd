@@ -4,11 +4,11 @@ extends EnemyBase
 
 enum State { IDLE, WIND_UP, DASH, RECOVER }
 
-@export var dash_cooldown := 2.5
-@export var dash_speed := 380.0
-@export var dash_duration := 0.55
-@export var wind_up_duration := 0.4
-@export var recover_duration := 0.3
+@export var dash_cooldown := GameConstants.DASH_COOLDOWN_DEFAULT
+@export var dash_speed := GameConstants.DASH_SPEED_DEFAULT
+@export var dash_duration := GameConstants.DASH_DURATION_DEFAULT
+@export var wind_up_duration := GameConstants.WIND_UP_DURATION_DEFAULT
+@export var recover_duration := GameConstants.RECOVER_DURATION_DEFAULT
 
 var _state := State.IDLE
 var _state_timer := 0.0
@@ -27,7 +27,7 @@ func _physics_process(delta: float) -> void:
 
 	match _state:
 		State.IDLE:
-			_move_towards_player(delta, 0.6)
+			_move_towards_player(delta, GameConstants.DASHER_IDLE_MOVE_SCALE)
 			if _cooldown_remaining <= 0.0 and is_instance_valid(player_ref):
 				_dash_dir = (player_ref.global_position - global_position).normalized()
 				if _dash_dir.length_squared() < 0.001:

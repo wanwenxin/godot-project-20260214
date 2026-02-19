@@ -14,8 +14,8 @@ signal request_area_targeting(slot: int, magic_def: Dictionary, instance: MagicB
 @export var max_health := 100
 @export var max_mana := 50  # 魔力上限
 @export var armor := 0  # 护甲，减伤点数
-@export var invulnerable_duration := 0.5
-@export var inertia_factor := 0.0  # 移动惯性系数：0=无惯性，越大越“滑”。
+@export var invulnerable_duration := GameConstants.INVULNERABLE_DURATION_DEFAULT
+@export var inertia_factor := GameConstants.INERTIA_FACTOR_DEFAULT  # 移动惯性系数：0=无惯性，越大越“滑”。
 
 @export_file("*.png") var texture_sheet: String = "res://assets/characters/player_scheme_0_sheet.png"  # 精灵图（scheme 0）
 @export_file("*.png") var texture_sheet_1: String = "res://assets/characters/player_scheme_1_sheet.png"  # 精灵图（scheme 1）
@@ -82,6 +82,7 @@ func _ready() -> void:
 	# 玩家仅与敌人发生实体碰撞，子弹通过 Area2D 处理。
 	collision_layer = 1
 	collision_mask = 2 | 8
+	scale = Vector2(GameConstants.PLAYER_SCALE, GameConstants.PLAYER_SCALE)
 	_update_sprite(0)
 	current_health = max_health
 	current_mana = float(max_mana)
@@ -232,7 +233,7 @@ func apply_upgrade(upgrade_id: String, _value: Variant = null) -> void:
 
 ## [自定义] 设置地形速度系数，多地形取最慢。
 func set_terrain_effect(zone_id: int, speed_multiplier: float) -> void:
-	_terrain_effects[zone_id] = clampf(speed_multiplier, 0.2, 1.2)
+	_terrain_effects[zone_id] = clampf(speed_multiplier, GameConstants.TERRAIN_SPEED_CLAMP_MIN, GameConstants.TERRAIN_SPEED_CLAMP_MAX)
 	_recompute_terrain_speed()
 
 
@@ -245,7 +246,7 @@ func clear_terrain_effect(zone_id: int) -> void:
 ## [自定义] 设置移动惯性系数，0~0.9。
 func set_move_inertia(value: float) -> void:
 	# 统一入口，便于从设置菜单或其他系统动态调整惯性。
-	inertia_factor = clampf(value, 0.0, 0.9)
+	inertia_factor = clampf(value, 0.0, GameConstants.INERTIA_FACTOR_MAX)
 
 
 ## [自定义] 装备魔法，最多 MAX_MAGICS 个；若已装备同 id 则升级品级。动态加载：script_path 来自 MagicDefs，

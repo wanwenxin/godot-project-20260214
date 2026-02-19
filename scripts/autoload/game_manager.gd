@@ -203,9 +203,7 @@ func add_record_damage_dealt(amount: int) -> void:
 
 
 ## 经验值系统：击败敌人获得经验，升级时 run_level 增加。
-## 经验曲线：base_xp * (level ^ curve)，如 base=50, curve=1.2
-const XP_BASE := 50
-const XP_CURVE := 1.2
+## 经验曲线见 GameConstants.XP_BASE、GameConstants.XP_CURVE。
 
 
 ## [自定义] 增加经验值，循环检查升级（可能连升多级）。
@@ -221,7 +219,7 @@ func add_experience(amount: int) -> void:
 
 ## [自定义] 返回当前等级升级所需经验值。
 func get_level_up_threshold() -> int:
-	return int(float(XP_BASE) * pow(float(run_level), XP_CURVE))
+	return int(float(GameConstants.XP_BASE) * pow(float(run_level), GameConstants.XP_CURVE))
 
 
 ## [自定义] 重置经验与等级为初始值。
@@ -254,7 +252,7 @@ func apply_saved_settings() -> void:
 	else:
 		_apply_key_bindings(key_bindings)
 	enemy_healthbar_visible = bool(game_cfg.get("show_enemy_health_bar", true))
-	move_inertia_factor = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, 0.9)
+	move_inertia_factor = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, GameConstants.INERTIA_FACTOR_MAX)
 
 
 ## [自定义] 应用窗口模式（全屏/百分比/自定义尺寸），deferred 执行避免与设置菜单冲突。

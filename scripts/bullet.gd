@@ -5,7 +5,7 @@ extends Area2D
 # - hit_player=true: 敌人子弹，命中玩家
 @export var speed := 500.0
 @export var damage := 10
-@export var life_time := 2.0
+@export var life_time := GameConstants.BULLET_LIFE_TIME_DEFAULT
 @export var hit_player := false
 # 穿透次数：>0 时命中后不销毁，递减至 0 后销毁。
 @export var remaining_pierce := 0
@@ -30,7 +30,7 @@ var _hit_targets: Dictionary = {}  # 已命中目标 instance_id，用于同目�
 ## [自定义] 对象池回收时重置状态，避免残留 _hit_targets、life_time、elemental_amount 等。
 func reset_for_pool() -> void:
 	_hit_targets.clear()
-	life_time = 2.0  # 复用后需重置，否则首帧即因 life_time<=0 被回收
+	life_time = GameConstants.BULLET_LIFE_TIME_DEFAULT  # 复用后需重置，否则首帧即因 life_time<=0 被回收
 	elemental_amount = 0
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -38,6 +38,7 @@ func reset_for_pool() -> void:
 ## [系统] 节点入树时调用，设置碰撞层、外观、连接 body_entered。
 func _ready() -> void:
 	add_to_group("bullets")
+	scale = Vector2(GameConstants.BULLET_SCALE, GameConstants.BULLET_SCALE)
 	# 子弹在 layer_3，仅与目标层发生重叠检测。
 	collision_layer = 1 << 2
 	collision_mask = 1 if hit_player else 2

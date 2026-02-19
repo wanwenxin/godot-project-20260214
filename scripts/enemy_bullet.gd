@@ -5,7 +5,7 @@ extends "res://scripts/bullet.gd"
 
 func _ready() -> void:
 	hit_player = true
-	speed = 180.0
+	speed = GameConstants.ENEMY_BULLET_SPEED
 	collision_radius = 6.0
 	texture_path = "res://assets/bullets/enemy_bullet.png"
 	super._ready()

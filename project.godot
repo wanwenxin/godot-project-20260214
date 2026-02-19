@@ -27,6 +27,7 @@ LocalizationManager="*res://scripts/autoload/localization_manager.gd"
 AudioManager="*res://scripts/autoload/audio_manager.gd"
 VisualAssetRegistry="*res://scripts/autoload/visual_asset_registry.gd"
 ResultPanelShared="*res://scripts/ui/result_panel_shared.gd"
+GameConstants="*res://scripts/autoload/game_constants.gd"
 
 [debug]
 

@@ -1,7 +1,7 @@
 extends EnemyBase
 
 @export var bullet_scene: PackedScene
-@export var fire_rate := 0.95
+@export var fire_rate := GameConstants.BOSS_FIRE_RATE_DEFAULT
 
 var _shoot_cd := 0.0
 
@@ -15,7 +15,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(player_ref):
 		return
-	_move_towards_player(delta, 0.55)
+	_move_towards_player(delta, GameConstants.BOSS_MOVE_SCALE)
 
 	_shoot_cd = maxf(_shoot_cd - delta, 0.0)
 	if _shoot_cd > 0.0 or bullet_scene == null:

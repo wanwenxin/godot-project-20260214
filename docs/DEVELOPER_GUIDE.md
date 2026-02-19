@@ -70,6 +70,10 @@
   - 捕获 `push_error`、`push_warning`、`printerr`、GDScript 运行时错误
   - 依赖 Godot 4.5+ 的 `OS.add_logger` / `Logger` 接口
 
+- `scripts/autoload/game_constants.gd`
+  - 游戏内视觉与数值常量：角色/敌人/BOSS/子弹缩放、摄像机、地形、波次、经验等系数与默认值，统一在此修改
+  - 含 `PLAYER_SCALE`、`ENEMY_SCALE`、`BOSS_SCALE`、`BULLET_SCALE`、`CAMERA_*`、`TERRAIN_*`、`WAVE_*`、`XP_BASE`/`XP_CURVE` 等（详见 §4 关键配置项）
+
 ### 2.2 战斗核心
 
 - `scripts/game.gd`
@@ -117,11 +121,13 @@
   - 使用 `assets/bullets/enemy_bullet.png` 专用像素图
   - enemy_ranged、enemy_boss 使用此场景
 
+- **体积与子弹**：缩放倍率与敌人子弹速度统一在 autoload `GameConstants`（[scripts/autoload/game_constants.gd](scripts/autoload/game_constants.gd)）中配置：玩家/普通敌人用 `PLAYER_SCALE`/`ENEMY_SCALE`（默认 3），BOSS 用 `BOSS_SCALE`（默认 15），子弹用 `BULLET_SCALE`（默认 2），敌人血条上元素图标用 `ELEMENT_ICONS_SCALE`（默认 0.1），敌人子弹速度为 `ENEMY_BULLET_SPEED`（默认 126）。
 - **元素附着与反应**（`enemy_base.gd`）：
   - `take_damage(amount, _elemental, _element_amount)`：当 `_element_amount > 0` 时对敌人增加对应元素量（`_element_amounts` 字典）。
   - 元素量档位：少量 1、大量 10、巨量 20；武器=1，魔法=10。
   - 每累计 1 秒执行一次衰减：每种元素量减 1，为 0 则移除。若存在至少两种元素且量均 > 0，取两种等量消耗（`consumed = min(量A, 量B)`），两者减去 consumed 后根据元素类型触发**元素反应**（如 fire+ice→融化伤害、fire+lightning→过载伤害+击退、ice+lightning→超导伤害等）；反应仅造成无元素伤害，避免二次附着。
-  - **元素图标 UI**：血条上方横向排布当前附着元素的小图标（8×8），fire/ice 用 `assets/magic/icon_*`，其余用纯色占位；某元素量不足 5 点时该图标每约 250ms 半透明/不透明交替闪烁。显隐与血条一致（`set_healthbar_visible`）。
+  - **元素图标 UI**：血条上方横向排布当前附着元素的小图标（4×4，多元素全部显示），fire/ice 用 `assets/magic/icon_*`，其余用纯色占位；某元素量不足 5 点时该图标每约 250ms 半透明/不透明交替闪烁。显隐与血条一致（`set_healthbar_visible`）。
+  - 寻路时尽量不重叠：`NavigationAgent2D.avoidance_enabled = true`，`radius` 按碰撞圆半径×scale 设置，`max_neighbors`/`neighbor_distance` 用于 RVO 避障。
   - 扩展：新增元素类型或反应组合时，在 `_trigger_element_reaction` 中补充 (elem_a, elem_b) 分支与效果。
 
 - `scripts/pickup.gd`
@@ -414,6 +420,43 @@ flowchart TD
 
 ## 4. 关键配置项
 
+### 4.0 `GameConstants`（autoload）
+
+修改 [scripts/autoload/game_constants.gd](scripts/autoload/game_constants.gd) 即可统一调整角色、敌人、BOSS、子弹的视觉缩放、摄像机、地形、波次、经验等系数与默认值，无需在各脚本中查找硬编码。
+
+**缩放与子弹**
+- `PLAYER_SCALE`、`ENEMY_SCALE`、`BOSS_SCALE`：玩家/普通敌人/BOSS 体积缩放（默认 3/3/15）
+- `BULLET_SCALE`、`ELEMENT_ICONS_SCALE`：子弹体积、敌人血条上元素图标缩放（默认 2.0、0.1）
+- `ENEMY_BULLET_SPEED`：敌人子弹飞行速度（默认 126.0）
+
+**摄像机**
+- `CAMERA_ZOOM_DEFAULT`、`CAMERA_ZOOM_MIN`、`CAMERA_ZOOM_MAX`、`CAMERA_ZOOM_STEP`、`CAMERA_DEAD_ZONE_RATIO`：缩放默认/范围/步进/死区比例
+
+**地形与移动**
+- `ZONE_AREA_SCALE_DEFAULT`：单块地形面积倍率（默认 5.0）
+- `TERRAIN_SPEED_MULTIPLIER_DEFAULT`、`TERRAIN_SPEED_CLAMP_MIN`、`TERRAIN_SPEED_CLAMP_MAX`：地形速度倍率默认与 clamp 范围
+
+**玩家**
+- `INVULNERABLE_DURATION_DEFAULT`、`INERTIA_FACTOR_DEFAULT`、`INERTIA_FACTOR_MAX`：无敌时长、移动惯性默认与上限
+
+**波次与生成**
+- `WAVE_DURATION_DEFAULT`、`TELEGRAPH_DURATION_DEFAULT`、`PRE_SPAWN_COUNTDOWN_DEFAULT`、`INTERMISSION_TIME_DEFAULT`：波次时长、警示时长、预生成倒计时、波次间隔
+- `COIN_DROP_CHANCE_DEFAULT`、`HEAL_DROP_CHANCE_DEFAULT`：金币/治疗掉落概率
+- `SPAWN_BATCH_COUNT_DEFAULT`、`SPAWN_BATCH_INTERVAL_DEFAULT`、`SPAWN_POSITIONS_COUNT_DEFAULT`：批次数、间隔、出生点数量
+
+**游戏流程**
+- `VICTORY_WAVE_DEFAULT`、`UPGRADE_REFRESH_COST`：通关波次、刷新升级消耗金币
+
+**敌人**
+- `BOSS_FIRE_RATE_DEFAULT`、`BOSS_MOVE_SCALE`：BOSS 射击冷却、移动倍率
+- `DASH_*`、`WIND_UP_*`、`RECOVER_*`、`DASHER_IDLE_MOVE_SCALE`：冲刺怪冷却/速度/时长与待机移动倍率
+
+**子弹与魔法**
+- `BULLET_LIFE_TIME_DEFAULT`、`BURN_DURATION_DEFAULT`：子弹存活时间、燃烧持续时长
+
+**经验**
+- `XP_BASE`、`XP_CURVE`：经验曲线基数与指数（升级所需 = XP_BASE × level^XP_CURVE）
+
 ### 4.1 `game.gd`
 
 - `victory_wave`：通关波次（由预设关卡数量决定，标准预设为 10 关），达到该波次时显示通关界面并跳过升级/商店流程
@@ -441,6 +484,7 @@ flowchart TD
 
 **LevelConfig 地形扩展**（`resources/level_config.gd`）：
 - `use_extended_spawn`：启用扩展敌人生成（`normal_enemy_ids`、`elite_enemy_ids`、`boss_enemy_ids` 池，按波次精英概率、Boss 波抽取）；默认 false 时沿用原 `melee_count`/`ranged_count` 等逻辑
+- 默认敌人数：`melee_count_min/max`（18～28）、`ranged_count_min/max`（0～2，减少远程）、`tank_count`（2～4）、`dasher_count`（2～5）；`spawn_positions_count` 默认 8；扩展池时 `total = 14+wave*4` 上限 50，约 15% 为远程
 - `elite_spawn_chance_base`、`elite_spawn_chance_per_wave`：精英生成概率
 - `map_size_scale`：地图大小系数，0.8=小、1.0=中、1.2=大
 - `default_terrain_type`：默认地形类型，`flat`=平地、`seaside`=海边、`mountain`=山地；地板瓦片按此选择像素图（terrain_atlas 第 0/1/2 行），默认 `flat`
@@ -457,7 +501,7 @@ flowchart TD
 - `intermission_time`：波次间隔（当前商店流程已跳过，由 `start_next_wave_now` 直接进入下一波；保留供扩展）
 - `pre_spawn_countdown`：预生成倒计时（秒），地形刷新完成后显示，倒计时结束才生成第 1 批敌人（默认 3）
 - `spawn_min_player_distance`：与玩家的最小出生距离（默认 340）
-- `spawn_positions_count`：出生点数量，单出生点可产生多个敌人（默认 5）
+- `spawn_positions_count`：出生点数量，单出生点可产生多个敌人（LevelConfig 默认 8）
 - `spawn_attempts`：合法出生点采样重试次数
 - `spawn_region_margin`：出生区域边界留白
 - `telegraph_enabled`：是否启用出生提示

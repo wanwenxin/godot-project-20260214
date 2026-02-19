@@ -16,7 +16,7 @@ var range_size := 40.0
 ## 效果类型："shockwave" 一次伤害 | "burn" 持续伤害 | pull_line/push_line/pull_circle/push_circle
 var effect_type := "shockwave"
 ## 持续伤害参数（effect_type=burn 时有效）
-var burn_duration := 4.0
+var burn_duration := GameConstants.BURN_DURATION_DEFAULT
 var burn_damage_per_tick := 8
 var burn_interval := 0.5
 
@@ -46,7 +46,7 @@ func configure_from_def(def: Dictionary, tier: int = 0) -> void:
 	var effect_affix := MagicAffixDefs.get_affix_def(str(def.get("effect_affix_id", "")))
 	if not effect_affix.is_empty():
 		effect_type = str(effect_affix.get("effect_type", "shockwave"))
-		burn_duration = float(effect_affix.get("burn_duration", 4.0))
+		burn_duration = float(effect_affix.get("burn_duration", GameConstants.BURN_DURATION_DEFAULT))
 		burn_damage_per_tick = int(effect_affix.get("burn_damage_per_tick", 8))
 		burn_interval = float(effect_affix.get("burn_interval", 0.5))
 	else:

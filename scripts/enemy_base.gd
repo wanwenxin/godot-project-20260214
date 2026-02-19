@@ -87,12 +87,24 @@ func _ready() -> void:
 		var def := EnemyDefs.get_enemy_def(enemy_id)
 		if not def.is_empty():
 			_behavior_mode = def.get("behavior_mode", 0)
-	# 寻路代理：CHASE_NAV/FLANK/KEEP_DISTANCE 时需绕障碍；非水中敌人才创建。
+	# 体积：普通敌人与玩家同倍率，BOSS 使用 BOSS_SCALE（见 GameConstants）
+	if enemy_type == 3:
+		scale = Vector2(GameConstants.BOSS_SCALE, GameConstants.BOSS_SCALE)
+	else:
+		scale = Vector2(GameConstants.ENEMY_SCALE, GameConstants.ENEMY_SCALE)
+	# 寻路代理：CHASE_NAV/FLANK/KEEP_DISTANCE 时需绕障碍；非水中敌人才创建；开启 avoidance 尽量不重叠。
 	if not is_water_only() and (_behavior_mode == EnemyDefs.BEHAVIOR_CHASE_NAV or _behavior_mode == EnemyDefs.BEHAVIOR_FLANK or _behavior_mode == EnemyDefs.BEHAVIOR_KEEP_DISTANCE):
 		_nav_agent = NavigationAgent2D.new()
 		_nav_agent.path_desired_distance = 8.0
 		_nav_agent.target_desired_distance = 8.0
-		_nav_agent.avoidance_enabled = false
+		_nav_agent.avoidance_enabled = true
+		var col: Node = get_node_or_null("CollisionShape2D")
+		if col != null and col is CollisionShape2D and (col as CollisionShape2D).shape is CircleShape2D:
+			_nav_agent.radius = (col.shape as CircleShape2D).radius * scale.x
+		else:
+			_nav_agent.radius = 36.0
+		_nav_agent.max_neighbors = 8
+		_nav_agent.neighbor_distance = 80.0
 		add_child(_nav_agent)
 
 
@@ -418,7 +430,7 @@ func _on_contact_timer_timeout() -> void:
 
 
 func set_terrain_effect(zone_id: int, speed_multiplier: float) -> void:
-	_terrain_effects[zone_id] = clampf(speed_multiplier, 0.2, 1.2)
+	_terrain_effects[zone_id] = clampf(speed_multiplier, GameConstants.TERRAIN_SPEED_CLAMP_MIN, GameConstants.TERRAIN_SPEED_CLAMP_MAX)
 	_recompute_terrain_speed()
 
 
@@ -457,9 +469,10 @@ func _create_health_bar() -> void:
 func _create_element_icons_container() -> void:
 	_element_icons_container = HBoxContainer.new()
 	_element_icons_container.position = Vector2(-18.0, -38.0)
-	_element_icons_container.custom_minimum_size = Vector2(36.0, 8.0)
+	_element_icons_container.custom_minimum_size = Vector2(36.0, 5.0)
+	_element_icons_container.scale = Vector2(GameConstants.ELEMENT_ICONS_SCALE, GameConstants.ELEMENT_ICONS_SCALE)
 	_element_icons_container.z_index = 20
-	_element_icons_container.add_theme_constant_override("separation", 2)
+	_element_icons_container.add_theme_constant_override("separation", 1)
 	_element_icons_container.visible = false
 	add_child(_element_icons_container)
 
@@ -473,18 +486,18 @@ func _get_element_icon_texture(element_key: String) -> Texture2D:
 		"ice":
 			path = "res://assets/magic/icon_ice.png"
 		"lightning":
-			return VisualAssetRegistry.make_color_texture(Color(1.0, 0.95, 0.2, 1.0), Vector2i(8, 8))
+			return VisualAssetRegistry.make_color_texture(Color(1.0, 0.95, 0.2, 1.0), Vector2i(4, 4))
 		"poison":
-			return VisualAssetRegistry.make_color_texture(Color(0.5, 0.2, 0.7, 1.0), Vector2i(8, 8))
+			return VisualAssetRegistry.make_color_texture(Color(0.5, 0.2, 0.7, 1.0), Vector2i(4, 4))
 		"physical":
-			return VisualAssetRegistry.make_color_texture(Color(0.6, 0.6, 0.65, 1.0), Vector2i(8, 8))
+			return VisualAssetRegistry.make_color_texture(Color(0.6, 0.6, 0.65, 1.0), Vector2i(4, 4))
 		_:
-			return VisualAssetRegistry.make_color_texture(Color(0.7, 0.7, 0.7, 1.0), Vector2i(8, 8))
+			return VisualAssetRegistry.make_color_texture(Color(0.7, 0.7, 0.7, 1.0), Vector2i(4, 4))
 	if path != "" and ResourceLoader.exists(path):
 		var tex := VisualAssetRegistry.get_texture_cached(path)
 		if tex != null:
 			return tex
-	return VisualAssetRegistry.make_color_texture(Color(0.8, 0.3, 0.2, 1.0), Vector2i(8, 8))
+	return VisualAssetRegistry.make_color_texture(Color(0.8, 0.3, 0.2, 1.0), Vector2i(4, 4))
 
 
 ## [自定义] 根据 _element_amounts 同步图标列表：有元素则显示横向小图标，无则隐藏容器。
@@ -507,7 +520,7 @@ func _refresh_element_icons() -> void:
 	for k in keys:
 		var amount: int = _element_amounts[k]
 		var rect := TextureRect.new()
-		rect.custom_minimum_size = Vector2(8.0, 8.0)
+		rect.custom_minimum_size = Vector2(4.0, 4.0)
 		rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		rect.texture = _get_element_icon_texture(k)
 		rect.set_meta("element", k)

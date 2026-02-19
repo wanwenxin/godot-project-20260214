@@ -5,7 +5,7 @@ extends Area2D
 # - shallow_water: 中等减速
 # - deep_water: 强减速 + 持续伤害
 @export var terrain_type := "grass"
-@export var speed_multiplier := 0.9
+@export var speed_multiplier := GameConstants.TERRAIN_SPEED_MULTIPLIER_DEFAULT
 @export var damage_per_tick := 0
 @export var damage_interval := 1.0
 

@@ -105,7 +105,7 @@ func _reload_from_save() -> void:
 	var game_cfg: Dictionary = _settings.get("game", {})
 	volume_slider.value = float(system_cfg.get("master_volume", 0.70)) * 100.0
 	_select_option_by_value(resolution_option, str(system_cfg.get("resolution", WINDOW_MODES[2])))
-	move_inertia_slider.value = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, 0.9)
+	move_inertia_slider.value = clampf(float(game_cfg.get("move_inertia", 0.0)), 0.0, GameConstants.INERTIA_FACTOR_MAX)
 	_select_option_text(toggle_hp_key_option, str(game_cfg.get("toggle_enemy_hp_key", "H")))
 	enemy_hp_check.button_pressed = bool(game_cfg.get("show_enemy_health_bar", true))
 	_refresh_key_binding_display()
@@ -168,7 +168,7 @@ func _on_move_inertia_changed(value: float) -> void:
 	if _silent:
 		return
 	var game_cfg: Dictionary = _settings.get("game", {})
-	game_cfg["move_inertia"] = clampf(value, 0.0, 0.9)
+	game_cfg["move_inertia"] = clampf(value, 0.0, GameConstants.INERTIA_FACTOR_MAX)
 	_settings["game"] = game_cfg
 	_save_and_apply()
 

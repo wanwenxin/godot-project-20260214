@@ -60,6 +60,7 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/autoload/object_pool.gd](scripts/autoload/object_pool.gd) | 对象池：子弹、掉落物池化，减少实例化开销 | `acquire`、`recycle`、`recycle_group` |
+| [scripts/autoload/game_constants.gd](scripts/autoload/game_constants.gd) | 角色/敌人/BOSS/子弹缩放、摄像机、地形、波次、经验等系数与默认值，统一调参入口 | `PLAYER_SCALE`、`ENEMY_SCALE`、`BOSS_SCALE`、`BULLET_SCALE`、`CAMERA_*`、`TERRAIN_*`、`WAVE_*`、`XP_BASE`/`XP_CURVE` |
 | [scripts/autoload/affix_manager.gd](scripts/autoload/affix_manager.gd) | 词条收集、聚合、效果应用 | `collect_affixes_from_player`、`refresh_player`、`get_visible_affixes` |
 | [scripts/autoload/game_manager.gd](scripts/autoload/game_manager.gd) | 场景切换、角色/武器配置、本局金币与武器库存、总伤害统计、手动合成 | `change_scene`、`get_character_data`、`run_currency`、`run_total_damage`、`add_record_damage_dealt`、`add_run_weapon`、`merge_run_weapons` |
 | [scripts/autoload/save_manager.gd](scripts/autoload/save_manager.gd) | 存档读写、设置持久化、统计聚合 | `load_game`、`set_settings`、`has_save` |

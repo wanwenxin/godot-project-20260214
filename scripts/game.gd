@@ -5,7 +5,7 @@ extends Node2D
 # - 挂接波次系统事件
 # - 维护计时、暂停、死亡结算
 @export var player_scene: PackedScene  # 玩家场景
-@export var victory_wave := 5  # 通关波次，达到后显示通关界面
+@export var victory_wave := GameConstants.VICTORY_WAVE_DEFAULT  # 通关波次，达到后显示通关界面
 # 地形块数量范围：每关在 min~max 内随机，严格无重叠。
 @export var grass_count_min := 2 # 草地数量最小值
 @export var grass_count_max := 4 # 草地数量最大值
@@ -15,7 +15,7 @@ extends Node2D
 @export var deep_water_count_max := 2 # 深水数量最大值
 @export var obstacle_count_min := 2 # 障碍物数量最小值
 @export var obstacle_count_max := 4 # 障碍物数量最大值
-@export var zone_area_scale := 5.0  # 单块面积倍率，线性约 sqrt 倍
+@export var zone_area_scale := GameConstants.ZONE_AREA_SCALE_DEFAULT  # 单块面积倍率，线性约 sqrt 倍
 @export var terrain_margin := 36.0 # 地形间距
 @export var placement_attempts := 24 # 放置尝试次数
 @export var water_padding := 8.0 # 水体间距
@@ -39,17 +39,16 @@ extends Node2D
 @export var boundary_thickness := 28.0 # 边界厚度
 @export var boundary_color := Color(0.33, 0.33, 0.35, 1.0) # 边界颜色
 @export var terrain_colors: Resource  # 地形色块配置，优先从此读取；空则用上方 @export 默认色
-@export var camera_zoom_scale: float = 0.8  # 摄像机缩放系数（<1时为靠近地面）
-@export var camera_zoom_min: float = 0.7  # 缩放下限（更近）
-@export var camera_zoom_max: float = 1.3  # 缩放上限（更远）
-@export var camera_zoom_step: float = 0.05  # 每次按键变化量
-@export var camera_dead_zone_ratio: float = 0.30  # 玩家偏离中心超过此比例时开始跟随
+@export var camera_zoom_scale: float = GameConstants.CAMERA_ZOOM_DEFAULT  # 摄像机缩放系数（<1时为靠近地面）
+@export var camera_zoom_min: float = GameConstants.CAMERA_ZOOM_MIN  # 缩放下限（更近）
+@export var camera_zoom_max: float = GameConstants.CAMERA_ZOOM_MAX  # 缩放上限（更远）
+@export var camera_zoom_step: float = GameConstants.CAMERA_ZOOM_STEP  # 每次按键变化量
+@export var camera_dead_zone_ratio: float = GameConstants.CAMERA_DEAD_ZONE_RATIO  # 玩家偏离中心超过此比例时开始跟随
 
 var player  # 玩家节点引用
 var survival_time := 0.0  # 本局生存时长（秒）
 var is_game_over := false  # 死亡或通关后为 true，停止运行时统计
 var intermission_left := 0.0  # 波次间隔剩余秒数
-const UPGRADE_REFRESH_COST := 2  # 刷新升级选项消耗的金币
 var _pending_upgrade_options: Array[Dictionary] = []  # 当前波次四选一升级项
 var _upgrade_selected := false  # 防重入：本轮是否已选择升级
 var _water_spawn_rects: Array[Rect2] = []  # 水域矩形，供水中敌人生成
@@ -327,7 +326,7 @@ func _on_wave_cleared(wave: int) -> void:
 	_pending_shop_weapon_options.clear()
 	_pending_upgrade_options = _roll_upgrade_options(4)
 	_set_ui_modal_active(true)
-	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency, UPGRADE_REFRESH_COST)
+	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency, GameConstants.UPGRADE_REFRESH_COST)
 
 
 ## [系统] 波次 kill_count_changed 信号回调，同步 HUD 击杀数。
@@ -459,12 +458,12 @@ func _format_upgrade_reward(upgrade_id: String, value: Variant) -> String:
 
 ## [系统] HUD upgrade_refresh_requested 信号回调，消耗金币刷新升级选项。
 func _on_upgrade_refresh_requested() -> void:
-	if GameManager.run_currency < UPGRADE_REFRESH_COST:
+	if GameManager.run_currency < GameConstants.UPGRADE_REFRESH_COST:
 		return
-	if not GameManager.spend_currency(UPGRADE_REFRESH_COST):
+	if not GameManager.spend_currency(GameConstants.UPGRADE_REFRESH_COST):
 		return
 	_pending_upgrade_options = _roll_upgrade_options(4)
-	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency, UPGRADE_REFRESH_COST)
+	hud.show_upgrade_options(_pending_upgrade_options, GameManager.run_currency, GameConstants.UPGRADE_REFRESH_COST)
 
 
 ## [系统] HUD upgrade_selected 信号回调，应用升级并打开商店。
