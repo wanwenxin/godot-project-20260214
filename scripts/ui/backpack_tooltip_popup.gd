@@ -430,3 +430,42 @@ func hide_tooltip() -> void:
 	visible = false
 	_last_tip = ""
 	_last_data_hash = ""
+
+
+## [自定义] 智能定位二级 tooltip，避免与主面板重叠，优先右侧、其次下方、再次左侧。
+func _position_affix_tooltip_smart(chip: Control) -> void:
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var affix_size := _affix_tooltip.get_combined_minimum_size()
+	var viewport_rect := vp.get_visible_rect()
+	var chip_rect := chip.get_global_rect()
+	var main_rect := get_global_rect()
+	
+	# 尝试右侧
+	var pos := chip_rect.end + Vector2(GAP, 0)
+	if pos.x + affix_size.x <= viewport_rect.end.x:
+		# 检查是否与主面板重叠
+		var affix_rect_right := Rect2(pos, affix_size)
+		if not affix_rect_right.intersects(main_rect):
+			_affix_tooltip.position = pos
+			return
+	
+	# 尝试下方
+	pos = Vector2(chip_rect.position.x, chip_rect.end.y + GAP)
+	if pos.y + affix_size.y <= viewport_rect.end.y:
+		pos.x = clampf(pos.x, viewport_rect.position.x, viewport_rect.end.x - affix_size.x)
+		_affix_tooltip.position = pos
+		return
+	
+	# 尝试左侧
+	pos = Vector2(chip_rect.position.x - affix_size.x - GAP, chip_rect.position.y)
+	if pos.x >= viewport_rect.position.x:
+		_affix_tooltip.position = pos
+		return
+	
+	# 默认：鼠标位置偏移
+	pos = vp.get_mouse_position() + Vector2(GAP, GAP)
+	pos.x = clampf(pos.x, viewport_rect.position.x, viewport_rect.end.x - affix_size.x)
+	pos.y = clampf(pos.y, viewport_rect.position.y, viewport_rect.end.y - affix_size.y)
+	_affix_tooltip.position = pos

@@ -155,13 +155,16 @@ func _resize_world_background() -> void:
 	world_background.offset_bottom = vs.y
 
 
-## [系统] 每帧调用，更新生存计时、HUD、摄像机、波次倒计时、暂停/缩放按键。
+## [系统] 每帧调用，更新生存计时、HUD、摄像机、波次倒计时、暂停/缩放按键、LOD。
 func _process(delta: float) -> void:
 	# 死亡后停止所有运行时统计更新，仅保留结算 UI。
 	if is_game_over:
 		return
 
 	_update_camera()
+	
+	# LOD 系统：统一更新所有敌人的 LOD 级别
+	_update_enemy_lod()
 
 	# 生存计时每帧刷新到 HUD。
 	survival_time += delta
@@ -320,6 +323,14 @@ func _on_wave_cleared(wave: int) -> void:
 		hud.hide_weapon_panel()
 		victory_screen.show_result(wave_manager.current_wave, wave_manager.kill_count, survival_time, player)
 		return
+	
+	# 无尽模式特殊处理：每 5 波增加奖励
+	if GameManager.is_endless_mode and wave % 5 == 0:
+		GameManager.endless_wave_bonus += 1
+		# 给予额外金币奖励
+		var bonus_gold := 50 * GameManager.endless_wave_bonus
+		GameManager.add_currency(bonus_gold)
+	
 	player.heal(int(maxf(8.0, player.max_health * 0.12)))
 	player.input_enabled = false
 	_upgrade_selected = false
@@ -398,6 +409,21 @@ func _toggle_enemy_healthbar_visibility() -> void:
 func get_player_for_pause() -> Node:
 	# 供暂停菜单获取玩家引用以展示数值与装备。
 	return player if is_instance_valid(player) else null
+
+
+## [自定义] 统一更新所有敌人的 LOD 级别，按距离玩家远近分级处理。
+func _update_enemy_lod() -> void:
+	if not is_instance_valid(player):
+		return
+	var player_pos: Vector2 = player.global_position
+	var enemies := get_tree().get_nodes_in_group("lod_managed")
+	for enemy in enemies:
+		if not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
+			continue
+		if not enemy.has_method("update_lod_level"):
+			continue
+		var dist: float = enemy.global_position.distance_to(player_pos)
+		enemy.update_lod_level(dist)
 
 
 ## [自定义] 重新加载战斗场景，开始新局。
@@ -882,18 +908,18 @@ func _get_terrain_color(key: String, fallback: Color) -> Color:
 func _update_camera() -> void:
 	if game_camera == null or not is_instance_valid(player):
 		return
-	var viewport_size := get_viewport_rect().size
+	var viewport_size: Vector2 = get_viewport_rect().size
 	var zoom_val := 1.0 / camera_zoom_scale
 	game_camera.zoom = Vector2(zoom_val, zoom_val)
-	var visible_size := viewport_size / zoom_val
+	var visible_size: Vector2 = viewport_size / zoom_val
 	if _playable_region.size.x <= visible_size.x and _playable_region.size.y <= visible_size.y:
 		# 地图可完全覆盖时仍跟随玩家，保持角色在画面中心
 		game_camera.position = player.global_position
 		return
 	# 地图大于可视区域，跟随玩家，保持玩家在 30% 死区内
-	var dead_half := visible_size * camera_dead_zone_ratio * 0.5
+	var dead_half: Vector2 = visible_size * camera_dead_zone_ratio * 0.5
 	var cam_pos: Vector2 = game_camera.position
-	var player_pos: Vector2 = player.global_position
+	var player_pos: Vector2 = player.global_position if is_instance_valid(player) else Vector2.ZERO
 	var dx: float = player_pos.x - cam_pos.x
 	var dy: float = player_pos.y - cam_pos.y
 	if absf(dx) > dead_half.x:
@@ -901,7 +927,7 @@ func _update_camera() -> void:
 	if absf(dy) > dead_half.y:
 		cam_pos.y = player_pos.y - signf(dy) * dead_half.y
 	# 限制摄像机在 region 内，避免显示区域外
-	var half_vis := visible_size * 0.5
+	var half_vis: Vector2 = visible_size * 0.5
 	cam_pos.x = clampf(cam_pos.x, _playable_region.position.x + half_vis.x, _playable_region.end.x - half_vis.x)
 	cam_pos.y = clampf(cam_pos.y, _playable_region.position.y + half_vis.y, _playable_region.end.y - half_vis.y)
 	game_camera.position = cam_pos

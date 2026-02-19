@@ -31,10 +31,12 @@ func collect_affixes_from_player(_player: Node) -> Dictionary:
 		var def := _get_item_def_by_id(str(item_id))
 		if def.is_empty():
 			continue
-		var affix_ids: Array = def.get("affix_ids", [])
+		var affix_ids_val = def.get("affix_ids")
+		var affix_ids: Array = affix_ids_val if affix_ids_val != null else []
 		if affix_ids.is_empty():
 			# 兼容旧格式：attr + base_value 视为单个词条
-			var attr: String = str(def.get("attr", ""))
+			var attr_val = def.get("attr")
+			var attr: String = str(attr_val if attr_val != null else "")
 			if attr != "":
 				affix_ids = [_attr_to_affix_id(attr)]
 		for aid in affix_ids:
@@ -43,11 +45,13 @@ func collect_affixes_from_player(_player: Node) -> Dictionary:
 				continue
 			var affix := ItemAffix.new()
 			affix.configure_from_def(affix_def)
-			var tier: int = int(def.get("tier", 0))
+			var tier_val = def.get("tier")
+			var tier: int = int(tier_val if tier_val != null else 0)
 			var mult: float = TierConfig.get_item_tier_multiplier(tier)
 			# 绑定时可覆盖数值：item 的 base_value 优先于词条默认值
 			var bound_val = def.get("base_value")
-			var bv: Variant = bound_val if bound_val != null else affix.params.get("base_value", 0)
+			var base_value_val = affix.params.get("base_value")
+			var bv: Variant = bound_val if bound_val != null else (base_value_val if base_value_val != null else 0)
 			if bv is float:
 				affix.params["base_value"] = bv * mult
 			else:
@@ -56,11 +60,12 @@ func collect_affixes_from_player(_player: Node) -> Dictionary:
 	# 升级词条：从 run_upgrades 推导
 	var upgrades: Array = GameManager.get_run_upgrades()
 	for u in upgrades:
-		var uid: String = str(u.get("id", ""))
+		var uid_val = u.get("id")
+		var uid: String = str(uid_val if uid_val != null else "")
 		var uval = u.get("value")
 		if uid == "" or uval == null:
 			continue
-		var effect_type: String = _UPGRADE_TO_EFFECT.get(uid, uid)
+		var effect_type: String = (_UPGRADE_TO_EFFECT.get(uid) if _UPGRADE_TO_EFFECT.has(uid) else uid)
 		var affix := ItemAffix.new()
 		affix.id = "upgrade_%s" % uid
 		affix.visible = true
@@ -73,11 +78,11 @@ func collect_affixes_from_player(_player: Node) -> Dictionary:
 func get_aggregated_effects(affixes: Dictionary) -> Dictionary:
 	var agg := {}
 	for _type in ["item", "weapon", "magic"]:
-		var list: Array = affixes.get(_type, [])
+		var list: Array = affixes[_type] if affixes.has(_type) else []
 		for a in list:
 			if not (a is AffixBase):
 				continue
-			var et: String = str(a.params.get("effect_type", ""))
+			var et: String = str(a.params["effect_type"] if a.params.has("effect_type") else "")
 			if et == "":
 				continue
 			var bv = a.params.get("base_value", 0)
@@ -102,13 +107,82 @@ func apply_affix_effects(player: Node, aggregated: Dictionary) -> void:
 	player._apply_affix_aggregated(aggregated)
 
 
-## [自定义] 刷新玩家：收集词条、聚合、应用（含套装加成）。
+## [自定义] 刷新玩家：收集词条、聚合、应用（含套装加成+武器套装效果）。
 func refresh_player(player: Node) -> void:
 	var affixes := collect_affixes_from_player(player)
 	var agg := get_aggregated_effects(affixes)
 	var set_bonus := get_set_bonus_effects()
 	_merge_effects(agg, set_bonus)
+	# 应用武器套装效果（新系统）
+	_apply_weapon_set_bonuses(player)
 	apply_affix_effects(player, agg)
+
+
+## [自定义] 计算并应用武器套装效果。
+func _apply_weapon_set_bonuses(player: Node) -> void:
+	var run_weapons: Array = GameManager.get_run_weapons()
+	var equipped_weapons: Array = []
+	for w in run_weapons:
+		equipped_weapons.append({"id": str(w.get("id", "")), "tier": int(w.get("tier", 0))})
+	
+	var bonuses := WeaponSetDefs.calculate_set_bonuses(equipped_weapons)
+	
+	# 累加所有激活的效果到玩家
+	var total_crit_chance := 0.0
+	var total_crit_damage := 0.0
+	var total_armor := 0
+	var total_damage := 0
+	var total_fire_rate := 0.0
+	var total_mana_reduction := 0.0
+	var total_magic_damage := 0.0
+	
+	for set_id in bonuses.keys():
+		var set_data: Dictionary = bonuses[set_id]
+		var active_val = set_data.get("active_bonuses")
+		var active: Dictionary = active_val if active_val != null else {}
+		
+		total_crit_chance += float(active.get("crit_chance") if active.has("crit_chance") else 0)
+		total_crit_damage += float(active.get("crit_damage") if active.has("crit_damage") else 0)
+		total_armor += int(active.get("armor") if active.has("armor") else 0)
+		total_damage += int(active.get("damage") if active.has("damage") else 0)
+		total_fire_rate += float(active.get("fire_rate") if active.has("fire_rate") else 0)
+		total_mana_reduction += float(active.get("mana_cost_reduction") if active.has("mana_cost_reduction") else 0)
+		total_magic_damage += float(active.get("magic_damage") if active.has("magic_damage") else 0)
+		
+		# 特殊效果通过玩家 meta 设置
+		if active.has("bleed_on_hit") and (active.get("bleed_on_hit") if active.has("bleed_on_hit") else false):
+			player.set_meta("set_bleed_on_hit", true)
+		if active.has("bullet_pierce"):
+			var current: int = player.get_meta("set_pierce_bonus") if player.has_meta("set_pierce_bonus") else 0
+			var bullet_pierce_val = active.get("bullet_pierce") if active.has("bullet_pierce") else 0
+			player.set_meta("set_pierce_bonus", maxi(current, int(bullet_pierce_val)))
+		if active.has("stun_chance"):
+			var stun_chance_val = active.get("stun_chance")
+			player.set_meta("set_stun_chance", float(stun_chance_val if stun_chance_val != null else 0))
+	
+	# 应用数值加成
+	if total_armor > 0:
+		player.armor += total_armor
+	if total_crit_chance > 0:
+		player.set_meta("crit_chance_bonus", total_crit_chance)
+	if total_crit_damage > 0:
+		player.set_meta("crit_damage_bonus", total_crit_damage)
+	if total_fire_rate > 0:
+		# 安全地获取 attack_speed 属性，如果不存在则使用默认值 1.0
+		var current_attack_speed = 1.0
+		if player.has_method("get_attack_speed"):
+			current_attack_speed = player.get_attack_speed()
+		elif "attack_speed" in player:
+			current_attack_speed = player.attack_speed
+		player.attack_speed = current_attack_speed * (1.0 + total_fire_rate)
+	if total_mana_reduction > 0:
+		player.set_meta("mana_cost_reduction", total_mana_reduction)
+	if total_magic_damage > 0:
+		player.set_meta("magic_damage_bonus", total_magic_damage)
+	if total_damage > 0:
+		# 近战和远程伤害都增加
+		player.melee_damage_bonus += total_damage
+		player.ranged_damage_bonus += total_damage
 
 
 ## [自定义] 计算武器类型/主题套装加成。多把同名武器只计 1 次，2-6 件线性增长。
@@ -128,12 +202,16 @@ func get_set_bonus_effects() -> Dictionary:
 		var def := GameManager.get_weapon_def_by_id(wid)
 		if def.is_empty():
 			continue
-		var tid: String = str(def.get("type_affix_id", ""))
+		var tid_val = def.get("type_affix_id")
+		var tid: String = str(tid_val if tid_val != null else "")
 		if tid != "":
-			type_counts[tid] = type_counts.get(tid, 0) + 1
-		var thid: String = str(def.get("theme_affix_id", ""))
+			var count_val = type_counts.get(tid)
+			type_counts[tid] = (count_val if count_val != null else 0) + 1
+		var thid_val = def.get("theme_affix_id")
+		var thid: String = str(thid_val if thid_val != null else "")
 		if thid != "":
-			theme_counts[thid] = theme_counts.get(thid, 0) + 1
+			var count_val2 = theme_counts.get(thid)
+			theme_counts[thid] = (count_val2 if count_val2 != null else 0) + 1
 	# 计算套装加成：bonus = (count - 1) * bonus_per_count，2 <= count <= 6
 	for tid in type_counts.keys():
 		var count: int = int(type_counts[tid])
@@ -142,15 +220,17 @@ func get_set_bonus_effects() -> Dictionary:
 		var def := WeaponTypeAffixDefs.get_affix_def(tid)
 		if def.is_empty():
 			continue
-		var et: String = str(def.get("effect_type", ""))
-		var bpc = def.get("bonus_per_count", 0)
+		var et_val = def.get("effect_type")
+		var et: String = str(et_val if et_val != null else "")
+		var bpc_val = def.get("bonus_per_count")
+		var bpc = bpc_val if bpc_val != null else 0
 		if et == "" or bpc == null:
 			continue
 		var bonus = (count - 1) * float(bpc)
 		if et in _FLOAT_EFFECTS:
-			result[et] = result.get(et, 0.0) + bonus
+			result[et] = result[et] if result.has(et) else 0.0 + bonus
 		else:
-			result[et] = result.get(et, 0) + int(bonus)
+			result[et] = result[et] if result.has(et) else 0 + int(bonus)
 	for thid in theme_counts.keys():
 		var count: int = int(theme_counts[thid])
 		if count < 2 or count > 6:
@@ -158,15 +238,17 @@ func get_set_bonus_effects() -> Dictionary:
 		var def := WeaponThemeAffixDefs.get_affix_def(thid)
 		if def.is_empty():
 			continue
-		var et: String = str(def.get("effect_type", ""))
-		var bpc = def.get("bonus_per_count", 0)
+		var et_val = def.get("effect_type")
+		var et: String = str(et_val if et_val != null else "")
+		var bpc_val = def.get("bonus_per_count")
+		var bpc = bpc_val if bpc_val != null else 0
 		if et == "" or bpc == null:
 			continue
 		var bonus = (count - 1) * float(bpc)
 		if et in _FLOAT_EFFECTS:
-			result[et] = result.get(et, 0.0) + bonus
+			result[et] = (result[et] if result.has(et) else 0.0) + bonus
 		else:
-			result[et] = result.get(et, 0) + int(bonus)
+			result[et] = (result[et] if result.has(et) else 0) + int(bonus)
 	# lifesteal_chance 限制在 0~1
 	if result.has("lifesteal_chance"):
 		result["lifesteal_chance"] = clampf(float(result["lifesteal_chance"]), 0.0, 1.0)
@@ -191,7 +273,7 @@ func _merge_effects(agg: Dictionary, set_bonus: Dictionary) -> void:
 func get_visible_affixes(_affixes: Dictionary) -> Array:
 	var out: Array = []
 	for _type in ["item", "weapon", "magic"]:
-		var list: Array = _affixes.get(_type, [])
+		var list: Array = _affixes[_type] if _affixes.has(_type) else []
 		for a in list:
 			if a is AffixBase and a.visible:
 				out.append(a)
@@ -219,12 +301,16 @@ func get_set_bonus_display_info() -> Array:
 		var def := GameManager.get_weapon_def_by_id(wid)
 		if def.is_empty():
 			continue
-		var tid: String = str(def.get("type_affix_id", ""))
+		var tid_val = def.get("type_affix_id")
+		var tid: String = str(tid_val if tid_val != null else "")
 		if tid != "":
-			type_counts[tid] = type_counts.get(tid, 0) + 1
-		var thid: String = str(def.get("theme_affix_id", ""))
+			var count_val = type_counts.get(tid)
+			type_counts[tid] = (count_val if count_val != null else 0) + 1
+		var thid_val = def.get("theme_affix_id")
+		var thid: String = str(thid_val if thid_val != null else "")
 		if thid != "":
-			theme_counts[thid] = theme_counts.get(thid, 0) + 1
+			var count_val2 = theme_counts.get(thid)
+			theme_counts[thid] = (count_val2 if count_val2 != null else 0) + 1
 	for tid in type_counts.keys():
 		var count: int = int(type_counts[tid])
 		if count < 2 or count > 6:
@@ -232,7 +318,8 @@ func get_set_bonus_display_info() -> Array:
 		var def := WeaponTypeAffixDefs.get_affix_def(tid)
 		if def.is_empty():
 			continue
-		var bonus := (count - 1) * float(def.get("bonus_per_count", 0))
+		var bonus_val = def.get("bonus_per_count")
+		var bonus := (count - 1) * float(bonus_val if bonus_val != null else 0)
 		result.append({"name_key": str(def.get("name_key", "")), "count": count, "effect_type": str(def.get("effect_type", "")), "bonus": bonus})
 	for thid in theme_counts.keys():
 		var count: int = int(theme_counts[thid])
@@ -241,7 +328,8 @@ func get_set_bonus_display_info() -> Array:
 		var def := WeaponThemeAffixDefs.get_affix_def(thid)
 		if def.is_empty():
 			continue
-		var bonus := (count - 1) * float(def.get("bonus_per_count", 0))
+		var bonus_val2 = def.get("bonus_per_count")
+		var bonus := (count - 1) * float(bonus_val2 if bonus_val2 != null else 0)
 		result.append({"name_key": str(def.get("name_key", "")), "count": count, "effect_type": str(def.get("effect_type", "")), "bonus": bonus})
 	return result
 
@@ -262,4 +350,5 @@ func _attr_to_affix_id(attr: String) -> String:
 		"health_regen": "item_regen", "lifesteal_chance": "item_lifesteal",
 		"mana_regen": "item_mana_regen", "spell_speed": "item_spell_speed"
 	}
-	return m.get(attr, "item_%s" % attr)
+	var mapped_val = m.get(attr) if m.has(attr) else null
+	return mapped_val if mapped_val != null else ("item_%s" % attr)

@@ -75,6 +75,10 @@ var run_items: Array[String] = []  # 本局已购买道具 id 列表（固化配
 var run_upgrades: Array = []  # 本局玩家相关升级，每项为 {id, value}，供词条系统聚合
 var run_weapon_upgrades: Array[String] = []  # 本局武器相关升级 id 列表，同步武器时应用
 
+# ---- 游戏模式 ----
+var is_endless_mode := false  # 是否为无尽模式
+var endless_wave_bonus := 0  # 无尽模式波次加成（用于难度计算）
+
 
 ## [系统] 节点入树时调用，加载武器定义、读取存档、应用设置并连接窗口缩放。
 func _ready() -> void:
@@ -143,9 +147,47 @@ func get_current_level_config(wave: int) -> LevelConfig:
 
 ## [自定义] 返回通关波次（关卡数量）；无配置时默认 5。
 func get_victory_wave() -> int:
+	if is_endless_mode:
+		return 99999  # 无尽模式无通关限制
 	if current_level_sequence.is_empty():
 		return 5
 	return current_level_sequence.size()
+
+
+## [自定义] 开始无尽模式游戏。
+func start_endless_mode(character_id: int) -> void:
+	set_selected_character(character_id)
+	is_endless_mode = true
+	endless_wave_bonus = 0
+	# 无尽模式使用标准预设但循环
+	load_level_sequence_from_preset(0)
+	# 本局资源重置
+	run_currency = 500
+	reset_run_experience()
+	reset_run_weapons()
+	get_tree().change_scene_to_file(SCENE_GAME)
+
+
+## [自定义] 停止无尽模式（返回正常模式）。
+func stop_endless_mode() -> void:
+	is_endless_mode = false
+	endless_wave_bonus = 0
+
+
+## [自定义] 获取无尽模式下的动态难度加成。
+func get_endless_difficulty_bonus(wave: int) -> float:
+	if not is_endless_mode:
+		return 1.0
+	# 每过一波增加 5% 难度
+	return 1.0 + (wave * 0.05)
+
+
+## [自定义] 获取无尽模式下的动态精英概率。
+func get_endless_elite_chance(wave: int) -> float:
+	if not is_endless_mode:
+		return 0.0
+	# 基础 5%，每波增加 2%，最高 50%
+	return minf(0.05 + wave * 0.02, 0.5)
 
 
 ## [自定义] 开始新游戏：设置角色、加载预设、重置本局资源、切到战斗场景。

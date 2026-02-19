@@ -57,6 +57,43 @@ extends Resource
 @export var spawn_batch_interval := 6.0 # 生成批次间隔时间
 @export var spawn_positions_count := 8 # 出生点数量，单出生点可产生多个敌人
 
+# ---- 动态难度系统 ----
+@export var dynamic_difficulty_enabled := true # 启用动态难度
+@export var wave_duration_early := 15.0 # 前期波次时长（1-3波）
+@export var wave_duration_late := 25.0 # 后期波次时长（8波+）
+@export var kill_streak_window := 5.0 # 连杀判定时间窗口（秒）
+@export var elite_chance_kill_streak := 0.05 # 连杀时额外精英概率（每连杀）
+
+
+## [自定义] 根据波次计算动态波次时长：前期短、后期长。
+func get_dynamic_wave_duration(wave: int) -> float:
+	if not dynamic_difficulty_enabled:
+		return wave_duration
+	if wave <= 3:
+		return wave_duration_early
+	elif wave >= 8:
+		return wave_duration_late
+	else:
+		# 4-7波之间线性插值
+		var t := (wave - 3) / 4.0
+		return lerp(wave_duration_early, wave_duration_late, t)
+
+
+## [自定义] 计算动态精英生成概率，考虑连杀加成和无尽模式。
+func get_dynamic_elite_chance(wave: int, kill_streak: int) -> float:
+	var base := elite_spawn_chance_base + wave * elite_spawn_chance_per_wave
+	
+	# 无尽模式额外加成
+	if GameManager.is_endless_mode:
+		base += GameManager.get_endless_elite_chance(wave)
+	
+	if not dynamic_difficulty_enabled:
+		return clampf(base, 0.0, 0.8)
+	
+	# 连杀加成：每连杀增加额外概率
+	var streak_bonus := kill_streak * elite_chance_kill_streak
+	return clampf(base + streak_bonus, 0.0, 0.8)  # 最高80%精英率
+
 
 func get_terrain_params() -> Dictionary:
 	return {
@@ -117,15 +154,28 @@ func _get_extended_spawn_orders(wave: int, game_node: Node, rng: RandomNumberGen
 		normal_ids.append_array(["melee", "ranged", "tank", "aquatic", "dasher"])
 	if boss_ids.is_empty():
 		boss_ids.append("boss")
-	var total := clampi(14 + wave * 4, 10, 50)  # 大幅增加每波敌人数
-	var elite_chance := elite_spawn_chance_base + wave * elite_spawn_chance_per_wave
+	
+	# 无尽模式动态调整
+	var difficulty_mult := 1.0
+	if GameManager.is_endless_mode:
+		difficulty_mult = GameManager.get_endless_difficulty_bonus(wave)
+	
+	var total := clampi(int((14 + wave * 4) * difficulty_mult), 10, 100)  # 无尽模式最多100敌人
+	var elite_chance := get_dynamic_elite_chance(wave, 0)  # 使用动态计算
 	var boss_num := 1 if (wave % 5 == 0 and wave > 0) else boss_count
+	
+	# 无尽模式每10波额外Boss
+	if GameManager.is_endless_mode and wave % 10 == 0:
+		boss_num += 1
+	
 	var elite_count := 0
 	for _i in range(total - boss_num):
 		if rng.randf() < elite_chance and not elite_ids.is_empty():
 			elite_count += 1
 	var normal_count := total - boss_num - elite_count
-	var hp_base := 0.9 + wave * 0.05
+	
+	# 应用无尽模式难度到血量和速度
+	var hp_base := (0.9 + wave * 0.05) * difficulty_mult
 	var speed_base := 1.0 + wave * 0.06
 	# 区分远程与近战，减少远程数量：约 15% 远程、85% 近战/其他
 	var ranged_ids: Array[String] = []

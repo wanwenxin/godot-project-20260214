@@ -755,3 +755,128 @@ flowchart TD
 7. 设置菜单可用（音量/分辨率/按键/血条）且重启后保持
 8. 暂停页按键提示与改键结果一致
 9. 无 parser/lint 错误
+
+---
+
+## 8. 优化功能说明（2026-02-19）
+
+### 8.1 敌人 LOD 系统
+
+为提升性能，敌人现在支持三级 LOD（Level of Detail）：
+
+- **Level 0（近处）**：完整更新，每帧处理
+- **Level 1（远处）**：降低更新频率至 0.1 秒
+- **Level 2（超远处）**：降低更新频率至 0.5 秒，隐藏视觉
+
+**相关文件**：
+- `scripts/enemy_base.gd`：`update_lod_level()`、`force_full_lod()`
+- `scripts/game.gd`:`_update_enemy_lod()`
+
+**配置参数**：
+```gdscript
+const LOD_DISTANCE_NEAR := 400.0   # 近处边界
+const LOD_DISTANCE_FAR := 800.0    # 远处边界  
+const LOD_DISTANCE_HIDE := 1200.0  # 隐藏边界
+```
+
+### 8.2 对象池扩展
+
+对象池现在支持敌人池化，减少 instantiate/queue_free 开销：
+
+**相关文件**：
+- `scripts/autoload/object_pool.gd`：`acquire_enemy()`、`recycle_enemy()`
+- `scripts/enemy_base.gd`:`reset_for_pool()`
+
+**使用方法**：
+```gdscript
+# 获取敌人
+var enemy = ObjectPool.acquire_enemy(enemy_id, scene, parent)
+
+# 回收敌人（死亡时自动回收）
+ObjectPool.recycle_enemy(enemy)
+```
+
+### 8.3 背包交互优化
+
+背包现在支持排序和过滤功能：
+
+**相关文件**：
+- `scripts/ui/backpack_panel.gd`:`set_sort_mode()`、`set_filter_type()`、`batch_sell_by_tier()`
+
+**排序模式**：
+- 0 = 默认
+- 1 = 品级高到低
+- 2 = 品级低到高
+- 3 = 类型分组
+
+**过滤类型**：`""`（全部）、`"melee"`、`"ranged"`
+
+### 8.4 动态波次难度
+
+波次系统现在支持动态难度调整：
+
+- **波次时长**：前期 15 秒，后期 25 秒
+- **连杀系统**：连续击杀增加精英生成概率
+- **动态计算**：`LevelConfig.get_dynamic_wave_duration()`、`get_dynamic_elite_chance()`
+
+**相关文件**：
+- `resources/level_config.gd`
+- `scripts/wave_manager.gd`：连杀追踪
+
+### 8.5 武器套装效果
+
+同套装武器同时装备时激活套装加成：
+
+**套装列表**（`resources/weapon_set_defs.gd`）：
+- `blade_set`：刀剑套装（暴击、流血）
+- `firearm_set`：火器套装（射速、穿透）
+- `magic_set`：魔法套装（魔力、法强）
+- `heavy_set`：重装套装（护甲、眩晕）
+
+**套装加成**：
+- 2 件：基础加成
+- 4 件：进阶加成
+- 6 件：终极加成
+
+### 8.6 纹理压缩配置
+
+`project.godot` 新增渲染优化配置：
+
+```ini
+[rendering]
+textures/vram_compression/import_s3tc=true
+textures/vram_compression/import_etc=true
+2d/snap/snap_2d_vertices_to_pixel=true
+batching/options/use_single_quad_fallback=true
+```
+
+### 8.7 UI 动画过渡
+
+面板现在支持淡入/淡出动画：
+
+**相关文件**：
+- `scripts/ui/hud.gd`:`_animate_panel_in()`、`_animate_panel_out()`
+
+**动画方法**：
+- `show_upgrade_options_animated()`
+- `hide_upgrade_options_animated()`
+- `show_weapon_shop_animated()`
+- `hide_weapon_panel_animated()`
+
+### 8.8 无尽模式
+
+无尽模式支持无限制波次挑战：
+
+**相关文件**：
+- `scripts/autoload/game_manager.gd`:`start_endless_mode()`、`get_endless_difficulty_bonus()`
+
+**特性**：
+- 无通关波次限制
+- 每波难度递增 5%
+- 每 5 波额外金币奖励
+- 每 10 波额外 Boss
+
+**启用方法**：
+```gdscript
+GameManager.start_endless_mode(character_id)
+```

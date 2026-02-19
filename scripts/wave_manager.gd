@@ -55,6 +55,11 @@ var _wave_cleared_emitted := false  # 防重复发射 wave_cleared
 var _pending_spawn_batches: Array = []  # 分批生成队列，每批为 Array[Dictionary]
 var _batch_index := 0
 
+# ---- 连杀追踪系统 ----
+var _kill_streak_count := 0  # 当前连杀数
+var _kill_streak_timer := 0.0  # 连杀计时器
+var _kill_streak_window := 5.0  # 连杀判定窗口（秒）
+
 @onready var intermission_timer: Timer = $IntermissionTimer
 var _pre_spawn_timer: Timer = null  # 预生成倒计时，_ready 中创建
 
@@ -106,7 +111,7 @@ func get_intermission_left() -> float:
 	return intermission_timer.time_left
 
 
-## [系统] 每帧调用，更新预生成/波次倒计时、分批生成敌人、尝试发射 wave_cleared。
+## [系统] 每帧调用，更新预生成/波次倒计时、分批生成敌人、尝试发射 wave_cleared、连杀追踪。
 func _process(delta: float) -> void:
 	# 预生成阶段：仅驱动 pre_spawn_countdown_changed，不扣减 wave_countdown
 	if _pre_spawn_timer != null and _pre_spawn_timer.time_left > 0:
@@ -128,6 +133,12 @@ func _process(delta: float) -> void:
 		_batch_index += 1
 	if _wave_countdown_left <= 0.0:
 		_try_emit_wave_cleared()
+	
+	# 更新连杀计时器
+	if _kill_streak_count > 0:
+		_kill_streak_timer -= delta
+		if _kill_streak_timer <= 0.0:
+			_reset_kill_streak()
 
 
 ## [自定义] 开始下一波：加载关卡配置、生成警示、启动倒计时；防重入。
@@ -139,11 +150,17 @@ func _start_next_wave() -> void:
 	_wave_cleared_emitted = false
 	current_wave += 1
 	pending_spawn_count = 0
+	# 重置连杀
+	_reset_kill_streak()
 
 	var cfg: LevelConfig = GameManager.get_current_level_config(current_wave)
 	if cfg == null:
 		cfg = _get_fallback_level_config()
-	wave_duration = cfg.wave_duration if cfg != null else GameConstants.WAVE_DURATION_DEFAULT
+	# 使用动态波次时长
+	if cfg != null and cfg.dynamic_difficulty_enabled:
+		wave_duration = cfg.get_dynamic_wave_duration(current_wave)
+	else:
+		wave_duration = cfg.wave_duration if cfg != null else GameConstants.WAVE_DURATION_DEFAULT
 	spawn_batch_count = int(cfg.spawn_batch_count) if cfg != null else GameConstants.SPAWN_BATCH_COUNT_DEFAULT
 	spawn_batch_interval = cfg.spawn_batch_interval if cfg != null else GameConstants.SPAWN_BATCH_INTERVAL_DEFAULT
 	spawn_positions_count = int(cfg.spawn_positions_count) if cfg != null else GameConstants.SPAWN_POSITIONS_COUNT_DEFAULT
@@ -340,10 +357,15 @@ func _random_spawn_position() -> Vector2:
 	return best_pos
 
 
-## [系统] 敌人 died 信号回调，更新击杀数、尝试掉落、检查波次清除。
+## [系统] 敌人 died 信号回调，更新击杀数、连杀、尝试掉落、检查波次清除。
 func _on_enemy_died(enemy: Node) -> void:
 	living_enemy_count = maxi(living_enemy_count - 1, 0)
 	kill_count += 1
+	
+	# 更新连杀
+	_kill_streak_count += 1
+	_kill_streak_timer = _kill_streak_window
+	
 	AudioManager.play_kill()
 	emit_signal("kill_count_changed", kill_count)
 	# 击败敌人获得经验值（enemy_base 及子类均有 exp_value）
@@ -351,6 +373,17 @@ func _on_enemy_died(enemy: Node) -> void:
 	GameManager.add_experience(xp)
 	_try_spawn_drop(enemy)
 	_try_spawn_boss_bonus_drop(enemy)
+
+
+## [自定义] 重置连杀计数。
+func _reset_kill_streak() -> void:
+	_kill_streak_count = 0
+	_kill_streak_timer = 0.0
+
+
+## [自定义] 获取当前连杀数。
+func get_kill_streak() -> int:
+	return _kill_streak_count
 
 
 # 在场敌人与待生成均为 0 或倒计时归零时发射一次 wave_cleared。

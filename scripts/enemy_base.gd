@@ -57,6 +57,17 @@ var _nav_agent: NavigationAgent2D  # 寻路代理，CHASE_NAV/FLANK 时使用
 var _element_amounts: Dictionary = {}
 var _element_decay_accum: float = 0.0  # 累加满 1 秒后执行一次衰减与反应
 
+# ---- LOD 优化系统 ----
+const LOD_DISTANCE_NEAR := 400.0   # 近处：完整更新
+const LOD_DISTANCE_FAR := 800.0    # 远处：降低更新频率
+const LOD_DISTANCE_HIDE := 1200.0  # 超远处：隐藏视觉
+var _lod_update_interval := 0.0    # 当前更新间隔
+var _lod_accumulator := 0.0        # 更新累加器
+var _lod_level := 0                # 0=完整 1=简化 2=隐藏
+var _sprite_visible := true
+
+var _invulnerable_timer := 0.0  # 无敌时间计时器
+
 
 func is_water_only() -> bool:
 	# 子类（如 enemy_aquatic）override 返回 true。
@@ -69,6 +80,7 @@ func _is_in_water() -> bool:
 
 func _ready() -> void:
 	add_to_group("enemies")
+	add_to_group("lod_managed")  # LOD 系统管理标记
 	collision_layer = 2
 	collision_mask = 1 | 8
 	current_health = max_health
@@ -108,18 +120,24 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# LOD 更新频率控制
+	_lod_accumulator += delta
+	if _lod_accumulator < _lod_update_interval:
+		return
+	_lod_accumulator = 0.0
+	
 	_update_direction_sprite()
 	# 元素衰减与双元素反应：每累计 1 秒执行一次。
-	_tick_element_decay(delta)
+	_tick_element_decay(_lod_update_interval if _lod_update_interval > 0 else delta)
 	# 元素图标：不足 5 点时闪烁
 	_update_element_icons_blink()
-	# 水中专属敌人离水时持续扣血。
+	# 水中的专属敌人离水时持续扣血。
 	if not is_water_only():
 		return
 	if _is_in_water():
 		_out_of_water_cd = out_of_water_damage_interval
 		return
-	_out_of_water_cd -= delta
+	_out_of_water_cd -= _lod_update_interval if _lod_update_interval > 0 else delta
 	if _out_of_water_cd <= 0.0:
 		take_damage(out_of_water_damage_per_tick)
 		_out_of_water_cd = out_of_water_damage_interval
@@ -177,6 +195,8 @@ func apply_knockback(dir: Vector2, force: float) -> void:
 
 ## 受到伤害；_elemental 为元素类型（如 "fire"），_element_amount 为本次附着的元素量（0 表示不附着）
 func take_damage(amount: int, _elemental: String = "", _element_amount: int = 0) -> void:
+	# 受到伤害时强制恢复完整 LOD，确保视觉反馈
+	force_full_lod()
 	current_health -= amount
 	_refresh_health_bar()
 	if _elemental != "" and _element_amount > 0:
@@ -322,7 +342,38 @@ func _play_death_animation() -> void:
 
 func _finish_death() -> void:
 	emit_signal("died", self)
-	queue_free()
+	# 对象池支持：如果来自对象池则回收，否则销毁
+	if get_meta("object_pool_type", "") == "enemy":
+		ObjectPool.recycle_enemy(self)
+	else:
+		queue_free()
+
+
+## [自定义] 重置敌人状态，供对象池复用。
+func reset_for_pool() -> void:
+	_is_dying = false
+	current_health = max_health
+	_invulnerable_timer = 0.0
+	_element_amounts.clear()
+	_element_decay_accum = 0.0
+	_terrain_effects.clear()
+	_terrain_speed_multiplier = 1.0
+	_knockback_velocity = Vector2.ZERO
+	_out_of_water_cd = 0.0
+	_lod_level = 0
+	_lod_update_interval = 0.0
+	_lod_accumulator = 0.0
+	_sprite_visible = true
+	if sprite:
+		sprite.visible = true
+		sprite.modulate = Color.WHITE
+		sprite.rotation = 0.0
+	if _health_bar:
+		_health_bar.visible = GameManager.enemy_healthbar_visible
+	if _element_icons_container:
+		_element_icons_container.visible = false
+	set_physics_process(true)
+	set_process(true)
 
 
 func _move_towards_player(_delta: float, move_scale: float = 1.0) -> void:
@@ -537,3 +588,53 @@ func _refresh_health_bar() -> void:
 		return
 	_health_bar.max_value = float(max_health)
 	_health_bar.value = clampf(float(current_health), 0.0, float(max_health))
+
+
+## [自定义] 更新 LOD 级别，根据与玩家的距离决定更新频率和视觉表现。
+## 由 Game.gd 统一调用，避免每个敌人独立计算玩家距离。
+func update_lod_level(distance_to_player: float) -> void:
+	var new_level := 0
+	var new_interval := 0.0
+	var new_visible := true
+	
+	if distance_to_player > LOD_DISTANCE_HIDE:
+		new_level = 2
+		new_interval = 0.5  # 每 0.5 秒更新一次
+		new_visible = false  # 隐藏精灵但保持逻辑
+	elif distance_to_player > LOD_DISTANCE_FAR:
+		new_level = 1
+		new_interval = 0.1  # 每 0.1 秒更新一次
+		new_visible = true
+	else:
+		new_level = 0
+		new_interval = 0.0  # 每帧更新
+		new_visible = true
+	
+	_lod_level = new_level
+	_lod_update_interval = new_interval
+	
+	# 视觉隐藏/显示
+	if _sprite_visible != new_visible:
+		_sprite_visible = new_visible
+		if sprite:
+			sprite.visible = _sprite_visible
+		if _health_bar:
+			_health_bar.visible = _sprite_visible and GameManager.enemy_healthbar_visible
+		if _element_icons_container:
+			_element_icons_container.visible = _sprite_visible and not _element_amounts.is_empty()
+
+
+## [自定义] 获取当前 LOD 级别（0=完整 1=简化 2=隐藏）
+func get_lod_level() -> int:
+	return _lod_level
+
+
+## [自定义] 强制恢复完整 LOD（如受到攻击时）
+func force_full_lod() -> void:
+	_lod_level = 0
+	_lod_update_interval = 0.0
+	_lod_accumulator = 0.0
+	if not _sprite_visible:
+		_sprite_visible = true
+		if sprite:
+			sprite.visible = true

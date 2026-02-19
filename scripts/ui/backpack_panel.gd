@@ -43,6 +43,11 @@ var _shop_context := false  # 是否从商店打开，仅此时显示售卖/合�
 var _shop_wave := 0  # 商店模式下当前波次，用于计算售卖价
 var _last_stats_hash: String = ""  # 脏检查：stats 未变时跳过重建
 
+# ---- 排序与过滤 ----
+var _current_sort_mode := 0  # 0=默认 1=品级高到低 2=品级低到高 3=类型分组
+var _current_filter_type := ""  # ""=全部 "melee"=近战 "ranged"=远程
+const SORT_MODES := ["backpack.sort_default", "backpack.sort_tier_desc", "backpack.sort_tier_asc", "backpack.sort_type"]
+
 ## 轻量哈希：weapon_details/magic_details/item_ids 的关键字段及 wave，用于脏检查。
 func _hash_stats(stats: Dictionary) -> String:
 	var w: Array = stats.get("weapon_details", [])
@@ -96,9 +101,15 @@ func _build_all_sections(weapon_details: Array, magic_details: Array, item_ids: 
 	_cancel_btn.visible = _merge_mode
 	if not _cancel_btn.pressed.is_connected(_exit_merge_mode):
 		_cancel_btn.pressed.connect(_exit_merge_mode)
-	for i in weapon_details.size():
-		var w: Dictionary = weapon_details[i]
-		var slot := _make_weapon_slot(w, weapon_upgrades, i, weapon_details)
+	
+	# 应用排序和过滤
+	var sorted_weapons := _sort_and_filter_weapons(weapon_details)
+	
+	for i in sorted_weapons.size():
+		var w: Dictionary = sorted_weapons[i]
+		# 找到原始索引用于操作
+		var original_idx := weapon_details.find(w)
+		var slot := _make_weapon_slot(w, weapon_upgrades, original_idx, weapon_details)
 		_weapon_grid.add_child(slot)
 	# 魔法区
 	_magic_label.text = LocalizationManager.tr_key("backpack.section_magics")
@@ -475,3 +486,71 @@ func _exit_merge_mode() -> void:
 				var slot: Control = panel.get_child(0)
 				if slot is BackpackSlot:
 					(slot as BackpackSlot).set_merge_selectable(false)
+
+
+## [自定义] 设置武器排序模式并刷新显示。
+func set_sort_mode(mode_index: int) -> void:
+	_current_sort_mode = clampi(mode_index, 0, SORT_MODES.size() - 1)
+	# 触发重建
+	_last_stats_hash = ""
+
+
+## [自定义] 设置武器过滤类型并刷新显示。
+func set_filter_type(weapon_type: String) -> void:
+	_current_filter_type = weapon_type
+	# 触发重建
+	_last_stats_hash = ""
+
+
+## [自定义] 对武器列表进行排序和过滤。
+func _sort_and_filter_weapons(weapon_details: Array) -> Array:
+	var result := weapon_details.duplicate(true)
+	
+	# 过滤
+	if _current_filter_type != "":
+		var filtered: Array = []
+		for w in result:
+			var wtype: String = str(w.get("type", ""))
+			if wtype == _current_filter_type:
+				filtered.append(w)
+		result = filtered
+	
+	# 排序
+	match _current_sort_mode:
+		1:  # 品级高到低
+			result.sort_custom(func(a, b): return int(a.get("tier", 0)) > int(b.get("tier", 0)))
+		2:  # 品级低到高
+			result.sort_custom(func(a, b): return int(a.get("tier", 0)) < int(b.get("tier", 0)))
+		3:  # 类型分组
+			result.sort_custom(func(a, b): 
+				var type_a: String = str(a.get("type", ""))
+				var type_b: String = str(b.get("type", ""))
+				if type_a != type_b:
+					return type_a < type_b
+				return int(a.get("tier", 0)) > int(b.get("tier", 0))
+			)
+	
+	return result
+
+
+## [自定义] 批量售卖指定品级以下的武器。
+func batch_sell_by_tier(max_tier: int) -> Array[int]:
+	var sold_indices: Array[int] = []
+	if not _shop_context:
+		return sold_indices
+	
+	var game = get_tree().current_scene
+	if game == null or not game.has_method("get_player_for_pause"):
+		return sold_indices
+	
+	var p = game.get_player_for_pause()
+	if p == null or not p.has_method("get_equipped_weapon_details"):
+		return sold_indices
+	
+	var weapon_details: Array = p.get_equipped_weapon_details()
+	for i in range(weapon_details.size() - 1, -1, -1):
+		var w: Dictionary = weapon_details[i]
+		if int(w.get("tier", 0)) <= max_tier:
+			sold_indices.append(i)
+	
+	return sold_indices

@@ -246,9 +246,16 @@
 ### 2025-02-16：Array.max() 返回 Variant 导致类型推断警告
 
 - **现象**：`player.gd` 第 123 行报错 `The variable type is being inferred from a Variant value, so it will be typed as Variant. (Warning treated as error.)`
-- **原因**：`var max_amount := _pending_damages.max()` 中，`Array.max()` 返回 `Variant`，GDScript 将 `max_amount` 推断为 Variant，在“警告当错误”模式下触发
+- **原因**：`var max_amount := _pending_damages.max()` 中，`Array.max()` 返回 `Variant`，GDScript 将 `max_amount` 推断为 Variant，在"警告当错误"模式下触发
 - **修复**：显式声明类型 `var max_amount: int = _pending_damages.max()`
 - **预防**：使用 `Array.max()`、`min()` 等返回 Variant 的方法时，对接收变量显式标注类型（如 `int`、`float`）
+
+### 2026-02-19：Dictionary.get() 方法参数过多错误
+
+- **现象**：`res://scripts/autoload/affix_manager.gd` 第 163 行报错 `Too many arguments for "get()" call. Expected at most 1 but received 2.`
+- **原因**：GDScript 中 Dictionary.get(key, default) 语法在当前 Godot 版本中不被支持，Dictionary 的 get 方法只接受一个参数
+- **修复**：将所有 `dict.get(key, default)` 调用替换为 `dict.get(key) if dict.has(key) else default` 或 `dict[key] if dict.has(key) else default` 的形式
+- **预防**：在使用 Dictionary.get() 时注意 Godot 版本兼容性，使用 has() 检查后再获取值确保安全性
 
 <!-- 示例：
 ### 2025-02-15：整型除法警告

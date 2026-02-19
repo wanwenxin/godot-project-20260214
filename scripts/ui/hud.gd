@@ -869,3 +869,60 @@ func _build_weapon_stats_text(option: Dictionary) -> String:
 		if affix_names.size() > 0:
 			lines.append(LocalizationManager.tr_key("backpack.tooltip_affixes") + ": " + ", ".join(affix_names))
 	return "\n".join(lines)
+
+
+# ---- UI 动画过渡系统 ----
+
+## [自定义] 动画显示面板（带淡入和缩放效果）。
+func _animate_panel_in(panel: Control, duration := 0.25) -> void:
+	if panel == null:
+		return
+	panel.visible = true
+	panel.modulate.a = 0.0
+	panel.scale = Vector2(0.95, 0.95)
+	
+	var tween := create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.parallel().tween_property(panel, "modulate:a", 1.0, duration)
+	tween.parallel().tween_property(panel, "scale", Vector2(1.0, 1.0), duration)
+
+
+## [自定义] 动画隐藏面板（带淡出和缩放效果）。
+func _animate_panel_out(panel: Control, duration := 0.2) -> void:
+	if panel == null or not panel.visible:
+		return
+	
+	var tween := create_tween()
+	tween.set_ease(Tween.EASE_IN)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.parallel().tween_property(panel, "modulate:a", 0.0, duration)
+	tween.parallel().tween_property(panel, "scale", Vector2(0.95, 0.95), duration)
+	tween.finished.connect(func() -> void:
+		panel.visible = false
+		panel.scale = Vector2(1.0, 1.0)
+	)
+
+
+## [自定义] 动画显示升级面板（带入场效果）。
+func show_upgrade_options_animated(options: Array[Dictionary], current_gold: int, refresh_cost: int = 2) -> void:
+	show_upgrade_options(options, current_gold, refresh_cost)
+	_animate_panel_in(_upgrade_panel)
+
+
+## [自定义] 动画隐藏升级面板。
+func hide_upgrade_options_animated() -> void:
+	_animate_panel_out(_upgrade_panel)
+	_show_modal_backdrop(false)
+
+
+## [自定义] 动画显示武器商店面板。
+func show_weapon_shop_animated(options: Array[Dictionary], current_gold: int, capacity_left: int) -> void:
+	show_weapon_shop(options, current_gold, capacity_left)
+	_animate_panel_in(_weapon_panel)
+
+
+## [自定义] 动画隐藏武器商店面板。
+func hide_weapon_panel_animated() -> void:
+	_animate_panel_out(_weapon_panel)
+	_show_modal_backdrop(false)
