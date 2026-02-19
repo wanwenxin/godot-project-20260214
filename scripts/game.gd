@@ -598,7 +598,7 @@ func _show_backpack_from_shop() -> void:
 	close_btn.text = LocalizationManager.tr_key("common.close")
 	close_btn.pressed.connect(_on_backpack_overlay_closed.bind(overlay))
 	var scroll: ScrollContainer = overlay.get_node("MarginContainer/VBoxContainer/BackpackScroll")
-	var backpack_panel: VBoxContainer = (load("res://scenes/ui/backpack_panel.tscn") as PackedScene).instantiate() as VBoxContainer
+	var backpack_panel: Control = (load("res://scenes/ui/backpack_panel.tscn") as PackedScene).instantiate() as Control
 	backpack_panel.name = "BackpackPanel"
 	backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(backpack_panel)

@@ -163,6 +163,35 @@ static func calculate_set_bonuses(equipped_weapons: Array) -> Dictionary:
 	return result
 
 
+## [自定义] 获取套装完整展示信息，供详情面板与人物属性面板使用。
+## 返回: [{set_id, name_key, count, thresholds: [{n, desc_key, desc, active}], active_threshold}]
+static func get_weapon_set_full_display_info(equipped_weapons: Array) -> Array:
+	var bonuses := calculate_set_bonuses(equipped_weapons)
+	var result: Array = []
+	for set_id in bonuses.keys():
+		var info: Dictionary = bonuses[set_id]
+		var count: int = int(info.get("count", 0))
+		var name_key: String = str(info.get("name_key", ""))
+		var all_bonuses: Dictionary = info.get("all_bonuses", {})
+		var highest_threshold: int = int(info.get("highest_threshold", 0))
+		var thresholds: Array = []
+		for n in [2, 4, 6]:
+			if all_bonuses.has(n):
+				var tier_data: Dictionary = all_bonuses[n]
+				var desc_key: String = str(tier_data.get("description_key", ""))
+				var desc: String = LocalizationManager.tr_key(desc_key) if desc_key != "" else ""
+				var active: bool = (n == highest_threshold)
+				thresholds.append({"n": n, "desc_key": desc_key, "desc": desc, "active": active})
+		result.append({
+			"set_id": set_id,
+			"name_key": name_key,
+			"count": count,
+			"thresholds": thresholds,
+			"active_threshold": highest_threshold
+		})
+	return result
+
+
 ## [自定义] 获取套装效果的文本描述。
 static func get_set_bonus_description(set_id: String, equipped_weapons: Array) -> String:
 	var bonuses := calculate_set_bonuses(equipped_weapons)

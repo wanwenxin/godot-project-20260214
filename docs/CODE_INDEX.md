@@ -177,9 +177,9 @@
 | [scripts/ui/main_menu.gd](scripts/ui/main_menu.gd) | 主菜单 | - |
 | [scripts/ui/character_select.gd](scripts/ui/character_select.gd) | 角色选择 | - |
 | [scripts/ui/pause_menu.gd](scripts/ui/pause_menu.gd) | 暂停菜单、属性/背包 Tab、玩家信息 | `set_visible_menu`、`set_player_stats_full` |
-| [scripts/ui/backpack_panel.gd](scripts/ui/backpack_panel.gd) + [scenes/ui/backpack_panel.tscn](scenes/ui/backpack_panel.tscn) | 背包面板，武器/魔法/道具图标网格；固定结构在场景，脚本只填槽位 | `set_stats`、`hide_tooltip` |
-| [scripts/ui/backpack_tooltip_popup.gd](scripts/ui/backpack_tooltip_popup.gd) | 背包 Tooltip，结构化词条 Chip、独立词条悬浮面板（完整描述+数值、屏幕坐标）、主 tooltip 放大、延迟隐藏（0.5s） | `show_tooltip`、`show_structured_tooltip`、`schedule_hide`、`is_scheduled_to_hide`、`hide_tooltip` |
-| [scripts/ui/backpack_slot.gd](scripts/ui/backpack_slot.gd) | 背包槽，图标 + 悬浮即显 Tooltip（支持 tip_data） | `configure` |
+| [scripts/ui/backpack_panel.gd](scripts/ui/backpack_panel.gd) + [scenes/ui/backpack_panel.tscn](scenes/ui/backpack_panel.tscn) | 背包面板，左三区网格 + 右 DetailPanel 嵌入式详情；点击/悬浮槽位显示详情（词条、套装 2/4/6、售卖/合成） | `set_stats`、`hide_tooltip` |
+| [scripts/ui/backpack_tooltip_popup.gd](scripts/ui/backpack_tooltip_popup.gd) | 背包 Tooltip Popup（可保留供其他场景复用；背包内已改用右侧详情） | `show_tooltip`、`show_structured_tooltip`、`schedule_hide`、`hide_tooltip` |
+| [scripts/ui/backpack_slot.gd](scripts/ui/backpack_slot.gd) | 背包槽，图标 + 名称；`slot_detail_requested`、`slot_hover_entered/exited` 供右侧详情 | `configure`、`slot_detail_requested`、`slot_hover_entered` |
 | [scripts/ui/settings_menu.gd](scripts/ui/settings_menu.gd) | 设置 | `open_menu`、`closed` |
 | [scripts/ui/encyclopedia_menu.gd](scripts/ui/encyclopedia_menu.gd) | 图鉴菜单，按类型展示角色/敌人/道具/武器/魔法/词条；武器分近战/远程；词条分七类（魔法、道具、武器-通用/近战/远程、武器-类型、武器-主题）；道具排除魔法 | `open_menu`、`closed` |
 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | 死亡结算 | `show_result` |

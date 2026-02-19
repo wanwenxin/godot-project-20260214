@@ -1,21 +1,23 @@
-extends VBoxContainer
+extends HBoxContainer
 
-# 背包面板：固定结构在 backpack_panel.tscn（三区标题+取消按钮+三网格），脚本只填槽位内容。
+# 背包面板：固定结构在 backpack_panel.tscn（左：三区网格，右：详情面板），脚本只填槽位内容。
 # 接收 stats 字典（weapon_details、magic_details、item_ids），向 WeaponGrid/MagicGrid/ItemGrid 填充槽位。
+# 点击或悬浮槽位时在右侧 DetailPanel 显示详情，替代原 BackpackTooltipPopup 悬浮。
 signal sell_requested(weapon_index: int)
 signal merge_completed  # 合并成功后发出，供商店覆盖层刷新
 const BASE_FONT_SIZE := 18
 const SEP := "────"  # 分割线，无空行
 
-@onready var _weapon_grid: HFlowContainer = $WeaponGrid
-@onready var _magic_grid: HFlowContainer = $MagicGrid
-@onready var _item_grid: HFlowContainer = $ItemGrid
-@onready var _cancel_btn: Button = $WeaponHeader/CancelButton
-@onready var _weapon_label: Label = $WeaponHeader/WeaponLabel
-@onready var _magic_label: Label = $MagicLabel
-@onready var _item_label: Label = $ItemLabel
+@onready var _weapon_grid: HFlowContainer = $LeftVBox/WeaponGrid
+@onready var _magic_grid: HFlowContainer = $LeftVBox/MagicGrid
+@onready var _item_grid: HFlowContainer = $LeftVBox/ItemGrid
+@onready var _cancel_btn: Button = $LeftVBox/WeaponHeader/CancelButton
+@onready var _weapon_label: Label = $LeftVBox/WeaponHeader/WeaponLabel
+@onready var _magic_label: Label = $LeftVBox/MagicLabel
+@onready var _item_label: Label = $LeftVBox/ItemLabel
+@onready var _detail_content: VBoxContainer = $DetailPanel/DetailMargin/DetailScroll/DetailContent
 
-var _tooltip_popup: BackpackTooltipPopup = null
+var _selected_slot: Dictionary = {}  # 点击选中的槽位 {type, index, tip_data}，非空时优先显示
 var _merge_mode: bool = false
 var _merge_base_index: int = -1
 var _merge_weapon_id: String = ""
@@ -47,10 +49,10 @@ func _find_canvas_layer() -> CanvasLayer:
 	return null
 
 
-## 关闭悬浮提示（暂停菜单关闭时调用）。
+## 关闭详情面板选中状态（暂停菜单关闭时调用），显示占位文案。
 func hide_tooltip() -> void:
-	if _tooltip_popup != null:
-		_tooltip_popup.hide_tooltip()
+	_selected_slot = {}
+	_show_detail_placeholder()
 
 
 var _shop_context := false  # 是否从商店打开，仅此时显示售卖/合并按钮
@@ -87,15 +89,7 @@ func set_stats(stats: Dictionary, shop_context: bool = false) -> void:
 	_shop_wave = int(stats.get("wave", 0))
 	_exit_merge_mode()
 	_exit_swap_mode()
-	if _tooltip_popup == null:
-		_tooltip_popup = BackpackTooltipPopup.new()
-		_tooltip_popup.synthesize_requested.connect(_on_synthesize_requested)
-		_tooltip_popup.sell_requested.connect(_on_sell_requested)
-		var layer := _find_canvas_layer()
-		if layer != null:
-			layer.add_child(_tooltip_popup)
-		else:
-			get_tree().root.add_child(_tooltip_popup)
+	_selected_slot = {}
 	for c in _weapon_grid.get_children():
 		c.queue_free()
 	for c in _magic_grid.get_children():
@@ -134,9 +128,11 @@ func _build_all_sections(weapon_details: Array, magic_details: Array, item_ids: 
 		_magic_grid.add_child(slot)
 	# 道具区
 	_item_label.text = LocalizationManager.tr_key("backpack.section_items")
-	for iid in item_ids:
-		var slot := _make_item_slot(str(iid))
+	for i in item_ids.size():
+		var slot := _make_item_slot(str(item_ids[i]), i)
 		_item_grid.add_child(slot)
+	# 初始显示占位文案
+	_show_detail_placeholder()
 
 
 func _get_slot_style() -> StyleBoxFlat:
@@ -175,11 +171,13 @@ func _make_weapon_slot(w: Dictionary, weapon_upgrades: Array, weapon_index: int,
 		tier_color = TierConfig.get_tier_color(int(w.get("tier", 0)))
 	var display_name := LocalizationManager.tr_key("weapon.%s.name" % str(w.get("id", "")))
 	var tip_data: Dictionary = _build_weapon_tooltip_data(w, weapon_upgrades, weapon_index, weapon_details)
-	# 传递 slot_type 和 slot_index 用于点击交换
-	slot.configure(icon_path, color_hint, "", _tooltip_popup, display_name, tier_color, tip_data, weapon_index, "weapon", weapon_index)
+	slot.configure(icon_path, color_hint, "", null, display_name, tier_color, tip_data, weapon_index, "weapon", weapon_index)
 	slot.slot_clicked.connect(_on_weapon_slot_clicked)
 	slot.slot_swap_clicked.connect(_on_slot_swap_clicked)
 	slot.slot_swap_cancel_requested.connect(_exit_swap_mode)
+	slot.slot_detail_requested.connect(_on_slot_detail_requested)
+	slot.slot_hover_entered.connect(_on_slot_hover_entered)
+	slot.slot_hover_exited.connect(_on_slot_hover_exited)
 	return _wrap_slot_in_panel(slot)
 
 
@@ -277,6 +275,11 @@ func _build_weapon_tooltip_data(w: Dictionary, weapon_upgrades: Array, weapon_in
 		var tier_coef: float = TierConfig.get_damage_multiplier(int(w.get("tier", 0)))
 		var wave_coef: float = 1.0 + float(_shop_wave) * 0.15
 		sell_price = maxi(1, int(float(base_cost) * tier_coef * wave_coef * 0.3))
+	# 套装效果完整展示（2/4/6 件，含生效档位）
+	var equipped_weapons: Array = []
+	for ow in weapon_details:
+		equipped_weapons.append({"id": str(ow.get("id", "")), "tier": int(ow.get("tier", 0))})
+	var set_bonus_info: Array = WeaponSetDefs.get_weapon_set_full_display_info(equipped_weapons)
 	return {
 		"title": LocalizationManager.tr_key(name_key),
 		"affixes": affixes,
@@ -284,7 +287,8 @@ func _build_weapon_tooltip_data(w: Dictionary, weapon_upgrades: Array, weapon_in
 		"show_sell": show_sell,
 		"show_synthesize": show_synthesize,
 		"weapon_index": weapon_index,
-		"sell_price": sell_price
+		"sell_price": sell_price,
+		"set_bonus_info": set_bonus_info
 	}
 
 
@@ -321,10 +325,12 @@ func _make_magic_slot(m: Dictionary, magic_index: int) -> PanelContainer:
 		tier_color = TierConfig.get_tier_color(int(m.get("tier", 0)))
 	var display_name := LocalizationManager.tr_key("magic.%s.name" % str(m.get("id", "")))
 	var tip_data: Dictionary = _build_magic_tooltip_data(m, def)
-	# 传递 slot_type 和 slot_index 用于点击交换
-	slot.configure(icon_path, BackpackSlot.PLACEHOLDER_COLOR, "", _tooltip_popup, display_name, tier_color, tip_data, -1, "magic", magic_index)
+	slot.configure(icon_path, BackpackSlot.PLACEHOLDER_COLOR, "", null, display_name, tier_color, tip_data, -1, "magic", magic_index)
 	slot.slot_swap_clicked.connect(_on_slot_swap_clicked)
 	slot.slot_swap_cancel_requested.connect(_exit_swap_mode)
+	slot.slot_detail_requested.connect(_on_slot_detail_requested)
+	slot.slot_hover_entered.connect(_on_slot_hover_entered)
+	slot.slot_hover_exited.connect(_on_slot_hover_exited)
 	return _wrap_slot_in_panel(slot)
 
 
@@ -365,14 +371,17 @@ func _build_magic_tooltip_data(m: Dictionary, def: Dictionary) -> Dictionary:
 	}
 
 
-func _make_item_slot(item_id: String) -> PanelContainer:
+func _make_item_slot(item_id: String, item_index: int) -> PanelContainer:
 	var slot := BackpackSlot.new()
 	var def := _get_item_def(item_id)
 	var icon_path: String = str(def.get("icon_path", ""))
 	var display_key: String = str(def.get("display_name_key", def.get("name_key", "item.unknown.name")))
 	var display_name := LocalizationManager.tr_key(display_key)
 	var tip_data: Dictionary = _build_item_tooltip_data(item_id, def)
-	slot.configure(icon_path, BackpackSlot.PLACEHOLDER_COLOR, "", _tooltip_popup, display_name, Color(0.85, 0.85, 0.9), tip_data)
+	slot.configure(icon_path, BackpackSlot.PLACEHOLDER_COLOR, "", null, display_name, Color(0.85, 0.85, 0.9), tip_data, -1, "item", item_index)
+	slot.slot_detail_requested.connect(_on_slot_detail_requested)
+	slot.slot_hover_entered.connect(_on_slot_hover_entered)
+	slot.slot_hover_exited.connect(_on_slot_hover_exited)
 	return _wrap_slot_in_panel(slot)
 
 
@@ -384,7 +393,7 @@ func _get_item_def(item_id: String) -> Dictionary:
 
 
 ## 构建道具 tooltip 结构化数据：仅展示最终效果加成，不展示词条与数值。
-func _build_item_tooltip_data(item_id: String, def: Dictionary) -> Dictionary:
+func _build_item_tooltip_data(_item_id: String, def: Dictionary) -> Dictionary:
 	var display_key: String = str(def.get("display_name_key", def.get("name_key", "item.unknown.name")))
 	var base_val = def.get("base_value", 0)
 	var attr: String = str(def.get("attr", ""))
@@ -413,7 +422,6 @@ func _format_item_effect(attr: String, val: Variant) -> String:
 
 
 func _on_synthesize_requested(weapon_index: int) -> void:
-	_tooltip_popup.hide_tooltip()
 	var weapon_details: Array = []
 	var game = get_tree().current_scene
 	if game != null and game.has_method("get_player_for_pause"):
@@ -486,9 +494,10 @@ func _update_weapon_slots_merge_state(weapon_details: Array) -> void:
 			var slot: Control = panel.get_child(0)
 			if slot is BackpackSlot:
 				var bs: BackpackSlot = slot as BackpackSlot
+				var weapon_idx: int = bs.get_slot_index()
 				var selectable: bool = false
-				if i != _merge_base_index:
-					var w: Dictionary = weapon_details[i] if i < weapon_details.size() else {}
+				if weapon_idx != _merge_base_index and weapon_idx < weapon_details.size():
+					var w: Dictionary = weapon_details[weapon_idx]
 					if str(w.get("id", "")) == _merge_weapon_id and int(w.get("tier", 0)) == _merge_weapon_tier:
 						selectable = true
 				bs.set_merge_selectable(selectable)
@@ -527,6 +536,173 @@ func _exit_swap_mode() -> void:
 	_swap_mode = false
 	_swap_first_index = -1
 	_swap_slot_type = ""
+
+
+## [自定义] 点击槽位：选中并刷新详情面板；若为武器/魔法则同时进入交换流程。
+func _on_slot_detail_requested(slot_type: String, slot_index: int, tip_data: Dictionary) -> void:
+	_selected_slot = {"type": slot_type, "index": slot_index, "tip_data": tip_data}
+	_refresh_detail_panel(tip_data)
+
+
+## [自定义] 悬浮进入槽位：若无选中则用当前槽位 tip_data 刷新详情。
+func _on_slot_hover_entered(tip_data: Dictionary) -> void:
+	if _selected_slot.is_empty():
+		_refresh_detail_panel(tip_data)
+
+
+## [自定义] 悬浮离开槽位：若无选中则显示占位文案。
+func _on_slot_hover_exited() -> void:
+	if _selected_slot.is_empty():
+		_show_detail_placeholder()
+
+
+## [自定义] 刷新右侧详情面板内容，复用 BackpackTooltipPopup 的结构化展示逻辑。
+func _refresh_detail_panel(tip_data: Dictionary) -> void:
+	if _detail_content == null:
+		return
+	if tip_data.is_empty():
+		_show_detail_placeholder()
+		return
+	_build_detail_content(tip_data)
+
+
+## [自定义] 无选中且无悬浮时显示占位文案。
+func _show_detail_placeholder() -> void:
+	if _detail_content == null:
+		return
+	for c in _detail_content.get_children():
+		c.queue_free()
+	var lbl := Label.new()
+	lbl.text = LocalizationManager.tr_key("backpack.detail_placeholder")
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.7))
+	_detail_content.add_child(lbl)
+
+
+## [自定义] 构建详情面板内容：标题、词条、效果、套装、售卖/合成按钮。
+func _build_detail_content(data: Dictionary) -> void:
+	if _detail_content == null:
+		return
+	for c in _detail_content.get_children():
+		c.queue_free()
+	# 标题
+	var title_lbl := Label.new()
+	title_lbl.text = str(data.get("title", ""))
+	title_lbl.add_theme_font_size_override("font_size", 17)
+	title_lbl.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
+	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail_content.add_child(title_lbl)
+	# 词条区
+	var affixes: Array = data.get("affixes", [])
+	if affixes.size() > 0:
+		var affix_label := Label.new()
+		affix_label.text = LocalizationManager.tr_key("backpack.tooltip_affixes") + ":"
+		affix_label.add_theme_font_size_override("font_size", 15)
+		affix_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
+		_detail_content.add_child(affix_label)
+		var affix_vbox := VBoxContainer.new()
+		affix_vbox.add_theme_constant_override("separation", 2)
+		for affix_data in affixes:
+			var line := Label.new()
+			var name_str := LocalizationManager.tr_key(str(affix_data.get("name_key", "")))
+			var desc_key: String = str(affix_data.get("desc_key", ""))
+			var value_fmt: String = str(affix_data.get("value_fmt", ""))
+			var desc_str := ""
+			if desc_key != "":
+				desc_str = LocalizationManager.tr_key(desc_key)
+			else:
+				var et: String = str(affix_data.get("effect_type", ""))
+				var bonus = affix_data.get("bonus_per_count", 0)
+				if et != "":
+					desc_str = _effect_type_to_desc(et, bonus)
+			line.text = name_str + ": " + (desc_str if desc_str != "" else value_fmt)
+			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			line.add_theme_font_size_override("font_size", 14)
+			line.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+			affix_vbox.add_child(line)
+		_detail_content.add_child(affix_vbox)
+	# 效果区
+	var effects: String = str(data.get("effects", ""))
+	if not effects.is_empty():
+		var eff_lbl := Label.new()
+		eff_lbl.text = LocalizationManager.tr_key("backpack.tooltip_effects") + ": " + effects
+		eff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		eff_lbl.add_theme_font_size_override("font_size", 15)
+		eff_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+		_detail_content.add_child(eff_lbl)
+	# 套装效果区（2/4/6 件完整展示，高亮生效档位）
+	var set_bonus_info: Array = data.get("set_bonus_info", [])
+	if set_bonus_info.size() > 0:
+		var set_header := Label.new()
+		set_header.text = LocalizationManager.tr_key("backpack.tooltip_set_bonus")
+		set_header.add_theme_font_size_override("font_size", 15)
+		set_header.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
+		_detail_content.add_child(set_header)
+		for set_info in set_bonus_info:
+			var name_str := LocalizationManager.tr_key(str(set_info.get("name_key", "")))
+			var count: int = int(set_info.get("count", 0))
+			var set_lbl := Label.new()
+			set_lbl.text = "[%s] (%d件)" % [name_str, count]
+			set_lbl.add_theme_font_size_override("font_size", 14)
+			set_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+			_detail_content.add_child(set_lbl)
+			var thresholds: Array = set_info.get("thresholds", [])
+			for th in thresholds:
+				var n: int = int(th.get("n", 0))
+				var desc: String = str(th.get("desc", ""))
+				var active: bool = bool(th.get("active", false))
+				var th_lbl := Label.new()
+				th_lbl.text = "  %d件: %s" % [n, desc]
+				th_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				th_lbl.add_theme_font_size_override("font_size", 13)
+				if active:
+					th_lbl.add_theme_color_override("font_color", Color(0.4, 1.0, 0.5))
+				else:
+					th_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8))
+				_detail_content.add_child(th_lbl)
+	# 售卖按钮
+	var weapon_idx: int = int(data.get("weapon_index", -1))
+	if bool(data.get("show_sell", false)) and weapon_idx >= 0:
+		var sell_price: int = int(data.get("sell_price", 0))
+		var price_lbl := Label.new()
+		price_lbl.text = LocalizationManager.tr_key("backpack.sell_price", {"price": sell_price})
+		price_lbl.add_theme_font_size_override("font_size", 15)
+		price_lbl.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
+		_detail_content.add_child(price_lbl)
+		var sell_btn := Button.new()
+		sell_btn.text = LocalizationManager.tr_key("backpack.sell")
+		sell_btn.pressed.connect(func(): sell_requested.emit(weapon_idx))
+		_detail_content.add_child(sell_btn)
+	# 合成按钮
+	if bool(data.get("show_synthesize", false)) and weapon_idx >= 0:
+		var synth_btn := Button.new()
+		synth_btn.text = LocalizationManager.tr_key("backpack.synthesize")
+		synth_btn.pressed.connect(_on_synthesize_requested.bind(weapon_idx))
+		_detail_content.add_child(synth_btn)
+
+
+func _effect_type_to_desc(et: String, bonus: Variant) -> String:
+	var m := {
+		"melee_damage_bonus": "pause.stat_melee_bonus",
+		"ranged_damage_bonus": "pause.stat_ranged_bonus",
+		"health_regen": "pause.stat_health_regen",
+		"mana_regen": "pause.stat_mana_regen",
+		"lifesteal_chance": "pause.stat_lifesteal",
+		"max_health": "pause.stat_hp",
+		"armor": "pause.stat_armor",
+		"attack_speed": "pause.stat_attack_speed",
+		"speed": "pause.stat_speed"
+	}
+	var key: String = m.get(et, "pause.stat_%s" % et)
+	var effect_name := LocalizationManager.tr_key(key)
+	var bonus_str := "+%d" % int(bonus)
+	if et in ["health_regen", "lifesteal_chance", "mana_regen", "attack_speed", "spell_speed", "speed"]:
+		if et == "lifesteal_chance":
+			bonus_str = "+%.0f%%" % (float(bonus) * 100.0)
+		else:
+			bonus_str = "+%.2f" % float(bonus)
+	return LocalizationManager.tr_key("backpack.affix_set_bonus_desc") % [effect_name, bonus_str]
 
 
 ## 查找指定 slot_index 和 slot_type 的槽位所在 Panel。

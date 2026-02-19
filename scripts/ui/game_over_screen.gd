@@ -71,7 +71,7 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 				weapon_details = player_node.get_equipped_weapon_details()
 		stats = {"hp_current": hp_current, "hp_max": hp_max, "speed": speed, "inertia": inertia, "weapon_details": weapon_details, "magic_details": [], "item_ids": []}
 	stats["wave"] = wave
-	var backpack_panel: VBoxContainer = (load("res://scenes/ui/backpack_panel.tscn") as PackedScene).instantiate() as VBoxContainer
+	var backpack_panel: Control = (load("res://scenes/ui/backpack_panel.tscn") as PackedScene).instantiate() as Control
 	backpack_panel.name = "BackpackPanel"
 	backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_backpack_tab_container.add_child(backpack_panel)

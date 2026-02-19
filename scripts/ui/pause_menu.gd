@@ -13,7 +13,7 @@ extends CanvasLayer
 @onready var _menu_btn: Button = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/MainMenuButton
 @onready var _key_hints_label: Label = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/KeyHintsLabel
 
-var _backpack_panel: VBoxContainer  # 背包面板，运行时创建并加入 BackpackScroll
+var _backpack_panel: Control  # 背包面板，运行时创建并加入 BackpackScroll
 
 
 func _ready() -> void:

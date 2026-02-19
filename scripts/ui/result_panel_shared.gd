@@ -134,7 +134,7 @@ func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = nu
 			if affix is AffixBase:
 				affix_row.add_child(_make_affix_chip(affix as AffixBase))
 		vbox.add_child(affix_row)
-	# 套装效果区
+	# 套装效果区（类型/主题词条）
 	var set_bonus_info: Array = stats.get("set_bonus_info", [])
 	if set_bonus_info.size() > 0:
 		var set_section := _make_section_header(LocalizationManager.tr_key("pause.section_set_bonus"))
@@ -145,6 +145,13 @@ func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = nu
 		for sb in set_bonus_info:
 			set_row.add_child(_make_set_bonus_chip(sb))
 		vbox.add_child(set_row)
+	# 武器套装效果区（2/4/6 件完整展示，高亮生效档位）
+	var weapon_set_bonus_info: Array = stats.get("weapon_set_bonus_info", [])
+	if weapon_set_bonus_info.size() > 0:
+		var wset_section := _make_section_header(LocalizationManager.tr_key("backpack.tooltip_set_bonus"))
+		vbox.add_child(wset_section)
+		for set_info in weapon_set_bonus_info:
+			vbox.add_child(_make_weapon_set_bonus_block(set_info))
 	# 魔法区
 	var magic_details: Array = stats.get("magic_details", [])
 	if magic_details.size() > 0:
@@ -297,3 +304,31 @@ static func _make_set_bonus_chip(sb: Dictionary) -> Control:
 	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	lbl.add_theme_color_override("font_color", Color(0.7, 0.95, 0.85, 1.0))
 	return lbl
+
+
+## [自定义] 构建武器套装多行展示块，2/4/6 件完整描述，生效档位高亮。
+static func _make_weapon_set_bonus_block(set_info: Dictionary) -> Control:
+	var block := VBoxContainer.new()
+	block.add_theme_constant_override("separation", 2)
+	var name_str := LocalizationManager.tr_key(str(set_info.get("name_key", "")))
+	var count: int = int(set_info.get("count", 0))
+	var header := Label.new()
+	header.text = "[%s] (%d件)" % [name_str, count]
+	header.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	header.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+	block.add_child(header)
+	var thresholds: Array = set_info.get("thresholds", [])
+	for th in thresholds:
+		var n: int = int(th.get("n", 0))
+		var desc: String = str(th.get("desc", ""))
+		var active: bool = bool(th.get("active", false))
+		var th_lbl := Label.new()
+		th_lbl.text = "  %d件: %s" % [n, desc]
+		th_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		th_lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE - 2)
+		if active:
+			th_lbl.add_theme_color_override("font_color", Color(0.4, 1.0, 0.5))
+		else:
+			th_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8))
+		block.add_child(th_lbl)
+	return block

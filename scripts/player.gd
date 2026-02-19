@@ -726,10 +726,16 @@ func get_full_stats_for_pause() -> Dictionary:
 	var item_ids: Array[String] = GameManager.get_run_items()
 	var visible_affixes: Array = []
 	var set_bonus_info: Array = []
+	var weapon_set_bonus_info: Array = []
 	if AffixManager:
 		var affixes := AffixManager.collect_affixes_from_player(self)
 		visible_affixes = AffixManager.get_visible_affixes(affixes)
 		set_bonus_info = AffixManager.get_set_bonus_display_info()
+	# 武器套装完整展示（2/4/6 件及生效档位）
+	var equipped_weapons: Array = []
+	for w in weapon_details:
+		equipped_weapons.append({"id": str(w.get("id", "")), "tier": int(w.get("tier", 0))})
+	weapon_set_bonus_info = WeaponSetDefs.get_weapon_set_full_display_info(equipped_weapons)
 	return {
 		"hp_current": current_health,
 		"hp_max": max_health,
@@ -747,7 +753,8 @@ func get_full_stats_for_pause() -> Dictionary:
 		"magic_details": magic_details,
 		"item_ids": item_ids,
 		"visible_affixes": visible_affixes,
-		"set_bonus_info": set_bonus_info
+		"set_bonus_info": set_bonus_info,
+		"weapon_set_bonus_info": weapon_set_bonus_info
 	}
 
 

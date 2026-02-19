@@ -52,7 +52,7 @@ var _upgrade_buttons: Array[Button] = []
 var _upgrade_icons: Array[TextureRect] = []
 var _weapon_buttons: Array[Button] = []
 var _weapon_icons: Array[TextureRect] = []
-var _shop_backpack_panel: VBoxContainer  # 背包 Tab 内嵌的 BackpackPanel 实例，运行时加入 BackpackScroll
+var _shop_backpack_panel: Control  # 背包 Tab 内嵌的 BackpackPanel 实例，运行时加入 BackpackScroll
 var _last_shop_stats_hash: String = ""
 var _weapon_mode := ""
 var _move_state := {  # 触控方向键按下状态，用于合成 mobile_move_changed 的 direction

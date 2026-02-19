@@ -11,27 +11,31 @@ const NAME_FONT_SIZE := 12
 signal slot_clicked(weapon_index: int)
 signal slot_swap_clicked(slot_index: int, slot_type: String)
 signal slot_swap_cancel_requested
+## 左键点击（非合并/非交换模式）时发射，用于右侧详情面板展示。
+signal slot_detail_requested(slot_type: String, slot_index: int, tip_data: Dictionary)
+## 鼠标进入槽位时发射，用于无选中时的悬浮详情。
+signal slot_hover_entered(tip_data: Dictionary)
+## 鼠标离开槽位时发射。
+signal slot_hover_exited
 
 var _icon_rect: TextureRect
 var _name_label: Label
 var _tip_text: String = ""
-var _tip_data: Dictionary = {}  # 结构化 tooltip 数据，非空时用 show_structured_tooltip
-var _tooltip_popup: BackpackTooltipPopup = null
+var _tip_data: Dictionary = {}  # 结构化详情数据，用于右侧详情面板
 var _weapon_index: int = -1  # 武器槽索引，-1 表示非武器
 var _merge_selectable: bool = false  # 合并模式下是否可选为素材
-var _slot_type: String = ""  # "weapon" 或 "magic"
+var _slot_type: String = ""  # "weapon"、"magic" 或 "item"
 var _slot_index: int = -1  # 在对应列表中的索引
 
 
-## 配置槽位：icon_path、color 用于图标，tip 用于纯文本悬浮（魔法等），tip_data 用于结构化悬浮（武器/道具）。
+## 配置槽位：icon_path、color 用于图标，tip 用于纯文本（已弃用，保留兼容），tip_data 用于右侧详情面板。
 ## weapon_index 为武器槽索引，>=0 时表示武器槽，合并模式可点击。
-## slot_type 和 slot_index 用于拖拽换位（"weapon" 或 "magic"）。
-func configure(icon_path: String, color: Color, tip: String, tooltip_popup: BackpackTooltipPopup = null, display_name: String = "", name_color: Color = Color(0.85, 0.85, 0.9), tip_data: Dictionary = {}, weapon_index: int = -1, slot_type: String = "", slot_index: int = -1) -> void:
+## slot_type 和 slot_index 用于交换与详情（"weapon"、"magic" 或 "item"）。
+func configure(icon_path: String, color: Color, tip: String, _tooltip_popup = null, display_name: String = "", name_color: Color = Color(0.85, 0.85, 0.9), tip_data: Dictionary = {}, weapon_index: int = -1, slot_type: String = "", slot_index: int = -1) -> void:
 	for c in get_children():
 		c.queue_free()
 	_tip_text = tip
 	_tip_data = tip_data
-	_tooltip_popup = tooltip_popup
 	_weapon_index = weapon_index
 	_slot_type = slot_type
 	_slot_index = slot_index
@@ -66,17 +70,11 @@ func configure(icon_path: String, color: Color, tip: String, tooltip_popup: Back
 
 
 func _on_mouse_entered() -> void:
-	if _tooltip_popup == null:
-		return
-	if not _tip_data.is_empty():
-		_tooltip_popup.show_structured_tooltip(_tip_data)
-	elif _tip_text != "":
-		_tooltip_popup.show_tooltip(_tip_text)
+	slot_hover_entered.emit(_tip_data)
 
 
 func _on_mouse_exited() -> void:
-	if _tooltip_popup != null:
-		_tooltip_popup.schedule_hide()
+	slot_hover_exited.emit()
 
 
 func _on_gui_input(event: InputEvent) -> void:
@@ -85,8 +83,10 @@ func _on_gui_input(event: InputEvent) -> void:
 		if ev.button_index == MOUSE_BUTTON_LEFT and ev.pressed:
 			if _merge_selectable and _weapon_index >= 0:
 				slot_clicked.emit(_weapon_index)
-			elif _slot_type != "" and _slot_index >= 0:
-				slot_swap_clicked.emit(_slot_index, _slot_type)
+			else:
+				slot_detail_requested.emit(_slot_type, _slot_index, _tip_data)
+				if _slot_type in ["weapon", "magic"]:
+					slot_swap_clicked.emit(_slot_index, _slot_type)
 		elif ev.button_index == MOUSE_BUTTON_RIGHT and ev.pressed and _slot_type != "":
 			slot_swap_cancel_requested.emit()
 

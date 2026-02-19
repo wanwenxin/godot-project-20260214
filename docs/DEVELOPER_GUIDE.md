@@ -236,7 +236,7 @@
   - 结算/死亡/通关界面共享 UI 构建逻辑
   - `action_to_text(actions)`：将 InputMap 动作名转为按键字符串，供 HUD、暂停菜单按键提示复用
   - `build_score_block(wave, kills, time, best_wave, best_time, gold?, total_damage?)`：得分区（波次、击杀、时间、金币、总伤害、新纪录标记）
-  - `build_player_stats_block(stats, ..., stats_only)`：玩家信息区；`stats_only=true` 时仅构建角色属性区（供暂停菜单属性 Tab）；默认完整展示武器/道具/词条/魔法（供死亡/通关界面）
+  - `build_player_stats_block(stats, ..., stats_only)`：玩家信息区；`stats_only=true` 时仅构建角色属性区（供暂停菜单属性 Tab）；默认完整展示武器/道具/词条/魔法（供死亡/通关界面）；`stats.weapon_set_bonus_info` 含 2/4/6 件套装完整展示，生效档位高亮
   - 统一基准字号 `BASE_FONT_SIZE`（18）
   - 供 pause_menu、game_over_screen、victory_screen 复用
 
@@ -320,7 +320,7 @@
   - 暂停按钮逻辑
   - TabContainer（系统 / 背包 / 角色信息），Tab 置于底部
   - 系统 Tab：标题、按键提示、继续、主菜单
-  - 背包 Tab：`BackpackPanel` 展示装备武器、魔法、道具的图标网格（图标 + 名称，名称按品级着色），悬浮显示背包悬浮面板
+  - 背包 Tab：`BackpackPanel` 展示装备武器、魔法、道具的图标网格（图标 + 名称），点击或悬浮时在右侧 DetailPanel 显示详情
   - 角色信息 Tab：调用 `ResultPanelShared.build_player_stats_block(stats, ..., true)` 仅构建角色属性区（HP、魔力、护甲、移速等）
   - 右侧内容区使用 ScrollContainer，内容超出时显示垂直滚动条
   - Root 设置为 `MOUSE_FILTER_IGNORE`，避免吞掉 HUD 点击
@@ -330,14 +330,15 @@
   - 属性 Tab 仅显示角色属性；死亡/通关界面仍显示完整信息（武器、道具、词条、魔法）
 
 - `scripts/ui/backpack_panel.gd`
-  - 背包面板：按武器、魔法、道具分栏展示，每项为带边框的 `BackpackSlot`（图标 + 名称，名称按品级着色）
+  - 背包面板：根为 HBoxContainer，左侧三区网格（武器/魔法/道具），右侧 DetailPanel（约 320px）嵌入式详情
   - `set_stats(stats)`：根据 `weapon_details`、`magic_details`、`item_ids` 构建三区；脏检查：stats 哈希未变且 shop_context 未变时跳过重建
   - 槽位 StyleBox 复用：`_get_slot_style()` 缓存单例，减少对象分配
   - 图标加载走 `VisualAssetRegistry.get_texture_cached`，缺失时用 `make_color_texture` 生成占位图
-  - 悬浮时显示 `BackpackTooltipPopup`，武器/道具用结构化数据（名称、词条 Chip 横向排布、效果），词条可 hover 显示二级详情
-  - 道具 tooltip 仅展示最终效果加成，不展示词条与数值；道具名用 `display_name_key`（如疾风靴、恶魔药剂）
+  - 点击或悬浮槽位时在右侧 DetailPanel 显示详情（标题、词条、效果、套装 2/4/6 件、售卖/合成按钮）；无选中且无悬浮时显示占位文案
+  - 武器详情含套装效果完整展示（`WeaponSetDefs.get_weapon_set_full_display_info`），生效档位高亮
+  - 道具 tooltip 仅展示最终效果加成；道具名用 `display_name_key`（如疾风靴、恶魔药剂）
   - 武器 tooltip 含「合成」按钮（非最高品级且存在同名同品级其他武器时）；点击后进入合并模式，选择素材完成手动合成
-  - `hide_tooltip()`：暂停菜单关闭时调用
+  - `hide_tooltip()`：暂停菜单关闭时清空选中并显示占位
 
 - `scripts/ui/backpack_tooltip_popup.gd`
   - 背包悬浮面板：PanelContainer 实现，挂到暂停菜单 CanvasLayer 保证同视口、文字可显示；tooltip 数据轻量哈希（title/weapon_index/affixes/effects）避免 JSON.stringify 开销
@@ -352,10 +353,11 @@
 
 - `scripts/ui/backpack_slot.gd`
   - 单个背包槽：VBoxContainer（图标 TextureRect + 名称 Label），名称按品级着色
-  - `configure(..., tip_data, weapon_index)`：tip_data 非空时用 `show_structured_tooltip`；weapon_index >= 0 为武器槽
+  - `configure(..., tip_data, weapon_index, slot_type, slot_index)`：tip_data 用于右侧详情面板；slot_type 为 "weapon"/"magic"/"item"
+  - `slot_detail_requested(slot_type, slot_index, tip_data)`：左键点击（非合并/非交换）时发出，供 BackpackPanel 刷新 DetailPanel
+  - `slot_hover_entered(tip_data)`、`slot_hover_exited()`：鼠标进入/离开时发出，无选中时用于悬浮详情
   - `set_merge_selectable(selectable)`：合并模式下置灰不可选或高亮可选
   - `slot_clicked(weapon_index)`：合并模式下点击可选武器槽时发出
-  - 进入新槽位时直接显示，show_* 内部会 _cancel_scheduled_hide
 
 - `scripts/ui/settings_menu.gd`
   - 全屏展示布局（与暂停页类似）：Panel 铺满、OuterMargin 边距、CenterContainer 居中内容
@@ -908,6 +910,8 @@ ObjectPool.recycle_enemy(enemy)
 - `firearm_set`：火器套装（射速、穿透）
 - `magic_set`：魔法套装（魔力、法强）
 - `heavy_set`：重装套装（护甲、眩晕）
+
+**展示接口**：`WeaponSetDefs.get_weapon_set_full_display_info(equipped_weapons)` 返回 2/4/6 件完整描述及 `active_threshold`，供背包详情与人物属性面板高亮生效档位。
 
 **套装加成**：
 - 2 件：基础加成
