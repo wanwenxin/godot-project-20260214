@@ -508,7 +508,7 @@ theme_override_constants/separation = 14
 
 [node name="UpgradeTitleLabel" type="Label" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox" unique_id=2124132918]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 26
 text = "Choose Upgrade"
 horizontal_alignment = 1
 
@@ -665,7 +665,7 @@ theme_override_constants/separation = 14
 
 [node name="WeaponTitleLabel" type="Label" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox" unique_id=1069386869]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 26
 text = "Weapon"
 horizontal_alignment = 1
 

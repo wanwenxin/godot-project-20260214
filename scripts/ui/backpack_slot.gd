@@ -7,7 +7,6 @@ class_name BackpackSlot
 const SLOT_SIZE := 48
 const SLOT_SIZE_COMPACT := 44  # 紧凑模式槽位尺寸，可在 BackpackPanel 中配置使用以多显示几项
 const PLACEHOLDER_COLOR := Color(0.5, 0.55, 0.6, 1.0)
-const NAME_FONT_SIZE := 12
 
 signal slot_clicked(weapon_index: int)
 signal slot_swap_clicked(slot_index: int, slot_type: String)
@@ -55,7 +54,8 @@ func configure(icon_path: String, color: Color, tip: String, _tooltip_popup = nu
 	# 名称
 	_name_label = Label.new()
 	_name_label.text = display_name
-	_name_label.add_theme_font_size_override("font_size", NAME_FONT_SIZE)
+	var theme_cfg := UiThemeConfig.load_theme()
+	_name_label.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_hud_small))
 	_name_label.add_theme_color_override("font_color", name_color)
 	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE

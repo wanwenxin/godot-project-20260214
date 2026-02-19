@@ -5,7 +5,6 @@ extends HBoxContainer
 # 点击或悬浮槽位时在右侧 DetailPanel 显示详情，替代原 BackpackTooltipPopup 悬浮。
 signal sell_requested(weapon_index: int)
 signal merge_completed  # 合并成功后发出，供商店覆盖层刷新
-const BASE_FONT_SIZE := 18
 const SEP := "────"  # 分割线，无空行
 
 @onready var _instructions_label: Label = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/InstructionsLabel
@@ -31,14 +30,37 @@ var _swap_slot_type: String = ""
 var _swap_panel_ref: PanelContainer = null  # 当前选中槽位的父 Panel，用于绿色描边
 
 
-## [系统] 应用 ContentPanel/DetailPanel 背景区分样式（无边框，去除白边），设置操作说明文案。
+## [系统] 应用 ContentPanel/DetailPanel 背景区分样式（无边框，去除白边），设置操作说明文案，应用主题字体。
 func _ready() -> void:
 	var theme_cfg := UiThemeConfig.load_theme()
 	$ContentPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_borderless(theme_cfg.content_panel_bg))
 	$DetailPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_borderless(theme_cfg.detail_panel_bg))
+	_apply_theme_fonts()
 	_refresh_instructions_label()
 	if LocalizationManager.language_changed.is_connected(_refresh_instructions_label) == false:
 		LocalizationManager.language_changed.connect(_refresh_instructions_label)
+
+
+## [自定义] 应用主题字体：操作说明用 font_size_hint，区段标题用 font_size_subtitle。
+func _apply_theme_fonts() -> void:
+	var theme_cfg := UiThemeConfig.load_theme()
+	if _instructions_label:
+		_instructions_label.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_hint))
+	if _weapon_label:
+		_weapon_label.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_subtitle))
+	if _magic_label:
+		_magic_label.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_subtitle))
+	if _item_label:
+		_item_label.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_subtitle))
+	if _weapon_grid:
+		_weapon_grid.add_theme_constant_override("h_separation", theme_cfg.separation_grid)
+		_weapon_grid.add_theme_constant_override("v_separation", theme_cfg.separation_grid)
+	if _magic_grid:
+		_magic_grid.add_theme_constant_override("h_separation", theme_cfg.separation_grid)
+		_magic_grid.add_theme_constant_override("v_separation", theme_cfg.separation_grid)
+	if _item_grid:
+		_item_grid.add_theme_constant_override("h_separation", theme_cfg.separation_grid)
+		_item_grid.add_theme_constant_override("v_separation", theme_cfg.separation_grid)
 
 
 ## [自定义] 刷新操作说明文案。
@@ -620,7 +642,8 @@ func _show_detail_placeholder() -> void:
 	var lbl := Label.new()
 	lbl.text = LocalizationManager.tr_key("backpack.detail_placeholder")
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.add_theme_font_size_override("font_size", 16)
+	var theme_cfg := UiThemeConfig.load_theme()
+	lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_body))
 	lbl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.7))
 	_detail_content.add_child(lbl)
 
@@ -631,10 +654,14 @@ func _build_detail_content(data: Dictionary) -> void:
 		return
 	for c in _detail_content.get_children():
 		c.queue_free()
+	var theme_cfg := UiThemeConfig.load_theme()
+	var body_size: int = theme_cfg.get_scaled_font_size(theme_cfg.font_size_body)
+	var subtitle_size: int = theme_cfg.get_scaled_font_size(theme_cfg.font_size_subtitle)
+	var list_sec_size: int = theme_cfg.get_scaled_font_size(theme_cfg.font_size_list_secondary)
 	# 标题
 	var title_lbl := Label.new()
 	title_lbl.text = str(data.get("title", ""))
-	title_lbl.add_theme_font_size_override("font_size", 19)
+	title_lbl.add_theme_font_size_override("font_size", subtitle_size)
 	title_lbl.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
 	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_content.add_child(title_lbl)
@@ -644,7 +671,7 @@ func _build_detail_content(data: Dictionary) -> void:
 	if affixes.size() > 0:
 		var affix_label := Label.new()
 		affix_label.text = LocalizationManager.tr_key("backpack.tooltip_affixes") + ":"
-		affix_label.add_theme_font_size_override("font_size", 17)
+		affix_label.add_theme_font_size_override("font_size", body_size)
 		affix_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
 		_detail_content.add_child(affix_label)
 		var affix_vbox := VBoxContainer.new()
@@ -664,7 +691,7 @@ func _build_detail_content(data: Dictionary) -> void:
 					desc_str = _effect_type_to_desc(et, bonus)
 			line.text = "  " + bullet + " " + name_str + ": " + (desc_str if desc_str != "" else value_fmt)
 			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			line.add_theme_font_size_override("font_size", 16)
+			line.add_theme_font_size_override("font_size", body_size)
 			line.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 			affix_vbox.add_child(line)
 		_detail_content.add_child(affix_vbox)
@@ -673,7 +700,7 @@ func _build_detail_content(data: Dictionary) -> void:
 	if effect_parts.size() > 0:
 		var eff_header := Label.new()
 		eff_header.text = LocalizationManager.tr_key("backpack.tooltip_effects") + ":"
-		eff_header.add_theme_font_size_override("font_size", 17)
+		eff_header.add_theme_font_size_override("font_size", body_size)
 		eff_header.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
 		_detail_content.add_child(eff_header)
 		var eff_vbox := VBoxContainer.new()
@@ -682,7 +709,7 @@ func _build_detail_content(data: Dictionary) -> void:
 			var eff_line := Label.new()
 			eff_line.text = "  " + bullet + " " + str(part)
 			eff_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			eff_line.add_theme_font_size_override("font_size", 16)
+			eff_line.add_theme_font_size_override("font_size", body_size)
 			eff_line.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 			eff_vbox.add_child(eff_line)
 		_detail_content.add_child(eff_vbox)
@@ -692,7 +719,7 @@ func _build_detail_content(data: Dictionary) -> void:
 	if set_bonus_info.size() > 0:
 		var set_header := Label.new()
 		set_header.text = LocalizationManager.tr_key("backpack.tooltip_set_bonus")
-		set_header.add_theme_font_size_override("font_size", 17)
+		set_header.add_theme_font_size_override("font_size", body_size)
 		set_header.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
 		_detail_content.add_child(set_header)
 		for set_info in set_bonus_info:
@@ -700,7 +727,7 @@ func _build_detail_content(data: Dictionary) -> void:
 			var count: int = int(set_info.get("count", 0))
 			var set_lbl := Label.new()
 			set_lbl.text = "[%s] (%d%s)" % [name_str, count, piece_str]
-			set_lbl.add_theme_font_size_override("font_size", 16)
+			set_lbl.add_theme_font_size_override("font_size", body_size)
 			set_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 			_detail_content.add_child(set_lbl)
 			var thresholds: Array = set_info.get("thresholds", [])
@@ -711,7 +738,7 @@ func _build_detail_content(data: Dictionary) -> void:
 				var th_lbl := Label.new()
 				th_lbl.text = "  " + LocalizationManager.tr_key("common.piece_threshold", {"value": n}) + " " + desc
 				th_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				th_lbl.add_theme_font_size_override("font_size", 15)
+				th_lbl.add_theme_font_size_override("font_size", list_sec_size)
 				if active:
 					th_lbl.add_theme_color_override("font_color", Color(0.4, 1.0, 0.5))
 				else:
@@ -723,7 +750,7 @@ func _build_detail_content(data: Dictionary) -> void:
 		var sell_price: int = int(data.get("sell_price", 0))
 		var price_lbl := Label.new()
 		price_lbl.text = LocalizationManager.tr_key("backpack.sell_price", {"price": sell_price})
-		price_lbl.add_theme_font_size_override("font_size", 17)
+		price_lbl.add_theme_font_size_override("font_size", body_size)
 		price_lbl.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
 		_detail_content.add_child(price_lbl)
 		var sell_btn := Button.new()

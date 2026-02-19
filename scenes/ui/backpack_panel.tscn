@@ -49,7 +49,8 @@ theme_override_constants/separation = 8
 [node name="WeaponLabel" type="Label" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponHeader"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
 text = "Weapons"
 
 [node name="CancelButton" type="Button" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponHeader"]
@@ -69,7 +70,8 @@ layout_mode = 2
 [node name="MagicLabel" type="Label" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
 text = "Magics"
 
 [node name="MagicGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
@@ -84,7 +86,8 @@ layout_mode = 2
 [node name="ItemLabel" type="Label" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
 text = "Items"
 
 [node name="ItemGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]

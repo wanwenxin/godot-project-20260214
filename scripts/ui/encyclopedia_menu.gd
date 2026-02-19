@@ -14,8 +14,6 @@ signal closed
 var _weapons_sub: TabContainer = null  # 武器子 Tab（近战/远程），语言切换时更新标题
 var _affixes_sub: TabContainer = null  # 词条子 Tab（五类），语言切换时更新标题
 
-const FONT_SIZE := 16
-const FONT_SIZE_SMALL := 14
 const ITEM_SEP := 8
 const ICON_SIZE := 48
 const PLACEHOLDER_COLOR := Color(0.5, 0.55, 0.6, 1.0)
@@ -31,9 +29,10 @@ func _ready() -> void:
 	_close_button.pressed.connect(_on_close_pressed)
 	LocalizationManager.language_changed.connect(_on_language_changed)
 	_build_tabs()
-	_tabs.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
-	_tabs.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
-	_tabs.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
+	var theme_cfg := UiThemeConfig.load_theme()
+	_tabs.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_subtitle))
+	_tabs.add_theme_constant_override("side_margin", theme_cfg.margin_tight)
+	_tabs.add_theme_constant_override("top_margin", theme_cfg.margin_tight)
 	_apply_localized_texts()
 
 
@@ -102,17 +101,18 @@ func _add_entry(vbox: VBoxContainer, title: String, details: String, icon_path: 
 	text_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_vbox.custom_minimum_size.x = TEXT_MIN_WIDTH
 	var m := MarginContainer.new()
-	m.add_theme_constant_override("margin_left", 16)
-	m.add_theme_constant_override("margin_right", 16)
-	m.add_theme_constant_override("margin_top", 16)
-	m.add_theme_constant_override("margin_bottom", 16)
+	var theme_cfg := UiThemeConfig.load_theme()
+	m.add_theme_constant_override("margin_left", theme_cfg.margin_tight)
+	m.add_theme_constant_override("margin_right", theme_cfg.margin_tight)
+	m.add_theme_constant_override("margin_top", theme_cfg.margin_tight)
+	m.add_theme_constant_override("margin_bottom", theme_cfg.margin_tight)
 	text_vbox.add_child(m)
 	var inner_vbox := VBoxContainer.new()
 	inner_vbox.add_theme_constant_override("separation", 4)
 	m.add_child(inner_vbox)
 	var title_lbl := Label.new()
 	title_lbl.text = title
-	title_lbl.add_theme_font_size_override("font_size", FONT_SIZE)
+	title_lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 	title_lbl.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
 	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	inner_vbox.add_child(title_lbl)
@@ -120,7 +120,7 @@ func _add_entry(vbox: VBoxContainer, title: String, details: String, icon_path: 
 		var detail_lbl := Label.new()
 		detail_lbl.text = details
 		detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		detail_lbl.add_theme_font_size_override("font_size", FONT_SIZE_SMALL)
+		detail_lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_body))
 		detail_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
 		inner_vbox.add_child(detail_lbl)
 	hbox.add_child(text_vbox)
@@ -157,7 +157,8 @@ func _build_enemies_tab() -> void:
 			var tier_key := "encyclopedia.enemy_tier_normal" if tier == "normal" else ("encyclopedia.enemy_tier_elite" if tier == "elite" else "encyclopedia.enemy_tier_boss")
 			var header := Label.new()
 			header.text = "—— " + LocalizationManager.tr_key(tier_key) + " ——"
-			header.add_theme_font_size_override("font_size", FONT_SIZE)
+			var theme_cfg := UiThemeConfig.load_theme()
+			header.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 			header.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 1.0))
 			vbox.add_child(header)
 		var name_str := LocalizationManager.tr_key(str(e.get("name_key", "")))

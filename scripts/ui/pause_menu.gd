@@ -8,7 +8,7 @@ extends CanvasLayer
 @onready var root: Control = $Root
 @onready var _fullscreen_backdrop: ColorRect = $Root/FullscreenBackdrop
 @onready var _tab_container: TabContainer = $Root/Panel/OuterMargin/MainLayout/PauseTabs
-@onready var _stats_container: VBoxContainer = $Root/Panel/OuterMargin/MainLayout/PauseTabs/StatsContainer
+@onready var _stats_container: VBoxContainer = $Root/Panel/OuterMargin/MainLayout/PauseTabs/StatsMargin/StatsContainer
 @onready var _resume_btn: Button = $Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox/ResumeButton
 @onready var _menu_btn: Button = $Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox/MainMenuButton
 @onready var _key_hints_label: Label = $Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox/KeyHintsLabel
@@ -22,6 +22,7 @@ func _ready() -> void:
 	_add_backpack_panel()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style()
+	_apply_theme_fonts()
 	_resume_btn.pressed.connect(_on_resume_pressed)
 	_menu_btn.pressed.connect(_on_menu_pressed)
 	LocalizationManager.language_changed.connect(_on_language_changed)
@@ -136,3 +137,13 @@ func _refresh_key_hints() -> void:
 
 func _apply_panel_style() -> void:
 	panel.add_theme_stylebox_override("panel", UiThemeConfig.load_theme().get_modal_panel_stylebox())
+
+
+## [自定义] 应用主题字体：标题、按键提示等使用 UiThemeConfig 常量。
+func _apply_theme_fonts() -> void:
+	var theme_cfg := UiThemeConfig.load_theme()
+	var title := panel.get_node_or_null("OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox/TitleLabel")
+	if title is Label:
+		title.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_title))
+	if _key_hints_label is Label:
+		_key_hints_label.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_body))

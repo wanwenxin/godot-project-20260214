@@ -65,9 +65,10 @@ func _ready() -> void:
 
 	_build_static_options()
 	_fill_key_binding_refs()
-	tabs.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
-	tabs.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
-	tabs.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
+	var theme_cfg := UiThemeConfig.load_theme()
+	tabs.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_subtitle))
+	tabs.add_theme_constant_override("side_margin", theme_cfg.margin_tight)
+	tabs.add_theme_constant_override("top_margin", theme_cfg.margin_tight)
 	_apply_localized_texts()
 	_reload_from_save()
 	set_process_unhandled_input(false)

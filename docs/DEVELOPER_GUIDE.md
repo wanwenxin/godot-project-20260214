@@ -474,8 +474,26 @@ flowchart TD
 
 **边距与间距**
 - `margin_default`、`margin_small`、`margin_tight`：常用边距（默认 32/24/16）
-- `tab_font_size`、`content_font_size`：Tab 与内容区字号（默认 22/20）
+- `panel_padding`：面板内容区统一内边距（默认 16，与 margin_tight 一致）
 - `separation_default`、`separation_tight`：容器间距（默认 12/8）
+- `separation_grid`、`separation_grid_h`、`separation_grid_v`：网格/紧凑布局间距（默认 6/10/2）
+
+**字体类型常量**（按用途区分，统一通过 `get_scaled_font_size(base)` 获取缩放后字号）
+- `font_size_title`：面板主标题（默认 26）
+- `font_size_subtitle`：Tab 标签、区段标题（默认 22）
+- `font_size_list`：内容列表、得分区、武器卡片名称（默认 20）
+- `font_size_list_secondary`：套装档位、词条子项（默认 18）
+- `font_size_body`：详情正文、词条描述（默认 17）
+- `font_size_hint`：操作说明、按键提示、小标签（默认 14）
+- `font_size_hud`：血条、金币、波次等顶部信息（默认 14）
+- `font_size_hud_small`：魔法槽名称、数值等小字（默认 11）
+
+**StyleBox 边距**
+- `stylebox_expand_margin`：模态面板 StyleBox 扩展边距（默认 8）
+- `style_expand_margin_hud`、`style_content_margin_hud`：HUD 小面板边距（默认 6/8）
+
+**兼容旧引用**
+- `tab_font_size`、`content_font_size`：Tab 与内容区字号（默认 22/20）
 
 **可访问性**
 - `font_scale`：字体缩放系数（默认 1.0），供多语言/无障碍适配；使用 `get_scaled_font_size(base_size)` 获取缩放后字号
@@ -860,9 +878,14 @@ ObjectPool.recycle_enemy(enemy)
 - 边距常量：`UiThemeConfig.margin_default`/`margin_small`/`margin_tight` 供各面板引用
 
 **面板 padding 统一标准**（以波次间商店背包页为基准）
-- 所有面板内容区与边框/边缘至少保持 16px 距离（`margin_tight`）
+- 所有面板内容区与边框/边缘至少保持 16px 距离（`margin_tight` / `panel_padding`）
 - HUD 升级面板、武器/商店面板：`UpgradeMargin`/`WeaponMargin` 使用 16
 - 背包 ContentPanel/DetailPanel、结算/图鉴卡片：`content_margin` 或 `MarginContainer` 使用 16
+- 暂停菜单角色属性 Tab：`StatsContainer` 外包 `StatsMargin` 使用 16
+
+**标题与字体**
+- 各面板主标题居中（`horizontal_alignment = 1`），字号使用 `font_size_title`（26）
+- 区段标题（如 Weapons、Magics）居中，字号使用 `font_size_subtitle`（22）
 
 **滚动条**
 - ScrollContainer 显式 `vertical_scroll_mode = 1`（SCROLL_MODE_AUTO）按需显示

@@ -7,12 +7,10 @@ class_name BackpackTooltipPopup
 
 signal synthesize_requested(weapon_index: int)
 signal sell_requested(weapon_index: int)
-const TOOLTIP_FONT_SIZE := 17
 const TOOLTIP_WIDTH := 340  # 主 tooltip 固定宽度
 const TOOLTIP_MAX_HEIGHT := 280  # 主 tooltip 最大高度
 const AFFIX_TOOLTIP_WIDTH := 200  # 词条二级面板宽度，缩小便于切换
-const AFFIX_TOOLTIP_FONT_SIZE := 14  # 词条面板字体
-const MARGIN := 8
+const GAP := 4  # 悬浮面板与鼠标/芯片的偏移
 const GAP := 4
 const HIDE_DELAY := 0.5  # 槽位/面板 mouse_exited 后延迟隐藏，便于鼠标移入 tooltip
 const AFFIX_HIDE_DELAY := 0.5  # 词条 chip 离开后延迟隐藏词条面板
@@ -30,15 +28,17 @@ var _affix_tooltip_value: Label = null
 
 
 func _init() -> void:
+	var theme_cfg := UiThemeConfig.load_theme()
+	var tooltip_margin: int = theme_cfg.margin_tight
 	add_theme_stylebox_override("panel", _make_panel_style())
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", MARGIN)
-	margin.add_theme_constant_override("margin_right", MARGIN)
-	margin.add_theme_constant_override("margin_top", MARGIN)
-	margin.add_theme_constant_override("margin_bottom", MARGIN)
+	margin.add_theme_constant_override("margin_left", tooltip_margin)
+	margin.add_theme_constant_override("margin_right", tooltip_margin)
+	margin.add_theme_constant_override("margin_top", tooltip_margin)
+	margin.add_theme_constant_override("margin_bottom", tooltip_margin)
 	add_child(margin)
 	_scroll = ScrollContainer.new()
-	var content_width := TOOLTIP_WIDTH - MARGIN * 2
+	var content_width := TOOLTIP_WIDTH - tooltip_margin * 2
 	_scroll.custom_minimum_size = Vector2(content_width, 0)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -47,7 +47,7 @@ func _init() -> void:
 	_label = Label.new()
 	_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_label.custom_minimum_size.x = int(content_width * 0.9)
-	_label.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE)
+	_label.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_body))
 	_label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
 	_content = _label
 	_scroll.add_child(_content)
@@ -77,22 +77,24 @@ func _build_affix_tooltip() -> void:
 	_affix_tooltip.mouse_filter = Control.MOUSE_FILTER_STOP  # 可接收鼠标，便于移入时取消隐藏
 	_affix_tooltip.mouse_entered.connect(_on_affix_tooltip_mouse_entered)
 	_affix_tooltip.mouse_exited.connect(_on_affix_tooltip_mouse_exited)
+	var theme_cfg := UiThemeConfig.load_theme()
+	var tooltip_margin: int = theme_cfg.margin_tight
 	var m := MarginContainer.new()
-	m.add_theme_constant_override("margin_left", MARGIN)
-	m.add_theme_constant_override("margin_right", MARGIN)
-	m.add_theme_constant_override("margin_top", 4)
-	m.add_theme_constant_override("margin_bottom", 4)
+	m.add_theme_constant_override("margin_left", tooltip_margin)
+	m.add_theme_constant_override("margin_right", tooltip_margin)
+	m.add_theme_constant_override("margin_top", theme_cfg.separation_tight)
+	m.add_theme_constant_override("margin_bottom", theme_cfg.separation_tight)
 	_affix_tooltip.add_child(m)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
 	_affix_tooltip_desc = Label.new()
 	_affix_tooltip_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_affix_tooltip_desc.custom_minimum_size.x = int((AFFIX_TOOLTIP_WIDTH - MARGIN * 2) * 0.9)
-	_affix_tooltip_desc.add_theme_font_size_override("font_size", AFFIX_TOOLTIP_FONT_SIZE)
+	_affix_tooltip_desc.custom_minimum_size.x = int((AFFIX_TOOLTIP_WIDTH - tooltip_margin * 2) * 0.9)
+	_affix_tooltip_desc.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_hint))
 	_affix_tooltip_desc.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	v.add_child(_affix_tooltip_desc)
 	_affix_tooltip_value = Label.new()
-	_affix_tooltip_value.add_theme_font_size_override("font_size", AFFIX_TOOLTIP_FONT_SIZE)
+	_affix_tooltip_value.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_hint))
 	_affix_tooltip_value.add_theme_color_override("font_color", Color(0.7, 0.95, 0.85))
 	v.add_child(_affix_tooltip_value)
 	m.add_child(v)
@@ -176,14 +178,18 @@ func _build_structured_content(data: Dictionary) -> void:
 		_scroll.remove_child(_label)
 	else:
 		_content.queue_free()
-	var content_width := TOOLTIP_WIDTH - MARGIN * 2
+	var theme_cfg := UiThemeConfig.load_theme()
+	var tooltip_margin: int = theme_cfg.margin_tight
+	var body_size: int = theme_cfg.get_scaled_font_size(theme_cfg.font_size_body)
+	var hint_size: int = theme_cfg.get_scaled_font_size(theme_cfg.font_size_hint)
+	var content_width := TOOLTIP_WIDTH - tooltip_margin * 2
 	var vbox := VBoxContainer.new()
 	vbox.custom_minimum_size.x = int(content_width * 0.9)  # 文本区宽度为父级 90%
-	vbox.add_theme_constant_override("separation", 4)
+	vbox.add_theme_constant_override("separation", theme_cfg.separation_tight)
 	# 名称
 	var title_lbl := Label.new()
 	title_lbl.text = str(data.get("title", ""))
-	title_lbl.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE)
+	title_lbl.add_theme_font_size_override("font_size", body_size)
 	title_lbl.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
 	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(title_lbl)
@@ -192,7 +198,7 @@ func _build_structured_content(data: Dictionary) -> void:
 	if affixes.size() > 0:
 		var affix_label := Label.new()
 		affix_label.text = LocalizationManager.tr_key("backpack.tooltip_affixes") + ":"
-		affix_label.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
+		affix_label.add_theme_font_size_override("font_size", body_size)
 		affix_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
 		vbox.add_child(affix_label)
 		var hbox := HBoxContainer.new()
@@ -207,14 +213,14 @@ func _build_structured_content(data: Dictionary) -> void:
 	if effect_parts.size() > 0:
 		var eff_header := Label.new()
 		eff_header.text = LocalizationManager.tr_key("backpack.tooltip_effects") + ":"
-		eff_header.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
+		eff_header.add_theme_font_size_override("font_size", body_size)
 		eff_header.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
 		vbox.add_child(eff_header)
 		for part in effect_parts:
 			var eff_line := Label.new()
 			eff_line.text = "  " + bullet + " " + str(part)
 			eff_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			eff_line.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
+			eff_line.add_theme_font_size_override("font_size", body_size)
 			eff_line.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 			vbox.add_child(eff_line)
 	elif str(data.get("effects", "")) != "":
@@ -222,7 +228,7 @@ func _build_structured_content(data: Dictionary) -> void:
 		var eff_lbl := Label.new()
 		eff_lbl.text = LocalizationManager.tr_key("backpack.tooltip_effects") + ": " + effects
 		eff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		eff_lbl.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
+		eff_lbl.add_theme_font_size_override("font_size", body_size)
 		eff_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 		vbox.add_child(eff_lbl)
 	# 售卖按钮（仅 show_sell 时，显示价格 + 按钮）
@@ -231,7 +237,7 @@ func _build_structured_content(data: Dictionary) -> void:
 		var sell_price: int = int(data.get("sell_price", 0))
 		var price_lbl := Label.new()
 		price_lbl.text = LocalizationManager.tr_key("backpack.sell_price", {"price": sell_price})
-		price_lbl.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
+		price_lbl.add_theme_font_size_override("font_size", body_size)
 		price_lbl.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
 		vbox.add_child(price_lbl)
 		var sell_btn := Button.new()
@@ -264,7 +270,8 @@ func _make_affix_chip(affix_data: Dictionary) -> Control:
 	chip.add_child(m)
 	var lbl := Label.new()
 	lbl.text = LocalizationManager.tr_key(str(affix_data.get("name_key", "")))
-	lbl.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 2)
+	var theme_cfg := UiThemeConfig.load_theme()
+	lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_hint))
 	lbl.add_theme_color_override("font_color", Color(0.75, 0.85, 0.9))
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m.add_child(lbl)
@@ -424,8 +431,9 @@ func _update_position() -> void:
 	if vp == null:
 		return
 	var mouse_pos := vp.get_mouse_position()
-	var est_width := TOOLTIP_WIDTH + MARGIN * 2
-	var est_height := TOOLTIP_MAX_HEIGHT + MARGIN * 2
+	var tooltip_margin: int = UiThemeConfig.load_theme().margin_tight
+	var est_width := TOOLTIP_WIDTH + tooltip_margin * 2
+	var est_height := TOOLTIP_MAX_HEIGHT + tooltip_margin * 2
 	var pos := mouse_pos + Vector2(GAP, GAP)
 	var viewport_rect := vp.get_visible_rect()
 	if pos.x + est_width > viewport_rect.end.x:

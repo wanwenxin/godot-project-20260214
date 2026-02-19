@@ -192,6 +192,7 @@
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
 | [scripts/pixel_generator.gd](scripts/pixel_generator.gd) | 运行时生成像素图 | `generate_bullet_sprite_by_type`、`generate_pickup_sprite` |
+| [resources/ui_theme_config.gd](resources/ui_theme_config.gd) + [resources/ui_theme.tres](resources/ui_theme.tres) | UI 主题：颜色、边距、字体类型常量、StyleBox；`load_theme()`、`get_scaled_font_size()` | `font_size_title/subtitle/list/body/hint/hud`、`margin_tight`、`panel_padding`、`separation_grid` |
 | [resources/terrain_color_config.gd](resources/terrain_color_config.gd) | 地形色块 Resource 脚本 | 供 terrain_colors.tres 使用 |
 | [resources/default_terrain_colors.gd](resources/default_terrain_colors.gd) | 默认地形配色（flat/seaside/mountain），供 ColorRect 回退 | `get_floor_colors` |
 | [resources/texture_path_config.gd](resources/texture_path_config.gd) | 纹理路径 Resource 脚本（可选，部分场景仍可参考） | 人物/敌人/武器等美术路径 |

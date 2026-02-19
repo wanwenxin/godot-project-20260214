@@ -43,7 +43,8 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 	var title := Label.new()
 	title.text = LocalizationManager.tr_key("result.title_victory")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
+	var theme_cfg := UiThemeConfig.load_theme()
+	title.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_title))
 	title.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
 	_score_tab_container.add_child(title)
 	var gold := GameManager.run_currency

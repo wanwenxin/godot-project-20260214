@@ -86,7 +86,6 @@ var _magic_slots: Array = []  # 每项 {panel, icon, cd_overlay, name_label, aff
 var _key_hints_expanded: bool = false  # 是否展开显示全部按键提示
 
 # ---- 样式与布局常量 ----
-const HUD_FONT_SIZE := 20  # 顶部标签统一字号
 const MAGIC_SLOT_SIZE := 92  # 魔法槽图标区域边长（像素）
 const MAGIC_SLOT_EXTRA_HEIGHT := 46  # 魔法槽名称+词条区域高度
 
@@ -111,6 +110,7 @@ func _ready() -> void:
 	_weapon_panel.visible = false
 	_modal_backdrop.visible = false
 	_apply_hud_font_sizes()
+	_apply_theme_title_fonts()
 	_apply_hud_module_backgrounds()
 
 
@@ -133,16 +133,17 @@ func _make_hud_panel_style() -> StyleBox:
 		2,
 		6
 	)
+	var theme_cfg := UiThemeConfig.load_theme()
 	var style := StyleBoxTexture.new()
 	style.texture = tex
-	style.expand_margin_left = 6
-	style.expand_margin_right = 6
-	style.expand_margin_top = 6
-	style.expand_margin_bottom = 6
-	style.content_margin_left = 8
-	style.content_margin_right = 8
-	style.content_margin_top = 6
-	style.content_margin_bottom = 6
+	style.expand_margin_left = theme_cfg.style_expand_margin_hud
+	style.expand_margin_right = theme_cfg.style_expand_margin_hud
+	style.expand_margin_top = theme_cfg.style_expand_margin_hud
+	style.expand_margin_bottom = theme_cfg.style_expand_margin_hud
+	style.content_margin_left = theme_cfg.style_content_margin_hud
+	style.content_margin_right = theme_cfg.style_content_margin_hud
+	style.content_margin_top = theme_cfg.style_expand_margin_hud
+	style.content_margin_bottom = theme_cfg.style_expand_margin_hud
 	return style
 
 
@@ -156,15 +157,27 @@ func _make_magic_slot_style(is_current: bool) -> StyleBoxFlat:
 	return style
 
 
-## [自定义] 为顶部各 Label 与金币/波次倒计时标签统一设置 HUD_FONT_SIZE。
+## [自定义] 为顶部各 Label 与金币/波次倒计时标签统一设置 font_size_hud。
 func _apply_hud_font_sizes() -> void:
+	var theme_cfg := UiThemeConfig.load_theme()
+	var hud_size: int = theme_cfg.get_scaled_font_size(theme_cfg.font_size_hud)
 	for lbl in [health_label, mana_label, wave_label, kill_label, timer_label, key_hints_label]:
 		if lbl is Label:
-			lbl.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
+			lbl.add_theme_font_size_override("font_size", hud_size)
 	if _currency_label:
-		_currency_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
+		_currency_label.add_theme_font_size_override("font_size", hud_size)
 	if _wave_countdown_label:
-		_wave_countdown_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
+		_wave_countdown_label.add_theme_font_size_override("font_size", hud_size)
+
+
+## [自定义] 应用主题字体：升级/商店面板主标题使用 font_size_title。
+func _apply_theme_title_fonts() -> void:
+	var theme_cfg := UiThemeConfig.load_theme()
+	var title_size: int = theme_cfg.get_scaled_font_size(theme_cfg.font_size_title)
+	if _upgrade_title_label:
+		_upgrade_title_label.add_theme_font_size_override("font_size", title_size)
+	if _weapon_title_label:
+		_weapon_title_label.add_theme_font_size_override("font_size", title_size)
 
 
 ## [自定义] 应用运行时样式（遮罩色、面板样式）、组装升级/武器按钮与魔法槽数组、创建并加入背包面板、连接升级/武器按钮信号。
@@ -451,11 +464,12 @@ func set_wave_countdown(wave: int, seconds_left: float) -> void:
 	_wave_countdown_label.text = LocalizationManager.tr_key("hud.wave_countdown", {"wave": wave, "value": "%.0f" % seconds_left})
 
 
-## [自定义] 为波次横幅与倒计时 Label 应用描边（outline_size=4）与字号 22，使更醒目。
+## [自定义] 为波次横幅与倒计时 Label 应用描边（outline_size=4）与 font_size_subtitle，使更醒目。
 func _apply_wave_label_effects(lbl: Label) -> void:
 	lbl.add_theme_color_override("font_outline_color", Color(0.1, 0.1, 0.15, 1.0))
 	lbl.add_theme_constant_override("outline_size", 4)
-	lbl.add_theme_font_size_override("font_size", 22)
+	var theme_cfg := UiThemeConfig.load_theme()
+	lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_subtitle))
 
 
 ## [自定义] 显示波次横幅（如「第 N 波」），播放缩放+淡出动画，动画结束后隐藏。

@@ -90,14 +90,16 @@ theme_override_constants/separation = 16
 [node name="TitleLabel" type="Label" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95, 0.95, 1.0, 1)
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
 text = "Paused"
 
 [node name="KeyHintsLabel" type="Label" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.78, 0.82, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 17
 text = ""
+horizontal_alignment = 1
 autowrap_mode = 3
 
 [node name="ResumeButton" type="Button" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox"]
@@ -116,7 +118,16 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="StatsContainer" type="VBoxContainer" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs"]
+[node name="StatsMargin" type="MarginContainer" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="StatsContainer" type="VBoxContainer" parent="Root/Panel/OuterMargin/MainLayout/PauseTabs/StatsMargin"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3

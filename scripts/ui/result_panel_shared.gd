@@ -1,7 +1,6 @@
 extends Node
 
-# 结算/死亡/通关界面共享 UI 构建逻辑
-const BASE_FONT_SIZE := 20  # 统一基准字号
+# 结算/死亡/通关界面共享 UI 构建逻辑；字号与边距引用 UiThemeConfig。
 
 
 # 供 pause_menu、game_over_screen、victory_screen 复用得分区与玩家信息区
@@ -42,7 +41,8 @@ func build_score_block(wave: int, kills: int, time: float, best_wave: int, best_
 	lbl.text = score_text
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	var theme_cfg := UiThemeConfig.load_theme()
+	lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 	vbox.add_child(lbl)
 	return vbox
 
@@ -105,7 +105,8 @@ func build_player_stats_block(stats_or_hp, hp_max_param = null, speed_param = nu
 	if weapon_details.is_empty():
 		var no_w := Label.new()
 		no_w.text = LocalizationManager.tr_key("pause.no_weapons")
-		no_w.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+		var theme_cfg := UiThemeConfig.load_theme()
+		no_w.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 		weapon_row.add_child(no_w)
 	else:
 		for w in weapon_details:
@@ -174,7 +175,8 @@ static func _make_item_chip(item_id: String) -> Control:
 			name_key = str(it.get("name_key", name_key))
 			break
 	lbl.text = LocalizationManager.tr_key(name_key)
-	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	var theme_cfg := UiThemeConfig.load_theme()
+	lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 	lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 1.0))
 	return lbl
 
@@ -182,7 +184,8 @@ static func _make_item_chip(item_id: String) -> Control:
 static func _make_affix_chip(affix: AffixBase) -> Control:
 	var lbl := Label.new()
 	lbl.text = affix.get_display_name()
-	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	var theme_cfg := UiThemeConfig.load_theme()
+	lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 	lbl.add_theme_color_override("font_color", Color(0.75, 0.9, 0.85, 1.0))
 	return lbl
 
@@ -192,7 +195,8 @@ static func _make_magic_chip(m: Dictionary) -> Control:
 	var mid := str(m.get("id", ""))
 	var name_key := "magic.%s.name" % mid
 	lbl.text = LocalizationManager.tr_key(name_key)
-	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	var theme_cfg := UiThemeConfig.load_theme()
+	lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 	var tier_color: Color = m.get("tier_color", Color(0.8, 0.85, 0.9, 1.0))
 	if tier_color is Color:
 		lbl.add_theme_color_override("font_color", tier_color)
@@ -202,19 +206,23 @@ static func _make_magic_chip(m: Dictionary) -> Control:
 static func _make_section_header(text: String) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var theme_cfg := UiThemeConfig.load_theme()
+	lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_subtitle))
 	lbl.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
 	return lbl
 
 
 static func _add_stat_row(grid: GridContainer, label_text: String, value_text: String) -> void:
+	var theme_cfg := UiThemeConfig.load_theme()
+	var list_size: int = theme_cfg.get_scaled_font_size(theme_cfg.font_size_list)
 	var lbl := Label.new()
 	lbl.text = label_text + ": "
-	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	lbl.add_theme_font_size_override("font_size", list_size)
 	grid.add_child(lbl)
 	var val := Label.new()
 	val.text = value_text
-	val.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	val.add_theme_font_size_override("font_size", list_size)
 	val.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	grid.add_child(val)
 
@@ -227,17 +235,19 @@ static func _make_weapon_card(w: Dictionary) -> Control:
 	card_style.set_border_width_all(1)
 	card_style.border_color = Color(0.35, 0.36, 0.40, 1.0)
 	card_style.set_corner_radius_all(4)
-	card_style.content_margin_left = 16
-	card_style.content_margin_right = 16
-	card_style.content_margin_top = 16
-	card_style.content_margin_bottom = 16
+	var pad: int = UiThemeConfig.load_theme().margin_tight
+	card_style.content_margin_left = pad
+	card_style.content_margin_right = pad
+	card_style.content_margin_top = pad
+	card_style.content_margin_bottom = pad
 	card.add_theme_stylebox_override("panel", card_style)
 	var inner := VBoxContainer.new()
 	inner.add_theme_constant_override("separation", 4)
 	var name_lbl := Label.new()
 	var name_key := "weapon.%s.name" % str(w.get("id", ""))
 	name_lbl.text = LocalizationManager.tr_key(name_key)
-	name_lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	var theme_cfg := UiThemeConfig.load_theme()
+	name_lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 	var tier_color: Color = w.get("tier_color", Color(0.95, 0.9, 0.7))
 	if tier_color is Color:
 		name_lbl.add_theme_color_override("font_color", tier_color)
@@ -246,8 +256,8 @@ static func _make_weapon_card(w: Dictionary) -> Control:
 	inner.add_child(name_lbl)
 	var grid := GridContainer.new()
 	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 2)
+	grid.add_theme_constant_override("h_separation", theme_cfg.separation_grid_h)
+	grid.add_theme_constant_override("v_separation", theme_cfg.separation_grid_v)
 	_add_stat_row(grid, LocalizationManager.tr_key("pause.stat_damage"), str(w.get("damage", 0)))
 	_add_stat_row(grid, LocalizationManager.tr_key("pause.stat_cooldown"), "%.2fs" % float(w.get("cooldown", 0)))
 	_add_stat_row(grid, LocalizationManager.tr_key("pause.stat_range"), "%.0f" % float(w.get("range", 0)))
@@ -278,7 +288,7 @@ static func _make_weapon_card(w: Dictionary) -> Control:
 	if tags.size() > 0:
 		var tag_lbl := Label.new()
 		tag_lbl.text = " | ".join(tags)
-		tag_lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE - 2)
+		tag_lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list_secondary))
 		tag_lbl.add_theme_color_override("font_color", Color(0.65, 0.75, 0.8, 1.0))
 		inner.add_child(tag_lbl)
 	inner.add_child(grid)
@@ -301,7 +311,8 @@ static func _make_set_bonus_chip(sb: Dictionary) -> Control:
 	else:
 		bonus_str = "+%d" % int(bonus)
 	lbl.text = "%s x%d: %s" % [name_str, count, bonus_str]
-	lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	var theme_cfg := UiThemeConfig.load_theme()
+	lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 	lbl.add_theme_color_override("font_color", Color(0.7, 0.95, 0.85, 1.0))
 	return lbl
 
@@ -313,9 +324,10 @@ static func _make_weapon_set_bonus_block(set_info: Dictionary) -> Control:
 	var name_str := LocalizationManager.tr_key(str(set_info.get("name_key", "")))
 	var count: int = int(set_info.get("count", 0))
 	var piece_str: String = LocalizationManager.tr_key("common.piece")
+	var theme_cfg := UiThemeConfig.load_theme()
 	var header := Label.new()
 	header.text = "[%s] (%d%s)" % [name_str, count, piece_str]
-	header.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
+	header.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list))
 	header.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	block.add_child(header)
 	var thresholds: Array = set_info.get("thresholds", [])
@@ -326,7 +338,7 @@ static func _make_weapon_set_bonus_block(set_info: Dictionary) -> Control:
 		var th_lbl := Label.new()
 		th_lbl.text = "  " + LocalizationManager.tr_key("common.piece_threshold", {"value": n}) + " " + desc
 		th_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		th_lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE - 2)
+		th_lbl.add_theme_font_size_override("font_size", theme_cfg.get_scaled_font_size(theme_cfg.font_size_list_secondary))
 		if active:
 			th_lbl.add_theme_color_override("font_color", Color(0.4, 1.0, 0.5))
 		else:
