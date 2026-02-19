@@ -559,36 +559,19 @@ func _show_backpack_from_shop() -> void:
 		stats["wave"] = wave_manager.current_wave
 		_backpack_overlay_panel.set_stats(stats, true)
 		return
-	var overlay := Panel.new()
+	var overlay: Control = (load("res://scenes/ui/backpack_overlay.tscn") as PackedScene).instantiate() as Control
 	overlay.name = "BackpackOverlay"
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var theme_style := StyleBoxFlat.new()
 	theme_style.bg_color = Color(0.05, 0.05, 0.08, 0.92)
 	theme_style.set_border_width_all(0)
 	overlay.add_theme_stylebox_override("panel", theme_style)
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 48)
-	margin.add_theme_constant_override("margin_top", 48)
-	margin.add_theme_constant_override("margin_right", 48)
-	margin.add_theme_constant_override("margin_bottom", 48)
-	overlay.add_child(margin)
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
-	margin.add_child(vbox)
-	var close_btn := Button.new()
+	var close_btn: Button = overlay.get_node("MarginContainer/VBoxContainer/CloseButton")
 	close_btn.text = LocalizationManager.tr_key("common.close")
 	close_btn.pressed.connect(_on_backpack_overlay_closed.bind(overlay))
-	vbox.add_child(close_btn)
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 400)
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vbox.add_child(scroll)
-	var backpack_panel: VBoxContainer = (load("res://scripts/ui/backpack_panel.gd") as GDScript).new()
+	var scroll: ScrollContainer = overlay.get_node("MarginContainer/VBoxContainer/BackpackScroll")
+	var backpack_panel: VBoxContainer = (load("res://scenes/ui/backpack_panel.tscn") as PackedScene).instantiate() as VBoxContainer
 	backpack_panel.name = "BackpackPanel"
-	backpack_panel.add_theme_constant_override("separation", 12)
 	backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(backpack_panel)
 	_backpack_overlay = overlay

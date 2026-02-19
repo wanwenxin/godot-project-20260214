@@ -14,64 +14,668 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="TopRow" type="HBoxContainer" parent="Root"]
-layout_mode = 2
+[node name="ModalBackdrop" type="ColorRect" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.12, 1.0)
+mouse_filter = 2
+
+[node name="TopRowPanel" type="PanelContainer" parent="Root"]
+layout_mode = 1
 offset_left = 12.0
 offset_top = 12.0
 offset_right = 860.0
 offset_bottom = 72.0
+
+[node name="TopRow" type="HBoxContainer" parent="Root/TopRowPanel"]
+layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="HealthBox" type="HBoxContainer" parent="Root/TopRow"]
+[node name="HealthBox" type="HBoxContainer" parent="Root/TopRowPanel/TopRow"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="HPBlock" type="VBoxContainer" parent="Root/TopRow/HealthBox"]
+[node name="HPBlock" type="VBoxContainer" parent="Root/TopRowPanel/TopRow/HealthBox"]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="HealthBar" type="ProgressBar" parent="Root/TopRow/HealthBox/HPBlock"]
+[node name="HealthBar" type="ProgressBar" parent="Root/TopRowPanel/TopRow/HealthBox/HPBlock"]
 custom_minimum_size = Vector2(160, 10)
 layout_mode = 2
 max_value = 100.0
 show_percentage = false
 value = 100.0
 
-[node name="HealthLabel" type="Label" parent="Root/TopRow/HealthBox/HPBlock"]
+[node name="HealthLabel" type="Label" parent="Root/TopRowPanel/TopRow/HealthBox/HPBlock"]
 layout_mode = 2
 text = "100/100"
 
-[node name="MPBlock" type="VBoxContainer" parent="Root/TopRow/HealthBox"]
+[node name="MPBlock" type="VBoxContainer" parent="Root/TopRowPanel/TopRow/HealthBox"]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="ManaBar" type="ProgressBar" parent="Root/TopRow/HealthBox/MPBlock"]
+[node name="ManaBar" type="ProgressBar" parent="Root/TopRowPanel/TopRow/HealthBox/MPBlock"]
 custom_minimum_size = Vector2(160, 10)
 layout_mode = 2
 max_value = 100.0
 show_percentage = false
 value = 0.0
 
-[node name="ManaLabel" type="Label" parent="Root/TopRow/HealthBox/MPBlock"]
+[node name="ManaLabel" type="Label" parent="Root/TopRowPanel/TopRow/HealthBox/MPBlock"]
 layout_mode = 2
 text = "0/50"
 
-[node name="WaveLabel" type="Label" parent="Root/TopRow"]
+[node name="WaveLabel" type="Label" parent="Root/TopRowPanel/TopRow"]
 layout_mode = 2
 text = "Wave: 1"
 
-[node name="KillLabel" type="Label" parent="Root/TopRow"]
+[node name="KillLabel" type="Label" parent="Root/TopRowPanel/TopRow"]
 layout_mode = 2
 text = "Kills: 0"
 
-[node name="TimerLabel" type="Label" parent="Root/TopRow"]
+[node name="TimerLabel" type="Label" parent="Root/TopRowPanel/TopRow"]
 layout_mode = 2
 text = "Time: 0.0s"
 
-[node name="PauseHint" type="Label" parent="Root"]
+[node name="CurrencyPanel" type="PanelContainer" parent="Root"]
+layout_mode = 1
+offset_left = 900.0
+offset_top = 12.0
+offset_right = 1020.0
+offset_bottom = 36.0
+
+[node name="CurrencyLabel" type="Label" parent="Root/CurrencyPanel"]
 layout_mode = 2
+text = "0"
+
+[node name="PauseHintPanel" type="PanelContainer" parent="Root"]
+layout_mode = 1
 offset_left = 12.0
 offset_top = 52.0
 offset_right = 260.0
-offset_bottom = 140.0
+offset_bottom = 142.0
+
+[node name="PauseHint" type="Label" parent="Root/PauseHintPanel"]
+layout_mode = 2
 text = "Press P to Pause"
+
+[node name="WaveCountdownPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -60.0
+offset_top = 14.0
+offset_right = 60.0
+offset_bottom = 36.0
+grow_horizontal = 2
+
+[node name="WaveCountdownLabel" type="Label" parent="Root/WaveCountdownPanel"]
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0.1, 0.1, 0.15, 1.0)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+
+[node name="WaveBannerPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -90.0
+offset_top = 80.0
+offset_right = 90.0
+offset_bottom = 120.0
+grow_horizontal = 2
+
+[node name="WaveBanner" type="Label" parent="Root/WaveBannerPanel"]
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0.1, 0.1, 0.15, 1.0)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "WAVE 1"
+horizontal_alignment = 1
+
+[node name="MagicPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -162.0
+offset_right = 316.0
+offset_bottom = -12.0
+grow_vertical = 0
+
+[node name="MagicRow" type="HBoxContainer" parent="Root/MagicPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Slot0" type="Panel" parent="Root/MagicPanel/MagicRow"]
+custom_minimum_size = Vector2(100, 138)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/MagicPanel/MagicRow/Slot0"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="IconContainer" type="Control" parent="Root/MagicPanel/MagicRow/Slot0/VBox"]
+custom_minimum_size = Vector2(92, 92)
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="Root/MagicPanel/MagicRow/Slot0/VBox/IconContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CdOverlay" type="ColorRect" parent="Root/MagicPanel/MagicRow/Slot0/VBox/IconContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="NameLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot0/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+clip_text = true
+text_overrun_behavior = 3
+text = ""
+
+[node name="AffixLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot0/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1.0)
+theme_override_font_sizes/font_size = 10
+clip_text = true
+text_overrun_behavior = 3
+text = ""
+
+[node name="Slot1" type="Panel" parent="Root/MagicPanel/MagicRow"]
+custom_minimum_size = Vector2(100, 138)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/MagicPanel/MagicRow/Slot1"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="IconContainer" type="Control" parent="Root/MagicPanel/MagicRow/Slot1/VBox"]
+custom_minimum_size = Vector2(92, 92)
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="Root/MagicPanel/MagicRow/Slot1/VBox/IconContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CdOverlay" type="ColorRect" parent="Root/MagicPanel/MagicRow/Slot1/VBox/IconContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="NameLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot1/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+clip_text = true
+text_overrun_behavior = 3
+text = ""
+
+[node name="AffixLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot1/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1.0)
+theme_override_font_sizes/font_size = 10
+clip_text = true
+text_overrun_behavior = 3
+text = ""
+
+[node name="Slot2" type="Panel" parent="Root/MagicPanel/MagicRow"]
+custom_minimum_size = Vector2(100, 138)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/MagicPanel/MagicRow/Slot2"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="IconContainer" type="Control" parent="Root/MagicPanel/MagicRow/Slot2/VBox"]
+custom_minimum_size = Vector2(92, 92)
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="Root/MagicPanel/MagicRow/Slot2/VBox/IconContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CdOverlay" type="ColorRect" parent="Root/MagicPanel/MagicRow/Slot2/VBox/IconContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="NameLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot2/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+clip_text = true
+text_overrun_behavior = 3
+text = ""
+
+[node name="AffixLabel" type="Label" parent="Root/MagicPanel/MagicRow/Slot2/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1.0)
+theme_override_font_sizes/font_size = 10
+clip_text = true
+text_overrun_behavior = 3
+text = ""
+
+[node name="UpgradePanel" type="Panel" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="UpgradeMargin" type="MarginContainer" parent="Root/UpgradePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="CenterContainer" type="CenterContainer" parent="Root/UpgradePanel/UpgradeMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="UpgradeTitleLabel" type="Label" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Choose Upgrade"
+horizontal_alignment = 1
+
+[node name="UpgradeTipLabel" type="Label" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="UpgradeRow" type="HBoxContainer" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="Card0" type="VBoxContainer" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(160, 200)
+theme_override_constants/separation = 8
+
+[node name="UpgradeIcon0" type="TextureRect" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow/Card0"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="UpgradeBtn0" type="Button" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow/Card0"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 120)
+autowrap_mode = 2
+text = "Upgrade"
+
+[node name="Card1" type="VBoxContainer" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(160, 200)
+theme_override_constants/separation = 8
+
+[node name="UpgradeIcon1" type="TextureRect" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow/Card1"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="UpgradeBtn1" type="Button" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow/Card1"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 120)
+autowrap_mode = 2
+text = "Upgrade"
+
+[node name="Card2" type="VBoxContainer" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(160, 200)
+theme_override_constants/separation = 8
+
+[node name="UpgradeIcon2" type="TextureRect" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow/Card2"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="UpgradeBtn2" type="Button" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow/Card2"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 120)
+autowrap_mode = 2
+text = "Upgrade"
+
+[node name="Card3" type="VBoxContainer" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(160, 200)
+theme_override_constants/separation = 8
+
+[node name="UpgradeIcon3" type="TextureRect" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow/Card3"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="UpgradeBtn3" type="Button" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow/Card3"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 120)
+autowrap_mode = 2
+text = "Upgrade"
+
+[node name="BtnRow" type="HBoxContainer" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="UpgradeRefreshBtn" type="Button" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/BtnRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 40)
+text = "Refresh"
+
+[node name="SkipBtn" type="Button" parent="Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/BtnRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 40)
+text = "Skip"
+
+[node name="WeaponPanel" type="Panel" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="WeaponMargin" type="MarginContainer" parent="Root/WeaponPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="ShopCenter" type="CenterContainer" parent="Root/WeaponPanel/WeaponMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MainVbox" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(896, 504)
+theme_override_constants/separation = 12
+
+[node name="ShopTabContainer" type="TabContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(896, 400)
+theme_override_font_sizes/font_size = 20
+theme_override_constants/side_margin = 16
+theme_override_constants/top_margin = 16
+
+[node name="ShopTab" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="WeaponCenter" type="CenterContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="WeaponBox" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="WeaponTitleLabel" type="Label" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Weapon"
+horizontal_alignment = 1
+
+[node name="WeaponTipLabel" type="Label" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = ""
+autowrap_mode = 2
+
+[node name="WeaponRow" type="HBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="WeaponCard0" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(180, 240)
+theme_override_constants/separation = 8
+
+[node name="WeaponIcon0" type="TextureRect" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard0"]
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="WeaponBtn0" type="Button" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard0"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 160)
+autowrap_mode = 2
+text = "WeaponOption"
+
+[node name="WeaponCard1" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(180, 240)
+theme_override_constants/separation = 8
+
+[node name="WeaponIcon1" type="TextureRect" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard1"]
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="WeaponBtn1" type="Button" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard1"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 160)
+autowrap_mode = 2
+text = "WeaponOption"
+
+[node name="WeaponCard2" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(180, 240)
+theme_override_constants/separation = 8
+
+[node name="WeaponIcon2" type="TextureRect" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard2"]
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="WeaponBtn2" type="Button" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard2"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 160)
+autowrap_mode = 2
+text = "WeaponOption"
+
+[node name="WeaponCard3" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(180, 240)
+theme_override_constants/separation = 8
+
+[node name="WeaponIcon3" type="TextureRect" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard3"]
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="WeaponBtn3" type="Button" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard3"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 160)
+autowrap_mode = 2
+text = "WeaponOption"
+
+[node name="ShopRefreshBtn" type="Button" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox"]
+layout_mode = 2
+text = "Refresh"
+
+[node name="BackpackScroll" type="ScrollContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer"]
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 2
+layout_mode = 2
+
+[node name="StatsScroll" type="ScrollContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer"]
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 2
+layout_mode = 2
+
+[node name="ShopStatsContainer" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/StatsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ShopNextBtn" type="Button" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox"]
+layout_mode = 2
+text = "Next Wave"
+
+[node name="TouchPanel" type="Control" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="BtnLeft" type="Button" parent="Root/TouchPanel"]
+layout_mode = 1
+offset_left = 70.0
+offset_top = 620.0
+offset_right = 122.0
+offset_bottom = 672.0
+text = "L"
+
+[node name="BtnRight" type="Button" parent="Root/TouchPanel"]
+layout_mode = 1
+offset_left = 170.0
+offset_top = 620.0
+offset_right = 222.0
+offset_bottom = 672.0
+text = "R"
+
+[node name="BtnUp" type="Button" parent="Root/TouchPanel"]
+layout_mode = 1
+offset_left = 120.0
+offset_top = 570.0
+offset_right = 172.0
+offset_bottom = 622.0
+text = "U"
+
+[node name="BtnDown" type="Button" parent="Root/TouchPanel"]
+layout_mode = 1
+offset_left = 120.0
+offset_top = 670.0
+offset_right = 172.0
+offset_bottom = 722.0
+text = "D"
+
+[node name="PauseTouchBtn" type="Button" parent="Root"]
+visible = false
+layout_mode = 1
+offset_left = 1120.0
+offset_top = 620.0
+offset_right = 1172.0
+offset_bottom = 672.0
+text = "Pause"

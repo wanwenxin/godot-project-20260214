@@ -1,20 +1,25 @@
 extends VBoxContainer
 
-# 背包面板：按武器、魔法、道具分栏展示，每项为图标槽，悬浮显示名称、词条、效果。
-# 接收 stats 字典（weapon_details、magic_details、item_ids），构建三区。
-# 武器支持手动合成、售卖；售卖/合并按钮仅在 shop_context 时显示（商店内打开背包）。
+# 背包面板：固定结构在 backpack_panel.tscn（三区标题+取消按钮+三网格），脚本只填槽位内容。
+# 接收 stats 字典（weapon_details、magic_details、item_ids），向 WeaponGrid/MagicGrid/ItemGrid 填充槽位。
 signal sell_requested(weapon_index: int)
 signal merge_completed  # 合并成功后发出，供商店覆盖层刷新
 const BASE_FONT_SIZE := 18
 const SEP := "────"  # 分割线，无空行
+
+@onready var _weapon_grid: HFlowContainer = $WeaponGrid
+@onready var _magic_grid: HFlowContainer = $MagicGrid
+@onready var _item_grid: HFlowContainer = $ItemGrid
+@onready var _cancel_btn: Button = $WeaponHeader/CancelButton
+@onready var _weapon_label: Label = $WeaponHeader/WeaponLabel
+@onready var _magic_label: Label = $MagicLabel
+@onready var _item_label: Label = $ItemLabel
 
 var _tooltip_popup: BackpackTooltipPopup = null
 var _merge_mode: bool = false
 var _merge_base_index: int = -1
 var _merge_weapon_id: String = ""
 var _merge_weapon_tier: int = -1
-var _weapon_grid: HFlowContainer = null
-var _cancel_btn: Button = null
 var _slot_style: StyleBoxFlat = null  # 槽位边框样式缓存，复用减少分配
 
 
@@ -71,9 +76,12 @@ func set_stats(stats: Dictionary, shop_context: bool = false) -> void:
 			layer.add_child(_tooltip_popup)
 		else:
 			get_tree().root.add_child(_tooltip_popup)
-	for c in get_children():
-		if c != _tooltip_popup:
-			c.queue_free()
+	for c in _weapon_grid.get_children():
+		c.queue_free()
+	for c in _magic_grid.get_children():
+		c.queue_free()
+	for c in _item_grid.get_children():
+		c.queue_free()
 	var weapon_details: Array = stats.get("weapon_details", [])
 	var magic_details: Array = stats.get("magic_details", [])
 	var item_ids: Array = stats.get("item_ids", [])
@@ -82,61 +90,26 @@ func set_stats(stats: Dictionary, shop_context: bool = false) -> void:
 
 
 func _build_all_sections(weapon_details: Array, magic_details: Array, item_ids: Array, weapon_upgrades: Array) -> void:
-	# 武器区（含取消按钮容器，合并模式时显示取消）
-	var weapon_header := HBoxContainer.new()
-	weapon_header.add_theme_constant_override("separation", 8)
-	var w_label := Label.new()
-	w_label.text = LocalizationManager.tr_key("backpack.section_weapons")
-	w_label.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
-	w_label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
-	weapon_header.add_child(w_label)
-	_cancel_btn = Button.new()
+	# 武器区：设置场景内标题与取消按钮，仅向 _weapon_grid 填充槽位
+	_weapon_label.text = LocalizationManager.tr_key("backpack.section_weapons")
 	_cancel_btn.text = LocalizationManager.tr_key("backpack.synthesize_cancel")
-	_cancel_btn.visible = false
-	_cancel_btn.pressed.connect(_exit_merge_mode)
-	weapon_header.add_child(_cancel_btn)
-	var w_sep := HSeparator.new()
-	add_child(w_sep)
-	add_child(weapon_header)
-	_weapon_grid = HFlowContainer.new()
-	_weapon_grid.name = "WeaponGrid"
-	_weapon_grid.add_theme_constant_override("h_separation", 8)
-	_weapon_grid.add_theme_constant_override("v_separation", 8)
+	_cancel_btn.visible = _merge_mode
+	if not _cancel_btn.pressed.is_connected(_exit_merge_mode):
+		_cancel_btn.pressed.connect(_exit_merge_mode)
 	for i in weapon_details.size():
 		var w: Dictionary = weapon_details[i]
 		var slot := _make_weapon_slot(w, weapon_upgrades, i, weapon_details)
 		_weapon_grid.add_child(slot)
-	add_child(_weapon_grid)
 	# 魔法区
-	var m_sep := HSeparator.new()
-	add_child(m_sep)
-	var m_label := Label.new()
-	m_label.text = LocalizationManager.tr_key("backpack.section_magics")
-	m_label.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
-	m_label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
-	add_child(m_label)
-	var m_grid := HFlowContainer.new()
-	m_grid.add_theme_constant_override("h_separation", 8)
-	m_grid.add_theme_constant_override("v_separation", 8)
+	_magic_label.text = LocalizationManager.tr_key("backpack.section_magics")
 	for m in magic_details:
 		var slot := _make_magic_slot(m as Dictionary)
-		m_grid.add_child(slot)
-	add_child(m_grid)
+		_magic_grid.add_child(slot)
 	# 道具区
-	var i_sep := HSeparator.new()
-	add_child(i_sep)
-	var i_label := Label.new()
-	i_label.text = LocalizationManager.tr_key("backpack.section_items")
-	i_label.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
-	i_label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
-	add_child(i_label)
-	var i_grid := HFlowContainer.new()
-	i_grid.add_theme_constant_override("h_separation", 8)
-	i_grid.add_theme_constant_override("v_separation", 8)
+	_item_label.text = LocalizationManager.tr_key("backpack.section_items")
 	for iid in item_ids:
 		var slot := _make_item_slot(str(iid))
-		i_grid.add_child(slot)
-	add_child(i_grid)
+		_item_grid.add_child(slot)
 
 
 func _get_slot_style() -> StyleBoxFlat:

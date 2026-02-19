@@ -15,6 +15,7 @@
 - 全局单例放在 `scripts/autoload/`
 - 场景在 `scenes/`，逻辑在 `scripts/`
 - UI 场景在 `scenes/ui/`，UI 脚本在 `scripts/ui/`
+- **固定布局 UI**：不随数据变动的结构在 `.tscn` 中编辑，脚本仅通过 @onready 引用、控制显隐与填充内容；**动态位置或数量**（如每敌一个血条、列表项）使用预制场景实例化。
 - 大多数跨模块通信走信号（wave/hud/player）
 
 ## 2. 核心模块职责

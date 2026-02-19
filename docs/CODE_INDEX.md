@@ -92,7 +92,7 @@
 | [scripts/enemy_aquatic.gd](scripts/enemy_aquatic.gd) | 水中专属敌人，离水扣血 | 继承 enemy_base，`is_water_only()` |
 | [scripts/enemy_dasher.gd](scripts/enemy_dasher.gd) | 蓄力冲刺攻击敌人 | 继承 enemy_base |
 | [scripts/wave_manager.gd](scripts/wave_manager.gd) | 波次推进、敌人生成、掉落、倒计时、预生成倒计时 | `wave_started`、`wave_cleared`、`kill_count_changed`、`pre_spawn_countdown_started`、`pre_spawn_countdown_changed` |
-| [scripts/spawn_telegraph.gd](scripts/spawn_telegraph.gd) | 敌人生成前警示，显示数量（×N） | 配合 wave_manager 使用 |
+| [scripts/spawn_telegraph.gd](scripts/spawn_telegraph.gd) + [scenes/spawn_telegraph.tscn](scenes/spawn_telegraph.tscn) | 敌人生成前警示，显示数量（×N）；圈与 Label 在场景中 | 配合 wave_manager 使用 |
 | [resources/enemy_defs.gd](resources/enemy_defs.gd) | 敌人定义集中化（36 种，含 tier/behavior_mode），供图鉴与生成 | `ENEMY_DEFS`、`get_enemy_def`、`get_ids_by_tier` |
 | [resources/enemy_scene_registry.gd](resources/enemy_scene_registry.gd) | 敌人 id→场景映射，供 wave_manager 按 enemy_id 加载 | `get_scene` |
 
@@ -177,7 +177,7 @@
 | [scripts/ui/main_menu.gd](scripts/ui/main_menu.gd) | 主菜单 | - |
 | [scripts/ui/character_select.gd](scripts/ui/character_select.gd) | 角色选择 | - |
 | [scripts/ui/pause_menu.gd](scripts/ui/pause_menu.gd) | 暂停菜单、属性/背包 Tab、玩家信息 | `set_visible_menu`、`set_player_stats_full` |
-| [scripts/ui/backpack_panel.gd](scripts/ui/backpack_panel.gd) | 背包面板，武器/魔法/道具图标网格，网格线可见 | `set_stats`、`hide_tooltip` |
+| [scripts/ui/backpack_panel.gd](scripts/ui/backpack_panel.gd) + [scenes/ui/backpack_panel.tscn](scenes/ui/backpack_panel.tscn) | 背包面板，武器/魔法/道具图标网格；固定结构在场景，脚本只填槽位 | `set_stats`、`hide_tooltip` |
 | [scripts/ui/backpack_tooltip_popup.gd](scripts/ui/backpack_tooltip_popup.gd) | 背包 Tooltip，结构化词条 Chip、独立词条悬浮面板（完整描述+数值、屏幕坐标）、主 tooltip 放大、延迟隐藏（0.5s） | `show_tooltip`、`show_structured_tooltip`、`schedule_hide`、`is_scheduled_to_hide`、`hide_tooltip` |
 | [scripts/ui/backpack_slot.gd](scripts/ui/backpack_slot.gd) | 背包槽，图标 + 悬浮即显 Tooltip（支持 tip_data） | `configure` |
 | [scripts/ui/settings_menu.gd](scripts/ui/settings_menu.gd) | 设置 | `open_menu`、`closed` |

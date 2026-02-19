@@ -43,7 +43,7 @@ const ACTION_NAME_KEYS := {
 
 var _settings: Dictionary = {}  # 当前设置副本，修改后写回 SaveManager
 var _silent := false  # 防重入：_reload_from_save 时忽略控件回调
-var _fullscreen_backdrop: ColorRect
+@onready var _fullscreen_backdrop: ColorRect = $FullscreenBackdrop
 var _key_binding_rows: Dictionary = {}  # action -> {key_label, rebind_btn}
 var _waiting_for_action: String = ""  # 等待按键时的 action
 
@@ -51,7 +51,7 @@ var _waiting_for_action: String = ""  # 等待按键时的 action
 func _ready() -> void:
 	visible = false
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	_ensure_fullscreen_backdrop()
+	_fullscreen_backdrop.color = UiThemeConfig.load_theme().modal_backdrop
 	_apply_panel_style()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	close_button.pressed.connect(_on_close_pressed)
@@ -63,7 +63,7 @@ func _ready() -> void:
 	LocalizationManager.language_changed.connect(_on_language_changed)
 
 	_build_static_options()
-	_build_key_bindings_tab()
+	_fill_key_binding_refs()
 	tabs.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
 	tabs.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
 	tabs.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
@@ -77,6 +77,7 @@ func open_menu() -> void:
 	# 置于最顶层，确保全屏覆盖
 	if get_parent():
 		get_parent().move_child(self, get_parent().get_child_count() - 1)
+	_fullscreen_backdrop.visible = true
 	visible = true
 
 
@@ -192,6 +193,7 @@ func _on_enemy_hp_toggled(value: bool) -> void:
 
 
 func _on_close_pressed() -> void:
+	_fullscreen_backdrop.visible = false
 	visible = false
 	emit_signal("closed")
 
@@ -208,37 +210,19 @@ func _apply_localized_texts() -> void:
 	enemy_hp_check.text = LocalizationManager.tr_key("settings.game.enemy_hp")
 
 
-func _build_key_bindings_tab() -> void:
-	var keys_tab := VBoxContainer.new()
-	keys_tab.name = "KeysTab"
-	keys_tab.add_theme_constant_override("separation", 8)
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 280)
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 6)
-	scroll.add_child(vbox)
-	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	keys_tab.add_child(scroll)
-	for action in BINDABLE_ACTIONS:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
-		var name_lbl := Label.new()
-		name_lbl.custom_minimum_size = Vector2(140, 0)
-		var name_key: String = ACTION_NAME_KEYS.get(action, action)
-		name_lbl.text = LocalizationManager.tr_key(name_key)
-		row.add_child(name_lbl)
-		var key_lbl := Label.new()
-		key_lbl.custom_minimum_size = Vector2(60, 0)
-		key_lbl.text = "+"
-		row.add_child(key_lbl)
-		var rebind_btn := Button.new()
+## [自定义] 从场景 KeysTab 的 Row0..Row10 填充 _key_binding_rows，设置名称文案并连接重绑信号。
+func _fill_key_binding_refs() -> void:
+	var keys_vbox: VBoxContainer = tabs.get_node("KeysTab/Scroll/KeysVBox")
+	for i in range(BINDABLE_ACTIONS.size()):
+		var action: String = BINDABLE_ACTIONS[i]
+		var row: HBoxContainer = keys_vbox.get_node("Row%d" % i)
+		var name_lbl: Label = row.get_node("NameLabel")
+		var key_lbl: Label = row.get_node("KeyLabel")
+		var rebind_btn: Button = row.get_node("RebindBtn")
+		name_lbl.text = LocalizationManager.tr_key(ACTION_NAME_KEYS.get(action, action))
 		rebind_btn.text = LocalizationManager.tr_key("settings.key.rebind")
 		rebind_btn.pressed.connect(_on_rebind_pressed.bind(action))
-		row.add_child(rebind_btn)
-		vbox.add_child(row)
 		_key_binding_rows[action] = {"key_label": key_lbl, "rebind_btn": rebind_btn}
-	tabs.add_child(keys_tab)
 	tabs.set_tab_title(2, LocalizationManager.tr_key("settings.tab.keys"))
 
 
@@ -330,21 +314,12 @@ func _on_language_changed(_language_code: String) -> void:
 	for action in BINDABLE_ACTIONS:
 		if _key_binding_rows.has(action):
 			_key_binding_rows[action].rebind_btn.text = LocalizationManager.tr_key("settings.key.rebind")
-
-
-func _ensure_fullscreen_backdrop() -> void:
-	# 设置页全屏纯色背景，避免透出底层场景。
-	_fullscreen_backdrop = ColorRect.new()
-	_fullscreen_backdrop.name = "FullscreenBackdrop"
-	_fullscreen_backdrop.anchors_preset = Control.PRESET_FULL_RECT
-	_fullscreen_backdrop.offset_left = 0
-	_fullscreen_backdrop.offset_top = 0
-	_fullscreen_backdrop.offset_right = 0
-	_fullscreen_backdrop.offset_bottom = 0
-	_fullscreen_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	_fullscreen_backdrop.color = UiThemeConfig.load_theme().modal_backdrop
-	add_child(_fullscreen_backdrop)
-	move_child(_fullscreen_backdrop, 0)
+	# 刷新按键行名称文案（Keys Tab 预置在场景中）
+	var keys_vbox: VBoxContainer = tabs.get_node("KeysTab/Scroll/KeysVBox")
+	for i in range(BINDABLE_ACTIONS.size()):
+		var act: String = BINDABLE_ACTIONS[i]
+		var row: HBoxContainer = keys_vbox.get_node("Row%d" % i)
+		row.get_node("NameLabel").text = LocalizationManager.tr_key(ACTION_NAME_KEYS.get(act, act))
 
 
 func _apply_panel_style() -> void:

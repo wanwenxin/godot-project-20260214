@@ -14,6 +14,21 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="FullscreenBackdrop" type="ColorRect" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.12, 0.85)
+mouse_filter = 2
+
 [node name="Panel" type="Panel" parent="Root"]
 visible = false
 layout_mode = 1
@@ -26,3 +41,90 @@ offset_right = 0.0
 offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="OuterMargin" type="MarginContainer" parent="Root/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 32
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainLayout" type="HBoxContainer" parent="Root/Panel/OuterMargin"]
+layout_mode = 2
+theme_override_constants/separation = 32
+size_flags_vertical = 3
+
+[node name="TabWrapper" type="CenterContainer" parent="Root/Panel/OuterMargin/MainLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PauseTabs" type="TabContainer" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper"]
+custom_minimum_size = Vector2(320, 400)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_constants/side_margin = 16
+theme_override_constants/top_margin = 16
+tab_position = 0
+
+[node name="SystemTab" type="VBoxContainer" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="MarginContainer" type="MarginContainer" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab"]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 32
+
+[node name="InnerVBox" type="VBoxContainer" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 1.0, 1)
+theme_override_font_sizes/font_size = 22
+text = "Paused"
+
+[node name="KeyHintsLabel" type="Label" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.78, 0.82, 1)
+theme_override_font_sizes/font_size = 18
+text = ""
+autowrap_mode = 3
+
+[node name="ResumeButton" type="Button" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox"]
+layout_mode = 2
+text = "Resume"
+
+[node name="MainMenuButton" type="Button" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox"]
+layout_mode = 2
+text = "Main Menu"
+
+[node name="BackpackScroll" type="ScrollContainer" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="StatsScroll" type="ScrollContainer" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="StatsContainer" type="VBoxContainer" parent="Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/StatsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12

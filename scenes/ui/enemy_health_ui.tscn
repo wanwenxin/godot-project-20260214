@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3]
+
+[node name="EnemyHealthUI" type="Node2D"]
+
+[node name="ProgressBar" type="ProgressBar" parent="."]
+z_index = 20
+offset_left = 0.0
+offset_top = 8.0
+offset_right = 36.0
+offset_bottom = 14.0
+min_value = 0.0
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="ElementIconsContainer" type="HBoxContainer" parent="."]
+z_index = 20
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 36.0
+offset_bottom = 5.0
+theme_override_constants/separation = 1

@@ -1,24 +1,25 @@
 extends CanvasLayer
 
-# 暂停菜单层：全屏左右分栏布局
-# - 左侧：系统信息（标题、按键提示、继续、主菜单）
-# - 右侧：玩家信息（HP、移速、惯性、装备武器横向排布）
+# 暂停菜单层：全屏左右分栏布局；固定结构在 pause_menu.tscn，脚本仅引用、显隐与填充内容。
+# - 系统 Tab：标题、按键提示、继续、主菜单
+# - 背包 Tab：运行时加入 BackpackPanel 实例
+# - 角色信息 Tab：StatsContainer 由 ResultPanelShared 填充
 @onready var panel: Panel = $Root/Panel
 @onready var root: Control = $Root
+@onready var _fullscreen_backdrop: ColorRect = $Root/FullscreenBackdrop
+@onready var _tab_container: TabContainer = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs
+@onready var _stats_container: VBoxContainer = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/StatsScroll/StatsContainer
+@onready var _resume_btn: Button = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/ResumeButton
+@onready var _menu_btn: Button = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/MainMenuButton
+@onready var _key_hints_label: Label = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/KeyHintsLabel
 
-var _fullscreen_backdrop: ColorRect
-var _stats_container: VBoxContainer
-var _backpack_panel: VBoxContainer  # 背包面板，Tab 2 内容
-var _tab_container: TabContainer  # 属性/背包标签容器，用于语言切换时更新标题
-var _resume_btn: Button
-var _menu_btn: Button
-var _key_hints_label: Label
+var _backpack_panel: VBoxContainer  # 背包面板，运行时创建并加入 BackpackScroll
 
 
 func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ensure_fullscreen_backdrop()
-	_build_main_layout()
+	_fullscreen_backdrop.color = UiThemeConfig.load_theme().modal_backdrop
+	_add_backpack_panel()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style()
 	_resume_btn.pressed.connect(_on_resume_pressed)
@@ -78,96 +79,14 @@ func set_player_stats_full(stats: Dictionary) -> void:
 	_stats_container.add_child(block)
 
 
-func _build_main_layout() -> void:
-	# 外层填满画布，仅保留适度边距
-	var outer := MarginContainer.new()
-	outer.name = "OuterMargin"
-	outer.set_anchors_preset(Control.PRESET_FULL_RECT, true)
-	outer.add_theme_constant_override("margin_left", 32)
-	outer.add_theme_constant_override("margin_top", 32)
-	outer.add_theme_constant_override("margin_right", 32)
-	outer.add_theme_constant_override("margin_bottom", 32)
-	panel.add_child(outer)
-	var main := HBoxContainer.new()
-	main.name = "MainLayout"
-	main.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main.add_theme_constant_override("separation", 32)
-	outer.add_child(main)
-	# TabContainer：系统 / 背包 / 角色信息，Tab 置于底部
-	var tab_wrapper := CenterContainer.new()
-	tab_wrapper.name = "TabWrapper"
-	tab_wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tab_wrapper.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main.add_child(tab_wrapper)
-	_tab_container = TabContainer.new()
-	_tab_container.name = "PauseTabs"
-	_tab_container.tabs_position = TabContainer.TabPosition.POSITION_TOP  # Tab 标签置于顶部
-	_tab_container.custom_minimum_size = Vector2(320, 400)
-	_tab_container.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
-	_tab_container.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
-	_tab_container.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
-	tab_wrapper.add_child(_tab_container)
-	# Tab 0：系统（标题、按键提示、继续、主菜单）
-	var system_tab := _build_system_tab()
-	_tab_container.add_child(system_tab)
-	_tab_container.set_tab_title(0, LocalizationManager.tr_key("pause.tab_system"))
-	# Tab 1：背包
-	var backpack_scroll := ScrollContainer.new()
-	backpack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	backpack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_backpack_panel = (preload("res://scripts/ui/backpack_panel.gd") as GDScript).new()
+## [自定义] 创建背包面板并加入 BackpackScroll（BackpackPanel 为脚本类，需运行时实例化）。
+func _add_backpack_panel() -> void:
+	var backpack_scroll: ScrollContainer = _tab_container.get_node("BackpackScroll")
+	_backpack_panel = (preload("res://scenes/ui/backpack_panel.tscn") as PackedScene).instantiate()
 	_backpack_panel.name = "BackpackPanel"
 	_backpack_panel.add_theme_constant_override("separation", 12)
 	_backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	backpack_scroll.add_child(_backpack_panel)
-	_tab_container.add_child(backpack_scroll)
-	_tab_container.set_tab_title(1, LocalizationManager.tr_key("pause.tab_backpack"))
-	# Tab 2：角色信息
-	var stats_scroll := ScrollContainer.new()
-	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_stats_container = VBoxContainer.new()
-	_stats_container.name = "StatsContainer"
-	_stats_container.add_theme_constant_override("separation", 12)
-	_stats_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stats_scroll.add_child(_stats_container)
-	_tab_container.add_child(stats_scroll)
-	_tab_container.set_tab_title(2, LocalizationManager.tr_key("pause.tab_stats"))
-
-
-func _build_system_tab() -> VBoxContainer:
-	var system_tab := VBoxContainer.new()
-	system_tab.name = "SystemTab"
-	system_tab.add_theme_constant_override("separation", 16)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 32)
-	margin.add_theme_constant_override("margin_top", 32)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_bottom", 32)
-	system_tab.add_child(margin)
-	var inner := VBoxContainer.new()
-	inner.name = "InnerVBox"
-	inner.add_theme_constant_override("separation", 16)
-	margin.add_child(inner)
-	var title_lbl := Label.new()
-	title_lbl.name = "TitleLabel"
-	title_lbl.text = LocalizationManager.tr_key("pause.title")
-	title_lbl.add_theme_font_size_override("font_size", 22)
-	title_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
-	inner.add_child(title_lbl)
-	_key_hints_label = Label.new()
-	_key_hints_label.name = "KeyHintsLabel"
-	_key_hints_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_key_hints_label.add_theme_font_size_override("font_size", 18)
-	_key_hints_label.add_theme_color_override("font_color", Color(0.75, 0.78, 0.82))
-	inner.add_child(_key_hints_label)
-	_resume_btn = Button.new()
-	_resume_btn.name = "ResumeButton"
-	inner.add_child(_resume_btn)
-	_menu_btn = Button.new()
-	_menu_btn.name = "MainMenuButton"
-	inner.add_child(_menu_btn)
-	return system_tab
 
 
 func _refresh_stats_from_game() -> void:
@@ -215,18 +134,3 @@ func _refresh_key_hints() -> void:
 
 func _apply_panel_style() -> void:
 	panel.add_theme_stylebox_override("panel", UiThemeConfig.load_theme().get_modal_panel_stylebox())
-
-
-func _ensure_fullscreen_backdrop() -> void:
-	_fullscreen_backdrop = ColorRect.new()
-	_fullscreen_backdrop.name = "FullscreenBackdrop"
-	_fullscreen_backdrop.anchors_preset = Control.PRESET_FULL_RECT
-	_fullscreen_backdrop.offset_left = 0
-	_fullscreen_backdrop.offset_top = 0
-	_fullscreen_backdrop.offset_right = 0
-	_fullscreen_backdrop.offset_bottom = 0
-	_fullscreen_backdrop.visible = false
-	_fullscreen_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	_fullscreen_backdrop.color = UiThemeConfig.load_theme().modal_backdrop
-	root.add_child(_fullscreen_backdrop)
-	root.move_child(_fullscreen_backdrop, 0)

@@ -1,0 +1,62 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/backpack_panel.gd" id="1"]
+
+[node name="BackpackPanel" type="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+script = ExtResource("1")
+
+[node name="WeaponSep" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="WeaponHeader" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="WeaponLabel" type="Label" parent="WeaponHeader"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
+theme_override_font_sizes/font_size = 18
+text = "Weapons"
+
+[node name="CancelButton" type="Button" parent="WeaponHeader"]
+visible = false
+layout_mode = 2
+text = "Cancel"
+
+[node name="WeaponGrid" type="HFlowContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="MagicSep" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="MagicLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
+theme_override_font_sizes/font_size = 18
+text = "Magics"
+
+[node name="MagicGrid" type="HFlowContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="ItemSep" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="ItemLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
+theme_override_font_sizes/font_size = 18
+text = "Items"
+
+[node name="ItemGrid" type="HFlowContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8

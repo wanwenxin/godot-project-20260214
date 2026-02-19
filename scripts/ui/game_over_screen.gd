@@ -1,21 +1,27 @@
 extends CanvasLayer
 
-# 死亡结算界面：展示得分与玩家信息，仅提供返回主菜单
+# 死亡结算界面：固定结构在 game_over_screen.tscn，脚本只填内容与 visible。
 @onready var root: Control = $Root
+@onready var _backdrop: ColorRect = $Root/Backdrop
+@onready var _panel: Panel = $Root/Panel
+@onready var _tab_container: TabContainer = $Root/Panel/Margin/VBox/TabContainer
+@onready var _score_tab_container: VBoxContainer = $Root/Panel/Margin/VBox/TabContainer/ScoreScroll/ScoreTabContainer
+@onready var _backpack_tab_container: Control = $Root/Panel/Margin/VBox/TabContainer/BackpackScroll/BackpackTabContainer
+@onready var _stats_tab_container: Control = $Root/Panel/Margin/VBox/TabContainer/StatsScroll/StatsTabContainer
+@onready var _menu_btn: Button = $Root/Panel/Margin/VBox/MenuButton
 
-var _backdrop: ColorRect
-var _panel: Panel
-var _tab_container: TabContainer
-var _score_tab_container: VBoxContainer  # 得分 Tab 内容
-var _backpack_tab_container: Control  # 背包 Tab 内容
-var _stats_tab_container: Control  # 角色信息 Tab 内容
-var _menu_btn: Button
 
-
-## [系统] 节点入树时调用，构建 UI 并默认隐藏。
+## [系统] 节点入树时调用，应用样式与信号，默认隐藏。
 func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_build_ui()
+	_backdrop.color = UiThemeConfig.load_theme().modal_backdrop
+	_apply_panel_style()
+	_tab_container.set_tab_title(0, LocalizationManager.tr_key("result.tab_score"))
+	_tab_container.set_tab_title(1, LocalizationManager.tr_key("result.tab_backpack"))
+	_tab_container.set_tab_title(2, LocalizationManager.tr_key("result.tab_stats"))
+	_menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
+	_menu_btn.pressed.connect(_on_menu_pressed)
+	LocalizationManager.language_changed.connect(_on_language_changed)
 	visible = false
 
 
@@ -65,9 +71,8 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 				weapon_details = player_node.get_equipped_weapon_details()
 		stats = {"hp_current": hp_current, "hp_max": hp_max, "speed": speed, "inertia": inertia, "weapon_details": weapon_details, "magic_details": [], "item_ids": []}
 	stats["wave"] = wave
-	var backpack_panel: VBoxContainer = (load("res://scripts/ui/backpack_panel.gd") as GDScript).new()
+	var backpack_panel: VBoxContainer = (load("res://scenes/ui/backpack_panel.tscn") as PackedScene).instantiate() as VBoxContainer
 	backpack_panel.name = "BackpackPanel"
-	backpack_panel.add_theme_constant_override("separation", 12)
 	backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_backpack_tab_container.add_child(backpack_panel)
 	backpack_panel.set_stats(stats, false)
@@ -75,83 +80,6 @@ func show_result(wave: int, kills: int, time: float, player_node: Node) -> void:
 	var player_block: Control = ResultPanelShared.build_player_stats_block(stats)
 	_stats_tab_container.add_child(player_block)
 	visible = true
-
-
-## [自定义] 构建全屏遮罩、居中面板、三 Tab（得分/背包/角色信息）、返回主菜单按钮。
-func _build_ui() -> void:
-	_backdrop = ColorRect.new()
-	_backdrop.name = "Backdrop"
-	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_backdrop.offset_left = 0
-	_backdrop.offset_top = 0
-	_backdrop.offset_right = 0
-	_backdrop.offset_bottom = 0
-	_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	_backdrop.color = UiThemeConfig.load_theme().modal_backdrop
-	root.add_child(_backdrop)
-	_panel = Panel.new()
-	_panel.name = "Panel"
-	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.anchor_left = 0.5
-	_panel.anchor_right = 0.5
-	_panel.anchor_top = 0.5
-	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -280
-	_panel.offset_top = -220
-	_panel.offset_right = 280
-	_panel.offset_bottom = 220
-	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	root.add_child(_panel)
-	_apply_panel_style()
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_bottom", 24)
-	_panel.add_child(margin)
-	_tab_container = TabContainer.new()
-	_tab_container.tabs_position = TabContainer.TabPosition.POSITION_TOP  # Tab 标签置于顶部
-	_tab_container.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
-	_tab_container.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
-	_tab_container.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
-	margin.add_child(_tab_container)
-	# Tab 0：得分
-	var score_tab := ScrollContainer.new()
-	score_tab.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	score_tab.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_score_tab_container = VBoxContainer.new()
-	_score_tab_container.add_theme_constant_override("separation", 16)
-	_score_tab_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	_score_tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	score_tab.add_child(_score_tab_container)
-	_tab_container.add_child(score_tab)
-	_tab_container.set_tab_title(0, LocalizationManager.tr_key("result.tab_score"))
-	# Tab 1：背包
-	var backpack_scroll := ScrollContainer.new()
-	backpack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	backpack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_backpack_tab_container = VBoxContainer.new()
-	_backpack_tab_container.add_theme_constant_override("separation", 12)
-	_backpack_tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	backpack_scroll.add_child(_backpack_tab_container)
-	_tab_container.add_child(backpack_scroll)
-	_tab_container.set_tab_title(1, LocalizationManager.tr_key("result.tab_backpack"))
-	# Tab 2：角色信息
-	var stats_scroll := ScrollContainer.new()
-	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_stats_tab_container = VBoxContainer.new()
-	_stats_tab_container.add_theme_constant_override("separation", 12)
-	_stats_tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stats_scroll.add_child(_stats_tab_container)
-	_tab_container.add_child(stats_scroll)
-	_tab_container.set_tab_title(2, LocalizationManager.tr_key("result.tab_stats"))
-	_menu_btn = Button.new()
-	_menu_btn.name = "MenuButton"
-	_menu_btn.text = LocalizationManager.tr_key("hud.back_to_menu")
-	_menu_btn.pressed.connect(_on_menu_pressed)
-	LocalizationManager.language_changed.connect(_on_language_changed)
 
 
 func _apply_panel_style() -> void:

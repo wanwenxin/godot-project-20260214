@@ -20,40 +20,41 @@ signal mobile_move_changed(direction: Vector2)  # 触控移动键按下/抬起�
 signal pause_pressed  # 触控暂停键按下
 
 # ---- 场景节点引用（hud.tscn 中已存在） ----
-@onready var health_bar: ProgressBar = $Root/TopRow/HealthBox/HPBlock/HealthBar  # 血量进度条
-@onready var health_label: Label = $Root/TopRow/HealthBox/HPBlock/HealthLabel  # 血量数值 "当前/最大"
-@onready var mana_bar: ProgressBar = $Root/TopRow/HealthBox/MPBlock/ManaBar  # 魔力进度条
-@onready var mana_label: Label = $Root/TopRow/HealthBox/MPBlock/ManaLabel  # 魔力数值
-@onready var wave_label: Label = $Root/TopRow/WaveLabel  # 当前波次数
-@onready var kill_label: Label = $Root/TopRow/KillLabel  # 本局击杀数
-@onready var timer_label: Label = $Root/TopRow/TimerLabel  # 生存时间
-@onready var pause_hint: Label = $Root/PauseHint  # 暂停/移动/缩放/魔法等按键提示（多行）
+@onready var health_bar: ProgressBar = $Root/TopRowPanel/TopRow/HealthBox/HPBlock/HealthBar
+@onready var health_label: Label = $Root/TopRowPanel/TopRow/HealthBox/HPBlock/HealthLabel
+@onready var mana_bar: ProgressBar = $Root/TopRowPanel/TopRow/HealthBox/MPBlock/ManaBar
+@onready var mana_label: Label = $Root/TopRowPanel/TopRow/HealthBox/MPBlock/ManaLabel
+@onready var wave_label: Label = $Root/TopRowPanel/TopRow/WaveLabel
+@onready var kill_label: Label = $Root/TopRowPanel/TopRow/KillLabel
+@onready var timer_label: Label = $Root/TopRowPanel/TopRow/TimerLabel
+@onready var pause_hint: Label = $Root/PauseHintPanel/PauseHint
+@onready var _modal_backdrop: ColorRect = $Root/ModalBackdrop
+@onready var _currency_label: Label = $Root/CurrencyPanel/CurrencyLabel
+@onready var _wave_countdown_label: Label = $Root/WaveCountdownPanel/WaveCountdownLabel
+@onready var _wave_banner: Label = $Root/WaveBannerPanel/WaveBanner
+@onready var _magic_panel: PanelContainer = $Root/MagicPanel
+@onready var _upgrade_panel: Panel = $Root/UpgradePanel
+@onready var _upgrade_title_label: Label = $Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeTitleLabel
+@onready var _upgrade_tip_label: Label = $Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeTipLabel
+@onready var _upgrade_refresh_btn: Button = $Root/UpgradePanel/UpgradeMargin/CenterContainer/VBox/BtnRow/UpgradeRefreshBtn
+@onready var _weapon_panel: Panel = $Root/WeaponPanel
+@onready var _weapon_title_label: Label = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponTitleLabel
+@onready var _weapon_tip_label: Label = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponTipLabel
+@onready var _shop_refresh_btn: Button = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/ShopRefreshBtn
+@onready var _shop_next_btn: Button = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopNextBtn
+@onready var _shop_tab_container: TabContainer = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer
+@onready var _shop_stats_container: Control = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/StatsScroll/ShopStatsContainer
+@onready var _touch_panel: Control = $Root/TouchPanel
+@onready var _pause_touch_btn: Button = $Root/PauseTouchBtn
 
-# ---- 运行时创建的 UI 节点 ----
-var _wave_countdown_label: Label  # 波次倒计时（中上）：预生成时「第X波-X.Xs」，波次中「第X波-剩余Xs」
-var _currency_label: Label  # 金币数量标签（右上区域）
-var _wave_banner: Label  # 波次开始时的横幅，淡出动画后隐藏
-var _upgrade_panel: Panel  # 升级四选一模态面板
-var _upgrade_title_label: Label  # 升级面板标题
-var _upgrade_tip_label: Label  # 升级面板说明（金币等）
-var _upgrade_buttons: Array[Button] = []  # 四个升级选项按钮
-var _upgrade_icons: Array[TextureRect] = []  # 四个升级图标
-var _upgrade_refresh_btn: Button  # 升级面板内刷新按钮
-var _weapon_panel: Panel  # 武器商店/开局选择模态面板
-var _weapon_title_label: Label  # 武器面板标题
-var _weapon_tip_label: Label  # 武器面板说明
-var _weapon_buttons: Array[Button] = []  # 商店/开局四个选项按钮
-var _weapon_icons: Array[TextureRect] = []  # 四个选项图标
-var _shop_refresh_btn: Button  # 商店 Tab 内刷新商品按钮
-var _shop_backpack_panel: VBoxContainer  # 背包 Tab 内嵌的 BackpackPanel 实例
-var _shop_next_btn: Button  # 「下一波」按钮
-var _shop_tab_container: TabContainer  # 商店/背包/角色信息三 Tab
-var _shop_stats_container: Control  # 角色信息 Tab 内容容器，由 ResultPanelShared 构建
-var _last_shop_stats_hash: String = ""  # 脏检查：stats 哈希未变时跳过角色信息 Tab 重建
-var _modal_backdrop: ColorRect  # 全屏半透明遮罩，升级/商店时置于底层
-var _weapon_mode := ""  # "start" 或 "shop"，区分开局武器选择与波次商店
-var _touch_panel: Control  # 触控时移动键容器（L/R/U/D）
-var _pause_touch_btn: Button  # 触控暂停按钮
+# ---- 由场景节点组装的数组（_ready 中填充） ----
+var _upgrade_buttons: Array[Button] = []
+var _upgrade_icons: Array[TextureRect] = []
+var _weapon_buttons: Array[Button] = []
+var _weapon_icons: Array[TextureRect] = []
+var _shop_backpack_panel: VBoxContainer  # 背包 Tab 内嵌的 BackpackPanel 实例，运行时加入 BackpackScroll
+var _last_shop_stats_hash: String = ""
+var _weapon_mode := ""
 var _move_state := {  # 触控方向键按下状态，用于合成 mobile_move_changed 的 direction
 	"left": false,
 	"right": false,
@@ -76,7 +77,6 @@ var _last_mana_max := 1.0
 var _last_armor := 0
 
 # ---- 魔法面板 ----
-var _magic_panel: PanelContainer  # 左下角魔法槽容器（最多 3 槽）
 const MAGIC_CD_UPDATE_THRESHOLD := 0.05  # 魔法冷却 remaining_cd 变化超过此值（秒）才刷新遮罩，节流
 var _last_magic_cd_per_slot: Array[float] = []  # 每槽上次显示的 remaining_cd，用于节流
 var _last_magic_current_index := -1  # 上次当前选中槽索引，切换时立即更新边框
@@ -88,10 +88,10 @@ const MAGIC_SLOT_SIZE := 92  # 魔法槽图标区域边长（像素）
 const MAGIC_SLOT_EXTRA_HEIGHT := 46  # 魔法槽名称+词条区域高度
 
 
-## [系统] 节点入树时调用：构建运行时 UI、触控、本地化，初始化各 set_* 显示并隐藏模态/横幅。
+## [系统] 节点入树时调用：应用样式、组装引用数组、连接信号、加入背包面板，初始化各 set_* 并控制显隐。
 func _ready() -> void:
 	LocalizationManager.language_changed.connect(_on_language_changed)
-	_build_runtime_ui()
+	_apply_runtime_styles_and_refs()
 	_setup_touch_controls()
 	_apply_localized_static_texts()
 	set_health(0, 0)
@@ -111,28 +111,14 @@ func _ready() -> void:
 	_apply_hud_module_backgrounds()
 
 
-## [自定义] 为 TopRow、金币、暂停提示、波次倒计时/横幅等标签外包 Panel，应用半透明背景样式。
+## [自定义] 为场景中已有的 TopRowPanel、CurrencyPanel、PauseHintPanel、WaveCountdownPanel、WaveBannerPanel 应用 HUD 面板样式（不创建新节点）。
 func _apply_hud_module_backgrounds() -> void:
-	# TopRow 用 PanelContainer 包裹，半透明背景
-	var top_row := $Root/TopRow
-	var top_parent := top_row.get_parent()
-	var idx := top_row.get_index()
-	var top_panel := PanelContainer.new()
-	top_panel.name = "TopRowPanel"
-	top_panel.offset_left = 12
-	top_panel.offset_top = 12
-	top_panel.offset_right = 860
-	top_panel.offset_bottom = 72
-	top_panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
-	top_row.reparent(top_panel)  # 重父到新 Panel，不可用 reparent(null)
-	top_parent.add_child(top_panel)
-	top_parent.move_child(top_panel, idx)
-	# 金币、波次倒计时、波次横幅、按键提示各自用 Panel 包裹（间隔倒计时已合并至中上）
-	_wrap_label_in_panel(_currency_label, Vector2(900, 12), Vector2(120, 24))
-	_wrap_label_in_panel(pause_hint, Vector2(12, 52), Vector2(248, 90))
-	# _wave_countdown_label 和 _wave_banner 使用锚点，需单独处理
-	_wrap_anchored_label_in_panel(_wave_countdown_label)
-	_wrap_anchored_label_in_panel(_wave_banner)
+	var style := _make_hud_panel_style()
+	$Root/TopRowPanel.add_theme_stylebox_override("panel", style)
+	$Root/CurrencyPanel.add_theme_stylebox_override("panel", style)
+	$Root/PauseHintPanel.add_theme_stylebox_override("panel", style)
+	$Root/WaveCountdownPanel.add_theme_stylebox_override("panel", style)
+	$Root/WaveBannerPanel.add_theme_stylebox_override("panel", style)
 
 
 ## [自定义] 返回 HUD 用 Panel 的 StyleBox（圆角边框+半透明背景），供 TopRow、金币等复用。
@@ -167,46 +153,7 @@ func _make_magic_slot_style(is_current: bool) -> StyleBoxFlat:
 	return style
 
 
-## [自定义] 将 lbl 重父到新 PanelContainer，并设置 offset 与 min_size，应用 HUD 面板样式。
-func _wrap_label_in_panel(lbl: Label, pos: Vector2, min_size: Vector2) -> void:
-	if lbl == null:
-		return
-	var parent := lbl.get_parent()
-	var idx := lbl.get_index()
-	var panel := PanelContainer.new()
-	panel.offset_left = pos.x
-	panel.offset_top = pos.y
-	panel.offset_right = pos.x + min_size.x
-	panel.offset_bottom = pos.y + min_size.y
-	panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
-	lbl.reparent(panel)  # 重父到新 Panel，不可用 reparent(null)
-	parent.add_child(panel)
-	parent.move_child(panel, idx)
-
-
-## [自定义] 将使用锚点的 lbl 重父到新 PanelContainer，复制其锚点与 offset，应用 HUD 面板样式。
-func _wrap_anchored_label_in_panel(lbl: Label) -> void:
-	if lbl == null:
-		return
-	var parent := lbl.get_parent()
-	var idx := lbl.get_index()
-	var panel := PanelContainer.new()
-	panel.anchors_preset = lbl.anchors_preset
-	panel.anchor_left = lbl.anchor_left
-	panel.anchor_right = lbl.anchor_right
-	panel.anchor_top = lbl.anchor_top
-	panel.anchor_bottom = lbl.anchor_bottom
-	panel.offset_left = lbl.offset_left
-	panel.offset_right = lbl.offset_right
-	panel.offset_top = lbl.offset_top
-	panel.offset_bottom = lbl.offset_bottom
-	panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
-	lbl.reparent(panel)  # 重父到新 Panel，不可用 reparent(null)
-	parent.add_child(panel)
-	parent.move_child(panel, idx)
-
-
-## [自定义] 为顶部各 Label 与运行时创建的金币/波次倒计时标签统一设置 HUD_FONT_SIZE。
+## [自定义] 为顶部各 Label 与金币/波次倒计时标签统一设置 HUD_FONT_SIZE。
 func _apply_hud_font_sizes() -> void:
 	for lbl in [health_label, mana_label, wave_label, kill_label, timer_label, pause_hint]:
 		if lbl is Label:
@@ -215,6 +162,66 @@ func _apply_hud_font_sizes() -> void:
 		_currency_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
 	if _wave_countdown_label:
 		_wave_countdown_label.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
+
+
+## [自定义] 应用运行时样式（遮罩色、面板样式）、组装升级/武器按钮与魔法槽数组、创建并加入背包面板、连接升级/武器按钮信号。
+func _apply_runtime_styles_and_refs() -> void:
+	var root := $Root
+	var backdrop_color: Color = _get_ui_theme().modal_backdrop
+	backdrop_color.a = 1.0
+	_modal_backdrop.color = backdrop_color
+	_magic_panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
+	_apply_modal_panel_style(_upgrade_panel)
+	_add_opaque_backdrop_to_panel(_upgrade_panel)
+	_apply_modal_panel_style(_weapon_panel)
+	_add_opaque_backdrop_to_panel(_weapon_panel)
+	# 升级：四个卡片按钮与图标
+	for i in range(4):
+		var card := root.get_node("UpgradePanel/UpgradeMargin/CenterContainer/VBox/UpgradeRow/Card%d" % i)
+		_upgrade_icons.append(card.get_node("UpgradeIcon%d" % i))
+		var btn: Button = card.get_node("UpgradeBtn%d" % i)
+		btn.pressed.connect(_on_upgrade_button_pressed.bind(btn))
+		_upgrade_buttons.append(btn)
+	_upgrade_refresh_btn.pressed.connect(func() -> void: emit_signal("upgrade_refresh_requested"))
+	var skip_btn: Button = root.get_node("UpgradePanel/UpgradeMargin/CenterContainer/VBox/BtnRow/SkipBtn")
+	skip_btn.pressed.connect(func() -> void: emit_signal("upgrade_selected", "skip"))
+	# 武器：四个选项按钮与图标
+	for i in range(4):
+		var card := root.get_node("WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/WeaponRow/WeaponCard%d" % i)
+		_weapon_icons.append(card.get_node("WeaponIcon%d" % i))
+		var wbtn: Button = card.get_node("WeaponBtn%d" % i)
+		wbtn.pressed.connect(_on_weapon_button_pressed.bind(wbtn))
+		_weapon_buttons.append(wbtn)
+	_shop_refresh_btn.pressed.connect(func() -> void: emit_signal("weapon_shop_refresh_requested"))
+	_shop_next_btn.pressed.connect(func() -> void: emit_signal("weapon_shop_closed"))
+	_shop_tab_container.set_tab_title(0, LocalizationManager.tr_key("shop.tab_shop"))
+	_shop_tab_container.set_tab_title(1, LocalizationManager.tr_key("shop.tab_backpack"))
+	_shop_tab_container.set_tab_title(2, LocalizationManager.tr_key("shop.tab_stats"))
+	# 魔法槽：从场景 Slot0/1/2 组装 _magic_slots
+	for i in range(3):
+		var slot := _magic_panel.get_node("MagicRow/Slot%d" % i)
+		var vbox: VBoxContainer = slot.get_node("VBox")
+		var icon_container: Control = vbox.get_node("IconContainer")
+		_magic_slots.append({
+			"panel": slot,
+			"icon": icon_container.get_node("Icon"),
+			"cd_overlay": icon_container.get_node("CdOverlay"),
+			"name_label": vbox.get_node("NameLabel"),
+			"affix_label": vbox.get_node("AffixLabel")
+		})
+	# 背包 Tab：运行时加入 BackpackPanel 场景实例
+	var backpack_scroll: ScrollContainer = root.get_node("WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/BackpackScroll")
+	var packed: PackedScene = load("res://scenes/ui/backpack_panel.tscn") as PackedScene
+	_shop_backpack_panel = packed.instantiate()
+	if _shop_backpack_panel == null:
+		push_error("HUD: 无法实例化 backpack_panel.tscn")
+		return
+	_shop_backpack_panel.name = "ShopBackpackPanel"
+	_shop_backpack_panel.add_theme_constant_override("separation", 12)
+	_shop_backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_shop_backpack_panel.sell_requested.connect(_on_shop_backpack_sell_requested)
+	_shop_backpack_panel.merge_completed.connect(_on_shop_backpack_merge_completed)
+	backpack_scroll.add_child(_shop_backpack_panel)
 
 
 ## [自定义] 设置血量显示。脏检查：值未变则跳过；否则更新进度条与分段颜色（绿/橘黄/红）及 "当前/最大" 文本。
@@ -616,365 +623,25 @@ func _update_shop_stats_tab(stats: Dictionary) -> void:
 	_shop_stats_container.add_child(block)
 
 
-## [自定义] 运行时构建 UI：全屏遮罩、金币标签、波次倒计时/横幅、魔法面板、升级四选一面板、武器商店面板（含 Tab 与下一波按钮）。
-func _build_runtime_ui() -> void:
-	var root := $Root
-	_modal_backdrop = ColorRect.new()
-	_modal_backdrop.anchors_preset = Control.PRESET_FULL_RECT
-	var backdrop_color: Color = _get_ui_theme().modal_backdrop
-	backdrop_color.a = 1.0  # 强制不透明，避免半透明穿透
-	_modal_backdrop.color = backdrop_color
-	_modal_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	root.add_child(_modal_backdrop)
-	# 置于最底层，避免遮挡结算/升级/商店等面板的按钮
-	root.move_child(_modal_backdrop, 0)
-	_currency_label = Label.new()
-	_currency_label.position = Vector2(900, 12)
-	root.add_child(_currency_label)
-
-	_wave_countdown_label = Label.new()
-	_wave_countdown_label.anchors_preset = Control.PRESET_TOP_WIDE
-	_wave_countdown_label.anchor_left = 0.5
-	_wave_countdown_label.anchor_right = 0.5
-	_wave_countdown_label.offset_left = -60
-	_wave_countdown_label.offset_right = 60
-	_wave_countdown_label.offset_top = 14
-	_wave_countdown_label.offset_bottom = 36
-	_wave_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_wave_countdown_label.text = ""
-	_wave_countdown_label.visible = false
-	_apply_wave_label_effects(_wave_countdown_label)
-	root.add_child(_wave_countdown_label)
-
-	_wave_banner = Label.new()
-	_wave_banner.anchors_preset = Control.PRESET_CENTER_TOP
-	_wave_banner.anchor_left = 0.5
-	_wave_banner.anchor_right = 0.5
-	_wave_banner.offset_left = -90
-	_wave_banner.offset_right = 90
-	_wave_banner.offset_top = 80
-	_wave_banner.offset_bottom = 120
-	_wave_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_wave_banner.text = "WAVE 1"
-	_apply_wave_label_effects(_wave_banner)
-	root.add_child(_wave_banner)
-
-	# 魔法面板：左下角，横向排列最多 3 个魔法槽
-	_magic_panel = PanelContainer.new()
-	_magic_panel.anchors_preset = Control.PRESET_BOTTOM_LEFT
-	_magic_panel.anchor_left = 0.0
-	_magic_panel.anchor_top = 1.0
-	_magic_panel.anchor_right = 0.0
-	_magic_panel.anchor_bottom = 1.0
-	_magic_panel.offset_left = 12
-	_magic_panel.offset_top = -(MAGIC_SLOT_SIZE + MAGIC_SLOT_EXTRA_HEIGHT) - 24
-	_magic_panel.offset_right = 12 + (MAGIC_SLOT_SIZE + 8) * 3 + 16
-	_magic_panel.offset_bottom = -12
-	_magic_panel.add_theme_stylebox_override("panel", _make_hud_panel_style())
-	root.add_child(_magic_panel)
-	var magic_row := HBoxContainer.new()
-	magic_row.add_theme_constant_override("separation", 8)
-	_magic_panel.add_child(magic_row)
-	for i in range(3):
-		var slot_panel := Panel.new()
-		slot_panel.custom_minimum_size = Vector2(MAGIC_SLOT_SIZE + 8, MAGIC_SLOT_SIZE + MAGIC_SLOT_EXTRA_HEIGHT)
-		slot_panel.add_theme_stylebox_override("panel", _make_magic_slot_style(false))
-		magic_row.add_child(slot_panel)
-		var vbox := VBoxContainer.new()
-		vbox.add_theme_constant_override("separation", 2)
-		slot_panel.add_child(vbox)
-		var icon_container := Control.new()
-		icon_container.custom_minimum_size = Vector2(MAGIC_SLOT_SIZE, MAGIC_SLOT_SIZE)
-		vbox.add_child(icon_container)
-		var icon := TextureRect.new()
-		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-		icon.offset_left = 4
-		icon.offset_top = 4
-		icon.offset_right = -4
-		icon.offset_bottom = -4
-		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon_container.add_child(icon)
-		var cd_overlay := ColorRect.new()
-		cd_overlay.anchor_left = 0.0
-		cd_overlay.anchor_right = 1.0
-		cd_overlay.anchor_top = 0.0
-		cd_overlay.anchor_bottom = 0.0
-		cd_overlay.offset_left = 4
-		cd_overlay.offset_top = 4
-		cd_overlay.offset_right = -4
-		cd_overlay.offset_bottom = 4
-		cd_overlay.color = Color(0, 0, 0, 0.6)
-		cd_overlay.visible = false
-		icon_container.add_child(cd_overlay)
-		var name_label := Label.new()
-		name_label.add_theme_font_size_override("font_size", 12)
-		name_label.clip_text = true
-		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		vbox.add_child(name_label)
-		var affix_label := Label.new()
-		affix_label.add_theme_font_size_override("font_size", 10)
-		affix_label.add_theme_color_override("font_color", Color(0.75, 0.8, 0.85))
-		affix_label.clip_text = true
-		affix_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		vbox.add_child(affix_label)
-		_magic_slots.append({"panel": slot_panel, "icon": icon, "cd_overlay": cd_overlay, "name_label": name_label, "affix_label": affix_label})
-	_magic_panel.visible = false
-
-	_upgrade_panel = Panel.new()
-	_upgrade_panel.anchors_preset = Control.PRESET_FULL_RECT
-	_upgrade_panel.offset_left = 0
-	_upgrade_panel.offset_top = 0
-	_upgrade_panel.offset_right = 0
-	_upgrade_panel.offset_bottom = 0
-	_upgrade_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_apply_modal_panel_style(_upgrade_panel)
-	root.add_child(_upgrade_panel)
-
-	_add_opaque_backdrop_to_panel(_upgrade_panel)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 0)
-	margin.add_theme_constant_override("margin_top", 0)
-	margin.add_theme_constant_override("margin_right", 0)
-	margin.add_theme_constant_override("margin_bottom", 0)
-	_upgrade_panel.add_child(margin)
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(center)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 14)
-	center.add_child(box)
-
-	var title := Label.new()
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.text = "Choose Upgrade"
-	title.add_theme_font_size_override("font_size", 22)
-	box.add_child(title)
-	_upgrade_title_label = title
-	var tip := Label.new()
-	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tip.text = ""
-	tip.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
-	box.add_child(tip)
-	_upgrade_tip_label = tip
-
-	var upgrade_row := HBoxContainer.new()
-	upgrade_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	upgrade_row.add_theme_constant_override("separation", 24)
-	box.add_child(upgrade_row)
-
-	for i in range(4):
-		var card := VBoxContainer.new()
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.custom_minimum_size = Vector2(160, 200)
-		card.add_theme_constant_override("separation", 8)
-		upgrade_row.add_child(card)
-		var icon := TextureRect.new()
-		icon.custom_minimum_size = Vector2(64, 64)
-		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		card.add_child(icon)
-		_upgrade_icons.append(icon)
-		var btn := Button.new()
-		btn.text = "Upgrade"
-		btn.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
-		btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		btn.custom_minimum_size = Vector2(0, 120)
-		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		btn.pressed.connect(_on_upgrade_button_pressed.bind(btn))
-		card.add_child(btn)
-		_upgrade_buttons.append(btn)
-
-	var btn_row := HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 12)
-	var refresh_btn := Button.new()
-	refresh_btn.text = "Refresh"
-	refresh_btn.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
-	refresh_btn.custom_minimum_size = Vector2(100, 40)
-	refresh_btn.pressed.connect(func() -> void: emit_signal("upgrade_refresh_requested"))
-	btn_row.add_child(refresh_btn)
-	_upgrade_refresh_btn = refresh_btn
-	var skip_btn := Button.new()
-	skip_btn.text = "Skip"
-	skip_btn.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
-	skip_btn.custom_minimum_size = Vector2(100, 40)
-	skip_btn.pressed.connect(func() -> void: emit_signal("upgrade_selected", "skip"))
-	btn_row.add_child(skip_btn)
-	box.add_child(btn_row)
-
-	_weapon_panel = Panel.new()
-	_weapon_panel.anchors_preset = Control.PRESET_FULL_RECT
-	_weapon_panel.offset_left = 0
-	_weapon_panel.offset_top = 0
-	_weapon_panel.offset_right = 0
-	_weapon_panel.offset_bottom = 0
-	_weapon_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_apply_modal_panel_style(_weapon_panel)
-	root.add_child(_weapon_panel)
-
-	_add_opaque_backdrop_to_panel(_weapon_panel)
-
-	var weapon_margin := MarginContainer.new()
-	weapon_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	weapon_margin.add_theme_constant_override("margin_left", 0)
-	weapon_margin.add_theme_constant_override("margin_top", 0)
-	weapon_margin.add_theme_constant_override("margin_right", 0)
-	weapon_margin.add_theme_constant_override("margin_bottom", 0)
-	_weapon_panel.add_child(weapon_margin)
-	var shop_center := CenterContainer.new()
-	shop_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shop_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	weapon_margin.add_child(shop_center)
-	var main_vbox := VBoxContainer.new()
-	main_vbox.add_theme_constant_override("separation", 12)
-	main_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var viewport_size := get_viewport().get_visible_rect().size
-	main_vbox.custom_minimum_size = viewport_size * 0.7  # 设计 1280×720 下约 896×504
-	shop_center.add_child(main_vbox)
-
-	# TabContainer：商店 / 背包 / 角色信息，Tab 置于顶部
-	_shop_tab_container = TabContainer.new()
-	_shop_tab_container.tabs_position = TabContainer.TabPosition.POSITION_TOP
-	_shop_tab_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_shop_tab_container.custom_minimum_size = Vector2(896, 400)  # 与 main_vbox 70% 一致，保证 Tab 内容区可见
-	_shop_tab_container.add_theme_font_size_override("font_size", 20)  # Tab 标签字体放大
-	_shop_tab_container.add_theme_constant_override("side_margin", 16)  # Tab 内容区左右间距
-	_shop_tab_container.add_theme_constant_override("top_margin", 16)  # Tab 内容区顶部间距
-	main_vbox.add_child(_shop_tab_container)
-
-	# Tab 0 - 商店：武器选项 + 刷新按钮
-	var shop_tab := VBoxContainer.new()
-	shop_tab.add_theme_constant_override("separation", 14)
-	var weapon_center := CenterContainer.new()
-	weapon_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	weapon_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	shop_tab.add_child(weapon_center)
-	var weapon_box := VBoxContainer.new()
-	weapon_box.add_theme_constant_override("separation", 14)
-	weapon_center.add_child(weapon_box)
-
-	var weapon_title := Label.new()
-	weapon_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	weapon_title.text = "Weapon"
-	weapon_title.add_theme_font_size_override("font_size", 22)
-	weapon_box.add_child(weapon_title)
-	_weapon_title_label = weapon_title
-
-	var weapon_tip := Label.new()
-	weapon_tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT  # 描述左对齐，首行缩进由文案前空格实现
-	weapon_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	weapon_tip.text = ""
-	weapon_tip.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
-	weapon_box.add_child(weapon_tip)
-	_weapon_tip_label = weapon_tip
-
-	var weapon_row := HBoxContainer.new()
-	weapon_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	weapon_row.add_theme_constant_override("separation", 24)
-	weapon_box.add_child(weapon_row)
-
-	for i in range(4):
-		var weapon_card := VBoxContainer.new()
-		weapon_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		weapon_card.custom_minimum_size = Vector2(180, 240)
-		weapon_card.add_theme_constant_override("separation", 8)
-		weapon_row.add_child(weapon_card)
-		var weapon_icon := TextureRect.new()
-		weapon_icon.custom_minimum_size = Vector2(96, 96)
-		weapon_icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-		weapon_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		weapon_card.add_child(weapon_icon)
-		_weapon_icons.append(weapon_icon)
-		var weapon_btn := Button.new()
-		weapon_btn.text = "WeaponOption"
-		weapon_btn.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
-		weapon_btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		weapon_btn.custom_minimum_size = Vector2(0, 160)
-		weapon_btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		weapon_btn.pressed.connect(_on_weapon_button_pressed.bind(weapon_btn))
-		weapon_card.add_child(weapon_btn)
-		_weapon_buttons.append(weapon_btn)
-
-	var shop_refresh := Button.new()
-	shop_refresh.pressed.connect(func() -> void: emit_signal("weapon_shop_refresh_requested"))
-	weapon_box.add_child(shop_refresh)
-	_shop_refresh_btn = shop_refresh
-
-	# Tab 1 - 背包：内嵌 BackpackPanel，shop_context=true 时显示售卖/合并
-	var backpack_scroll := ScrollContainer.new()
-	backpack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	backpack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_shop_backpack_panel = (load("res://scripts/ui/backpack_panel.gd") as GDScript).new()
-	_shop_backpack_panel.name = "ShopBackpackPanel"
-	_shop_backpack_panel.add_theme_constant_override("separation", 12)
-	_shop_backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_shop_backpack_panel.sell_requested.connect(_on_shop_backpack_sell_requested)
-	_shop_backpack_panel.merge_completed.connect(_on_shop_backpack_merge_completed)
-	backpack_scroll.add_child(_shop_backpack_panel)
-
-	# Tab 2 - 角色信息
-	var stats_scroll := ScrollContainer.new()
-	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_shop_stats_container = VBoxContainer.new()
-	_shop_stats_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stats_scroll.add_child(_shop_stats_container)
-
-	_shop_tab_container.add_child(shop_tab)
-	_shop_tab_container.add_child(backpack_scroll)
-	_shop_tab_container.add_child(stats_scroll)
-	_shop_tab_container.set_tab_title(0, LocalizationManager.tr_key("shop.tab_shop"))
-	_shop_tab_container.set_tab_title(1, LocalizationManager.tr_key("shop.tab_backpack"))
-	_shop_tab_container.set_tab_title(2, LocalizationManager.tr_key("shop.tab_stats"))
-
-	# 下一波按钮，始终在底部
-	var shop_next := Button.new()
-	shop_next.pressed.connect(func() -> void: emit_signal("weapon_shop_closed"))
-	main_vbox.add_child(shop_next)
-	_shop_next_btn = shop_next
-
-
-## [自定义] 触控设备下在 _touch_panel 中创建 L/R/U/D 移动键，在 Root 下创建暂停键；移动键按下/抬起更新 _move_state 并发射 mobile_move_changed。
+## [自定义] 触控设备下显示 TouchPanel 与 PauseTouchBtn 并连接信号；非触控时保持隐藏。
 func _setup_touch_controls() -> void:
 	if not DisplayServer.is_touchscreen_available():
 		return
-	var root := $Root
-	_touch_panel = Control.new()
-	_touch_panel.anchors_preset = Control.PRESET_FULL_RECT
-	# 仅作为触控按钮容器，不能吞掉整个 HUD 的鼠标事件。
-	_touch_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(_touch_panel)
-
-	var mk_button := func(txt: String, pos: Vector2, key: String) -> void:
-		var b := Button.new()
-		b.text = txt
-		b.position = pos
-		b.custom_minimum_size = Vector2(52, 52)
-		b.pressed.connect(func() -> void:
-			_move_state[key] = true
-			_emit_mobile_move()
-		)
-		b.released.connect(func() -> void:
-			_move_state[key] = false
-			_emit_mobile_move()
-		)
-		_touch_panel.add_child(b)
-
-	mk_button.call("L", Vector2(70, 620), "left")
-	mk_button.call("R", Vector2(170, 620), "right")
-	mk_button.call("U", Vector2(120, 570), "up")
-	mk_button.call("D", Vector2(120, 670), "down")
-
-	var pause_btn := Button.new()
-	pause_btn.text = "Pause"
-	pause_btn.position = Vector2(1120, 620)
-	pause_btn.pressed.connect(func() -> void: emit_signal("pause_pressed"))
-	root.add_child(pause_btn)
-	_pause_touch_btn = pause_btn
+	_touch_panel.visible = true
+	_pause_touch_btn.visible = true
+	_pause_touch_btn.pressed.connect(func() -> void: emit_signal("pause_pressed"))
+	var btn_left: Button = _touch_panel.get_node("BtnLeft")
+	var btn_right: Button = _touch_panel.get_node("BtnRight")
+	var btn_up: Button = _touch_panel.get_node("BtnUp")
+	var btn_down: Button = _touch_panel.get_node("BtnDown")
+	btn_left.pressed.connect(func() -> void: _move_state["left"] = true; _emit_mobile_move())
+	btn_left.released.connect(func() -> void: _move_state["left"] = false; _emit_mobile_move())
+	btn_right.pressed.connect(func() -> void: _move_state["right"] = true; _emit_mobile_move())
+	btn_right.released.connect(func() -> void: _move_state["right"] = false; _emit_mobile_move())
+	btn_up.pressed.connect(func() -> void: _move_state["up"] = true; _emit_mobile_move())
+	btn_up.released.connect(func() -> void: _move_state["up"] = false; _emit_mobile_move())
+	btn_down.pressed.connect(func() -> void: _move_state["down"] = true; _emit_mobile_move())
+	btn_down.released.connect(func() -> void: _move_state["down"] = false; _emit_mobile_move())
 
 
 ## [自定义] 根据 _move_state 合成归一化方向向量并发射 mobile_move_changed。

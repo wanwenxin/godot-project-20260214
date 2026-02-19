@@ -16,31 +16,22 @@ signal telegraph_finished
 
 var _remaining := 0.0
 var _finished := false
-var _ring: Line2D
-var _label: Label
+@onready var _ring: Line2D = $Ring
+@onready var _label: Label = $CountdownLabel
 
 
 func _ready() -> void:
 	_remaining = maxf(0.05, duration)
-	_ring = Line2D.new()
+	_ring.closed = true
 	_ring.width = 2.5
 	_ring.default_color = ring_color
-	_ring.closed = true
-	_ring.z_index = 30
 	_ring.visible = show_ring
 	_build_ring_points()
-	add_child(_ring)
-
-	_label = Label.new()
 	_label.text = ""
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_label.size = Vector2(52, 32)
-	_label.position = Vector2(-26, -16)
 	_label.modulate = text_color
-	_label.z_index = 31
 	_label.visible = show_countdown
-	add_child(_label)
 
 
 func _process(delta: float) -> void:

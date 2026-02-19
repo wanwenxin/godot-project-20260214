@@ -72,8 +72,7 @@ func _ready() -> void:
 	collision_layer = 2
 	collision_mask = 1 | 8
 	current_health = max_health
-	_create_health_bar()
-	_create_element_icons_container()
+	_init_health_ui()
 	_refresh_health_bar()
 	set_healthbar_visible(GameManager.enemy_healthbar_visible)
 	if hurt_area:
@@ -453,28 +452,16 @@ func set_healthbar_visible(value: bool) -> void:
 		_element_icons_container.visible = value
 
 
-func _create_health_bar() -> void:
-	_health_bar = ProgressBar.new()
-	_health_bar.min_value = 0.0
-	_health_bar.max_value = float(max_health)
-	_health_bar.value = float(current_health)
-	_health_bar.show_percentage = false
+## [自定义] 实例化敌人血条预制（ProgressBar + 元素图标 HBox），设置 position/scale，供 _refresh_health_bar / _refresh_element_icons 使用。
+func _init_health_ui() -> void:
+	var health_ui: Node2D = (preload("res://scenes/ui/enemy_health_ui.tscn") as PackedScene).instantiate()
+	health_ui.position = Vector2(-18.0, -38.0)
+	add_child(health_ui)
+	_health_bar = health_ui.get_node("ProgressBar") as ProgressBar
 	_health_bar.custom_minimum_size = Vector2(36.0, 6.0)
-	_health_bar.position = Vector2(-18.0, -30.0)
-	_health_bar.z_index = 20
-	add_child(_health_bar)
-
-
-## [自定义] 在血条上方创建横向排布的元素图标容器；无附着时隐藏，有附着时显示小图标，不足 5 点由 _update_element_icons_blink 闪烁。
-func _create_element_icons_container() -> void:
-	_element_icons_container = HBoxContainer.new()
-	_element_icons_container.position = Vector2(-18.0, -38.0)
-	_element_icons_container.custom_minimum_size = Vector2(36.0, 5.0)
+	_element_icons_container = health_ui.get_node("ElementIconsContainer") as HBoxContainer
 	_element_icons_container.scale = Vector2(GameConstants.ELEMENT_ICONS_SCALE, GameConstants.ELEMENT_ICONS_SCALE)
-	_element_icons_container.z_index = 20
-	_element_icons_container.add_theme_constant_override("separation", 1)
 	_element_icons_container.visible = false
-	add_child(_element_icons_container)
 
 
 ## [自定义] 根据元素类型返回小图标纹理；有图用资源，无图用纯色占位。

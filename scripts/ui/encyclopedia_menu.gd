@@ -5,6 +5,7 @@ extends Control
 
 signal closed
 
+@onready var _fullscreen_backdrop: ColorRect = $FullscreenBackdrop
 @onready var _panel: Panel = $Panel
 @onready var _title_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Title
 @onready var _tabs: TabContainer = $Panel/OuterMargin/CenterContainer/VBox/Tabs
@@ -24,7 +25,7 @@ const TEXT_MIN_WIDTH := 400
 func _ready() -> void:
 	visible = false
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	_ensure_fullscreen_backdrop()
+	_fullscreen_backdrop.color = UiThemeConfig.load_theme().modal_backdrop
 	_apply_panel_style()
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_close_button.pressed.connect(_on_close_pressed)
@@ -40,16 +41,6 @@ func open_menu() -> void:
 	if get_parent():
 		get_parent().move_child(self, get_parent().get_child_count() - 1)
 	visible = true
-
-
-func _ensure_fullscreen_backdrop() -> void:
-	var backdrop := ColorRect.new()
-	backdrop.name = "FullscreenBackdrop"
-	backdrop.anchors_preset = Control.PRESET_FULL_RECT
-	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	backdrop.color = UiThemeConfig.load_theme().modal_backdrop
-	add_child(backdrop)
-	move_child(backdrop, 0)
 
 
 func _apply_panel_style() -> void:
