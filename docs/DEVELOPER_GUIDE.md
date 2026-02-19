@@ -330,7 +330,7 @@
   - 属性 Tab 仅显示角色属性；死亡/通关界面仍显示完整信息（武器、道具、词条、魔法）
 
 - `scripts/ui/backpack_panel.gd`
-  - 背包面板：根为 HBoxContainer，双独立面板：ContentPanel（背包内容：武器/魔法/道具网格）+ DetailPanel（物品详情，min 280px），均填满可用空间
+  - 背包面板：根为 HBoxContainer，双独立面板：ContentPanel（ContentScroll 包裹 LeftVBox，武器/魔法/道具网格可滚动）+ DetailPanel（DetailScroll 包裹 DetailContent，物品详情可滚动，min 280px），均填满可用空间
   - `set_stats(stats)`：根据 `weapon_details`、`magic_details`、`item_ids` 构建三区；脏检查：stats 哈希未变且 shop_context 未变时跳过重建
   - 槽位 StyleBox 复用：`_get_slot_style()` 缓存单例，减少对象分配
   - 图标加载走 `VisualAssetRegistry.get_texture_cached`，缺失时用 `make_color_texture` 生成占位图
@@ -467,6 +467,10 @@ flowchart TD
 **颜色**
 - `modal_backdrop`、`modal_panel_bg`、`modal_panel_border`：模态背景、面板背景、边框
 - `content_panel_bg`、`detail_panel_bg`：背包 ContentPanel/DetailPanel 背景色（略深/略浅区分）
+
+**面板样式**
+- `get_panel_stylebox_for_bg(bg_color)`：带边框的面板样式
+- `get_panel_stylebox_borderless(bg_color)`：无可见边框的面板样式，供背包等去除白边使用
 
 **边距与间距**
 - `margin_default`、`margin_small`、`margin_tight`：常用边距（默认 32/24/16）
@@ -859,7 +863,7 @@ ObjectPool.recycle_enemy(enemy)
 - ScrollContainer 显式 `vertical_scroll_mode = 1`（SCROLL_MODE_AUTO）按需显示
 
 **视觉层次**
-- ContentPanel/DetailPanel 使用 `get_panel_stylebox_for_bg()` 区分背景色，中间 VSeparator 强化分区
+- ContentPanel/DetailPanel 使用 `get_panel_stylebox_borderless()` 无边框样式区分背景色，中间 VSeparator 强化分区
 
 **可访问性**
 - 暂停、设置、结算等关键按钮设置 `focus_neighbor_*` 支持键盘/手柄导航

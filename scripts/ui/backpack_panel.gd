@@ -8,13 +8,13 @@ signal merge_completed  # 合并成功后发出，供商店覆盖层刷新
 const BASE_FONT_SIZE := 18
 const SEP := "────"  # 分割线，无空行
 
-@onready var _weapon_grid: HFlowContainer = $ContentPanel/ContentMargin/LeftVBox/WeaponGrid
-@onready var _magic_grid: HFlowContainer = $ContentPanel/ContentMargin/LeftVBox/MagicGrid
-@onready var _item_grid: HFlowContainer = $ContentPanel/ContentMargin/LeftVBox/ItemGrid
-@onready var _cancel_btn: Button = $ContentPanel/ContentMargin/LeftVBox/WeaponHeader/CancelButton
-@onready var _weapon_label: Label = $ContentPanel/ContentMargin/LeftVBox/WeaponHeader/WeaponLabel
-@onready var _magic_label: Label = $ContentPanel/ContentMargin/LeftVBox/MagicLabel
-@onready var _item_label: Label = $ContentPanel/ContentMargin/LeftVBox/ItemLabel
+@onready var _weapon_grid: HFlowContainer = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponGrid
+@onready var _magic_grid: HFlowContainer = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/MagicGrid
+@onready var _item_grid: HFlowContainer = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/ItemGrid
+@onready var _cancel_btn: Button = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponHeader/CancelButton
+@onready var _weapon_label: Label = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponHeader/WeaponLabel
+@onready var _magic_label: Label = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/MagicLabel
+@onready var _item_label: Label = $ContentPanel/ContentMargin/ContentScroll/LeftVBox/ItemLabel
 @onready var _detail_content: VBoxContainer = $DetailPanel/DetailMargin/DetailScroll/DetailContent
 
 var _selected_slot: Dictionary = {}  # 点击选中的槽位 {type, index, tip_data}，非空时优先显示
@@ -30,11 +30,11 @@ var _swap_slot_type: String = ""
 var _swap_panel_ref: PanelContainer = null  # 当前选中槽位的父 Panel，用于绿色描边
 
 
-## [系统] 应用 ContentPanel/DetailPanel 背景区分样式，强化视觉层次。
+## [系统] 应用 ContentPanel/DetailPanel 背景区分样式（无边框，去除白边）。
 func _ready() -> void:
 	var theme_cfg := UiThemeConfig.load_theme()
-	$ContentPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_for_bg(theme_cfg.content_panel_bg))
-	$DetailPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_for_bg(theme_cfg.detail_panel_bg))
+	$ContentPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_borderless(theme_cfg.content_panel_bg))
+	$DetailPanel.add_theme_stylebox_override("panel", theme_cfg.get_panel_stylebox_borderless(theme_cfg.detail_panel_bg))
 
 
 ## [系统] 右键取消交换模式。

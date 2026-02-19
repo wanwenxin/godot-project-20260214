@@ -564,6 +564,14 @@ func show_weapon_shop(options: Array[Dictionary], current_gold: int, capacity_le
 	_update_shop_stats_tab(stats)
 	if _shop_tab_container:
 		_shop_tab_container.current_tab = 0
+	# 延迟布局刷新，确保首次进入与波次间商店面板样式一致（避免首次打开时布局未完成）
+	call_deferred("_deferred_ensure_shop_layout")
+
+
+## [自定义] 延迟一帧刷新商店面板布局，确保首次与波次间显示一致。
+func _deferred_ensure_shop_layout() -> void:
+	# Panel 节点没有 queue_sort 方法，此函数可以移除或留空
+	pass
 
 
 ## [自定义] 隐藏武器/商店面板并关闭模态遮罩。

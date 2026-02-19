@@ -630,13 +630,14 @@ theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 0
 theme_override_constants/margin_bottom = 0
 
-[node name="ShopCenter" type="CenterContainer" parent="Root/WeaponPanel/WeaponMargin" unique_id=502175882]
+[node name="ShopCenter" type="MarginContainer" parent="Root/WeaponPanel/WeaponMargin" unique_id=502175882]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="MainVbox" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter" unique_id=1274001112]
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 

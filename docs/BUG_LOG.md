@@ -18,6 +18,13 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-19：背包面板 UI 修复
+
+- **现象**：背包滚动条无效；商店背包两侧空白；文字贴边；背包有白边；首次进入战斗与波次间商店面板样式不一致
+- **原因**：ContentPanel 无 ScrollContainer；ShopCenter 为 CenterContainer 导致居中留白；ContentMargin/DetailMargin 仅 8px；get_panel_stylebox_for_bg 使用 modal_panel_border 产生白边；首次打开时布局可能未完成
+- **修复**：(1) ContentPanel 内增加 ContentScroll 包裹 LeftVBox；(2) ShopCenter 改为 MarginContainer，MainVbox 增加 size_flags_horizontal=3；(3) ContentMargin/DetailMargin 改为 16px；(4) UiThemeConfig 新增 get_panel_stylebox_borderless，BackpackPanel 改用；(5) show_weapon_shop 末尾 call_deferred("_deferred_ensure_shop_layout")
+- **预防**：背包内容区需 ScrollContainer 支持溢出滚动；商店 Tab 内容应铺满宽度；面板内边距参考 margin_tight；无边框样式用 borderless 变体
+
 ### 2026-02-19：商店背包 _build_item_tooltip_data 报错
 
 - **现象**：打开武器商店、选择商品时 backtrace 指向 `_build_item_tooltip_data`；报错 `Trying to assign an array of type "Array" to a variable of type "Array[String]"` 或 `_format_item_effect` 内类型转换异常

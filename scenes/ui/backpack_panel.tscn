@@ -14,65 +14,70 @@ size_flags_horizontal = 3
 
 [node name="ContentMargin" type="MarginContainer" parent="ContentPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_bottom = 16
 
-[node name="LeftVBox" type="VBoxContainer" parent="ContentPanel/ContentMargin"]
+[node name="ContentScroll" type="ScrollContainer" parent="ContentPanel/ContentMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+vertical_scroll_mode = 1
+
+[node name="LeftVBox" type="VBoxContainer" parent="ContentPanel/ContentMargin/ContentScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
-[node name="WeaponSep" type="HSeparator" parent="ContentPanel/ContentMargin/LeftVBox"]
+[node name="WeaponSep" type="HSeparator" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 
-[node name="WeaponHeader" type="HBoxContainer" parent="ContentPanel/ContentMargin/LeftVBox"]
+[node name="WeaponHeader" type="HBoxContainer" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="WeaponLabel" type="Label" parent="ContentPanel/ContentMargin/LeftVBox/WeaponHeader"]
+[node name="WeaponLabel" type="Label" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponHeader"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
 theme_override_font_sizes/font_size = 18
 text = "Weapons"
 
-[node name="CancelButton" type="Button" parent="ContentPanel/ContentMargin/LeftVBox/WeaponHeader"]
+[node name="CancelButton" type="Button" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox/WeaponHeader"]
 visible = false
 layout_mode = 2
 text = "Cancel"
 
-[node name="WeaponGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/LeftVBox"]
+[node name="WeaponGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
 
-[node name="MagicSep" type="HSeparator" parent="ContentPanel/ContentMargin/LeftVBox"]
+[node name="MagicSep" type="HSeparator" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 
-[node name="MagicLabel" type="Label" parent="ContentPanel/ContentMargin/LeftVBox"]
+[node name="MagicLabel" type="Label" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
 theme_override_font_sizes/font_size = 18
 text = "Magics"
 
-[node name="MagicGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/LeftVBox"]
+[node name="MagicGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
 
-[node name="ItemSep" type="HSeparator" parent="ContentPanel/ContentMargin/LeftVBox"]
+[node name="ItemSep" type="HSeparator" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 
-[node name="ItemLabel" type="Label" parent="ContentPanel/ContentMargin/LeftVBox"]
+[node name="ItemLabel" type="Label" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.92, 0.95, 1)
 theme_override_font_sizes/font_size = 18
 text = "Items"
 
-[node name="ItemGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/LeftVBox"]
+[node name="ItemGrid" type="HFlowContainer" parent="ContentPanel/ContentMargin/ContentScroll/LeftVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
@@ -88,10 +93,10 @@ size_flags_horizontal = 3
 
 [node name="DetailMargin" type="MarginContainer" parent="DetailPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_bottom = 16
 
 [node name="DetailScroll" type="ScrollContainer" parent="DetailPanel/DetailMargin"]
 layout_mode = 2

@@ -77,3 +77,21 @@ func get_panel_stylebox_for_bg(bg_color: Color) -> StyleBox:
 	style.expand_margin_top = 8
 	style.expand_margin_bottom = 8
 	return style
+
+
+## [自定义] 返回无可见边框的面板 StyleBox（边框色与背景色一致），供背包等去除白边使用。
+func get_panel_stylebox_borderless(bg_color: Color) -> StyleBox:
+	var tex := VisualAssetRegistry.make_panel_frame_texture(
+		Vector2i(64, 64),
+		bg_color,
+		bg_color,
+		2,
+		8
+	)
+	var style := StyleBoxTexture.new()
+	style.texture = tex
+	style.expand_margin_left = 8
+	style.expand_margin_right = 8
+	style.expand_margin_top = 8
+	style.expand_margin_bottom = 8
+	return style
