@@ -5,9 +5,9 @@ extends CanvasLayer
 @onready var _backdrop: ColorRect = $Root/Backdrop
 @onready var _panel: Panel = $Root/Panel
 @onready var _tab_container: TabContainer = $Root/Panel/Margin/VBox/TabContainer
-@onready var _score_tab_container: VBoxContainer = $Root/Panel/Margin/VBox/TabContainer/ScoreScroll/ScoreTabContainer
-@onready var _backpack_tab_container: Control = $Root/Panel/Margin/VBox/TabContainer/BackpackScroll/BackpackTabContainer
-@onready var _stats_tab_container: Control = $Root/Panel/Margin/VBox/TabContainer/StatsScroll/StatsTabContainer
+@onready var _score_tab_container: VBoxContainer = $Root/Panel/Margin/VBox/TabContainer/ScoreTabContainer
+@onready var _backpack_tab_container: Control = $Root/Panel/Margin/VBox/TabContainer/BackpackTabContainer
+@onready var _stats_tab_container: Control = $Root/Panel/Margin/VBox/TabContainer/StatsTabContainer
 @onready var _menu_btn: Button = $Root/Panel/Margin/VBox/MenuButton
 
 

@@ -7,11 +7,11 @@ extends CanvasLayer
 @onready var panel: Panel = $Root/Panel
 @onready var root: Control = $Root
 @onready var _fullscreen_backdrop: ColorRect = $Root/FullscreenBackdrop
-@onready var _tab_container: TabContainer = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs
-@onready var _stats_container: VBoxContainer = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/StatsScroll/StatsContainer
-@onready var _resume_btn: Button = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/ResumeButton
-@onready var _menu_btn: Button = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/MainMenuButton
-@onready var _key_hints_label: Label = $Root/Panel/OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/KeyHintsLabel
+@onready var _tab_container: TabContainer = $Root/Panel/OuterMargin/MainLayout/PauseTabs
+@onready var _stats_container: VBoxContainer = $Root/Panel/OuterMargin/MainLayout/PauseTabs/StatsContainer
+@onready var _resume_btn: Button = $Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox/ResumeButton
+@onready var _menu_btn: Button = $Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox/MainMenuButton
+@onready var _key_hints_label: Label = $Root/Panel/OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox/KeyHintsLabel
 
 var _backpack_panel: Control  # 背包面板，运行时创建并加入 BackpackScroll
 
@@ -53,7 +53,7 @@ func _on_menu_pressed() -> void:
 
 
 func _apply_localized_texts() -> void:
-	var title := panel.get_node_or_null("OuterMargin/MainLayout/TabWrapper/PauseTabs/SystemTab/MarginContainer/InnerVBox/TitleLabel")
+	var title := panel.get_node_or_null("OuterMargin/MainLayout/PauseTabs/SystemTab/MarginContainer/InnerVBox/TitleLabel")
 	if title is Label:
 		title.text = LocalizationManager.tr_key("pause.title")
 	_resume_btn.text = LocalizationManager.tr_key("pause.resume")
@@ -79,14 +79,15 @@ func set_player_stats_full(stats: Dictionary) -> void:
 	_stats_container.add_child(block)
 
 
-## [自定义] 创建背包面板并加入 BackpackScroll（BackpackPanel 为脚本类，需运行时实例化）。
+## [自定义] 创建背包面板并加入 BackpackTabContainer（BackpackPanel 为脚本类，需运行时实例化）。
 func _add_backpack_panel() -> void:
-	var backpack_scroll: ScrollContainer = _tab_container.get_node("BackpackScroll")
+	var backpack_container: Control = _tab_container.get_node("BackpackTabContainer")
 	_backpack_panel = (preload("res://scenes/ui/backpack_panel.tscn") as PackedScene).instantiate()
 	_backpack_panel.name = "BackpackPanel"
 	_backpack_panel.add_theme_constant_override("separation", 12)
 	_backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	backpack_scroll.add_child(_backpack_panel)
+	_backpack_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	backpack_container.add_child(_backpack_panel)
 
 
 func _refresh_stats_from_game() -> void:

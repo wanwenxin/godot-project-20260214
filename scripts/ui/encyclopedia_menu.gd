@@ -7,9 +7,9 @@ signal closed
 
 @onready var _fullscreen_backdrop: ColorRect = $FullscreenBackdrop
 @onready var _panel: Panel = $Panel
-@onready var _title_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Title
-@onready var _tabs: TabContainer = $Panel/OuterMargin/CenterContainer/VBox/Tabs
-@onready var _close_button: Button = $Panel/OuterMargin/CenterContainer/VBox/CloseButton
+@onready var _title_label: Label = $Panel/OuterMargin/VBox/Title
+@onready var _tabs: TabContainer = $Panel/OuterMargin/VBox/Tabs
+@onready var _close_button: Button = $Panel/OuterMargin/VBox/CloseButton
 
 var _weapons_sub: TabContainer = null  # 武器子 Tab（近战/远程），语言切换时更新标题
 var _affixes_sub: TabContainer = null  # 词条子 Tab（五类），语言切换时更新标题
@@ -62,7 +62,7 @@ func _make_scroll_vbox() -> VBoxContainer:
 
 func _make_scroll_vbox_for_parent(parent: Control) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 360)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", ITEM_SEP)
 	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)

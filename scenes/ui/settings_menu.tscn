@@ -50,301 +50,290 @@ offset_right = 0.0
 offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 0
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 0
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 32
 
-[node name="CenterContainer" type="CenterContainer" parent="Panel/OuterMargin"]
+[node name="VBox" type="VBoxContainer" parent="Panel/OuterMargin"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-
-[node name="VBox" type="VBoxContainer" parent="Panel/OuterMargin/CenterContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(520, 0)
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox"]
+[node name="Title" type="Label" parent="Panel/OuterMargin/VBox"]
 layout_mode = 2
 text = "Settings"
 horizontal_alignment = 1
 
-[node name="Tabs" type="TabContainer" parent="Panel/OuterMargin/CenterContainer/VBox"]
+[node name="Tabs" type="TabContainer" parent="Panel/OuterMargin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 320)
 current_tab = 0
 
-[node name="SystemTab" type="VBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs"]
+[node name="SystemTab" type="VBoxContainer" parent="Panel/OuterMargin/VBox/Tabs"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="SystemVBox" type="VBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab"]
+[node name="SystemVBox" type="VBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/SystemTab"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="VolumeLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox"]
+[node name="VolumeLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/SystemTab/SystemVBox"]
 layout_mode = 2
 text = "Master Volume"
 
-[node name="VolumeSlider" type="HSlider" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox"]
+[node name="VolumeSlider" type="HSlider" parent="Panel/OuterMargin/VBox/Tabs/SystemTab/SystemVBox"]
 layout_mode = 2
 max_value = 100.0
 value = 70.0
 
-[node name="ResolutionLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox"]
+[node name="ResolutionLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/SystemTab/SystemVBox"]
 layout_mode = 2
 text = "Resolution"
 
-[node name="ResolutionOption" type="OptionButton" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox"]
+[node name="ResolutionOption" type="OptionButton" parent="Panel/OuterMargin/VBox/Tabs/SystemTab/SystemVBox"]
 layout_mode = 2
 
-[node name="GameTab" type="VBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs"]
+[node name="GameTab" type="VBoxContainer" parent="Panel/OuterMargin/VBox/Tabs"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="GameVBox" type="VBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab"]
+[node name="GameVBox" type="VBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/GameTab"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="MoveInertiaLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
+[node name="MoveInertiaLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox"]
 layout_mode = 2
 text = "Move Inertia"
 
-[node name="MoveInertiaSlider" type="HSlider" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
+[node name="MoveInertiaSlider" type="HSlider" parent="Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox"]
 layout_mode = 2
 max_value = 0.9
 step = 0.05
 
-[node name="ToggleHpKeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
+[node name="ToggleHpKeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox"]
 layout_mode = 2
 text = "Toggle Enemy HP Key"
 
-[node name="ToggleHpKeyOption" type="OptionButton" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
+[node name="ToggleHpKeyOption" type="OptionButton" parent="Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox"]
 layout_mode = 2
 
-[node name="EnemyHpCheck" type="CheckBox" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox"]
+[node name="EnemyHpCheck" type="CheckBox" parent="Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox"]
 layout_mode = 2
 text = "Show Enemy Health Bar"
 button_pressed = true
 
-[node name="KeysTab" type="VBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs"]
+[node name="KeysTab" type="VBoxContainer" parent="Panel/OuterMargin/VBox/Tabs"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Scroll" type="ScrollContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab"]
-custom_minimum_size = Vector2(0, 280)
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-vertical_scroll_mode = 1
-
-[node name="KeysVBox" type="VBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll"]
+[node name="KeysVBox" type="VBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 6
 
-[node name="Row0" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row0" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row0"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row0"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Move Left"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row0"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row0"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row0"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row0"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row1" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row1" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row1"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row1"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Move Right"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row1"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row1"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row1"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row1"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row2" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row2" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row2"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row2"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Move Up"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row2"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row2"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row2"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row2"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row3" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row3" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row3"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row3"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Move Down"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row3"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row3"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row3"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row3"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row4" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row4" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row4"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row4"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Pause"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row4"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row4"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row4"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row4"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row5" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row5" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row5"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row5"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Toggle HP"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row5"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row5"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row5"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row5"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row6" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row6" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row6"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row6"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Zoom In"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row6"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row6"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row6"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row6"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row7" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row7" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row7"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row7"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Zoom Out"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row7"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row7"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row7"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row7"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row8" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row8" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row8"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row8"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Cast Magic"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row8"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row8"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row8"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row8"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row9" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row9" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row9"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row9"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Magic Prev"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row9"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row9"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row9"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row9"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="Row10" type="HBoxContainer" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox"]
+[node name="Row10" type="HBoxContainer" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row10"]
+[node name="NameLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row10"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "Magic Next"
 
-[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row10"]
+[node name="KeyLabel" type="Label" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row10"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "+"
 
-[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox/Tabs/KeysTab/Scroll/KeysVBox/Row10"]
+[node name="RebindBtn" type="Button" parent="Panel/OuterMargin/VBox/Tabs/KeysTab/KeysVBox/Row10"]
 layout_mode = 2
 text = "Rebind"
 
-[node name="CloseButton" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox"]
+[node name="CloseButton" type="Button" parent="Panel/OuterMargin/VBox"]
 layout_mode = 2
 text = "Close"

@@ -330,7 +330,7 @@
   - 属性 Tab 仅显示角色属性；死亡/通关界面仍显示完整信息（武器、道具、词条、魔法）
 
 - `scripts/ui/backpack_panel.gd`
-  - 背包面板：根为 HBoxContainer，左侧三区网格（武器/魔法/道具），右侧 DetailPanel（约 320px）嵌入式详情
+  - 背包面板：根为 HBoxContainer，双独立面板：ContentPanel（背包内容：武器/魔法/道具网格）+ DetailPanel（物品详情，min 280px），均填满可用空间
   - `set_stats(stats)`：根据 `weapon_details`、`magic_details`、`item_ids` 构建三区；脏检查：stats 哈希未变且 shop_context 未变时跳过重建
   - 槽位 StyleBox 复用：`_get_slot_style()` 缓存单例，减少对象分配
   - 图标加载走 `VisualAssetRegistry.get_texture_cached`，缺失时用 `make_color_texture` 生成占位图
@@ -814,6 +814,19 @@ ObjectPool.recycle_enemy(enemy)
 - 3 = 类型分组
 
 **过滤类型**：`""`（全部）、`"melee"`、`"ranged"`
+
+### 8.3.1 UI 全屏与背包双面板（2026-02-19）
+
+**全屏扩展**：结算、暂停、设置、图鉴等面板扩展至全屏，去掉固定尺寸与 CenterContainer，用 `size_flags` 填满可用空间，减少滚动条。
+
+**背包双独立面板**：`backpack_panel.tscn` 拆分为 ContentPanel（背包内容：武器/魔法/道具网格）与 DetailPanel（物品详情），两面板均 `size_flags_horizontal = 3` 按比例分配宽度，`custom_minimum_size` 防止过窄。
+
+**涉及文件**：
+- `scenes/ui/backpack_panel.tscn`：ContentPanel + DetailPanel 双 Panel 布局
+- `scenes/ui/game_over_screen.tscn`、`victory_screen.tscn`：Panel 全屏，去掉 ScoreScroll/BackpackScroll/StatsScroll
+- `scenes/ui/pause_menu.tscn`：PauseTabs 填满，BackpackTabContainer/StatsContainer 直接作为 Tab 子节点
+- `scenes/ui/settings_menu.tscn`、`encyclopedia_menu.tscn`：去掉 CenterContainer 与固定宽高
+- `scenes/ui/backpack_overlay.tscn`、`hud.tscn`：BackpackScroll 填满或改为 BackpackTabContainer
 
 ---
 

@@ -1,6 +1,6 @@
 extends HBoxContainer
 
-# 背包面板：固定结构在 backpack_panel.tscn（左：三区网格，右：详情面板），脚本只填槽位内容。
+# 背包面板：固定结构在 backpack_panel.tscn（左：ContentPanel 背包内容，右：DetailPanel 物品详情，双独立面板），脚本只填槽位内容。
 # 接收 stats 字典（weapon_details、magic_details、item_ids），向 WeaponGrid/MagicGrid/ItemGrid 填充槽位。
 # 点击或悬浮槽位时在右侧 DetailPanel 显示详情，替代原 BackpackTooltipPopup 悬浮。
 signal sell_requested(weapon_index: int)
@@ -8,13 +8,13 @@ signal merge_completed  # 合并成功后发出，供商店覆盖层刷新
 const BASE_FONT_SIZE := 18
 const SEP := "────"  # 分割线，无空行
 
-@onready var _weapon_grid: HFlowContainer = $LeftVBox/WeaponGrid
-@onready var _magic_grid: HFlowContainer = $LeftVBox/MagicGrid
-@onready var _item_grid: HFlowContainer = $LeftVBox/ItemGrid
-@onready var _cancel_btn: Button = $LeftVBox/WeaponHeader/CancelButton
-@onready var _weapon_label: Label = $LeftVBox/WeaponHeader/WeaponLabel
-@onready var _magic_label: Label = $LeftVBox/MagicLabel
-@onready var _item_label: Label = $LeftVBox/ItemLabel
+@onready var _weapon_grid: HFlowContainer = $ContentPanel/ContentMargin/LeftVBox/WeaponGrid
+@onready var _magic_grid: HFlowContainer = $ContentPanel/ContentMargin/LeftVBox/MagicGrid
+@onready var _item_grid: HFlowContainer = $ContentPanel/ContentMargin/LeftVBox/ItemGrid
+@onready var _cancel_btn: Button = $ContentPanel/ContentMargin/LeftVBox/WeaponHeader/CancelButton
+@onready var _weapon_label: Label = $ContentPanel/ContentMargin/LeftVBox/WeaponHeader/WeaponLabel
+@onready var _magic_label: Label = $ContentPanel/ContentMargin/LeftVBox/MagicLabel
+@onready var _item_label: Label = $ContentPanel/ContentMargin/LeftVBox/ItemLabel
 @onready var _detail_content: VBoxContainer = $DetailPanel/DetailMargin/DetailScroll/DetailContent
 
 var _selected_slot: Dictionary = {}  # 点击选中的槽位 {type, index, tip_data}，非空时优先显示

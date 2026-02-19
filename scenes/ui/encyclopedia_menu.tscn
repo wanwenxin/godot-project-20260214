@@ -54,27 +54,22 @@ theme_override_constants/margin_top = 24
 theme_override_constants/margin_right = 24
 theme_override_constants/margin_bottom = 24
 
-[node name="CenterContainer" type="CenterContainer" parent="Panel/OuterMargin"]
+[node name="VBox" type="VBoxContainer" parent="Panel/OuterMargin"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-
-[node name="VBox" type="VBoxContainer" parent="Panel/OuterMargin/CenterContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(560, 0)
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="Panel/OuterMargin/CenterContainer/VBox"]
+[node name="Title" type="Label" parent="Panel/OuterMargin/VBox"]
 layout_mode = 2
 text = "Encyclopedia"
 horizontal_alignment = 1
 
-[node name="Tabs" type="TabContainer" parent="Panel/OuterMargin/CenterContainer/VBox"]
+[node name="Tabs" type="TabContainer" parent="Panel/OuterMargin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 360)
 current_tab = 0
 
-[node name="CloseButton" type="Button" parent="Panel/OuterMargin/CenterContainer/VBox"]
+[node name="CloseButton" type="Button" parent="Panel/OuterMargin/VBox"]
 layout_mode = 2
 text = "Close"

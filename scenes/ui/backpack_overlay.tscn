@@ -38,7 +38,6 @@ layout_mode = 2
 text = "Close"
 
 [node name="BackpackScroll" type="ScrollContainer" parent="MarginContainer/VBoxContainer"]
-custom_minimum_size = Vector2(0, 400)
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0

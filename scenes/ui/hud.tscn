@@ -636,13 +636,11 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="MainVbox" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter" unique_id=1274001112]
-custom_minimum_size = Vector2(896, 504)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
 [node name="ShopTabContainer" type="TabContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox" unique_id=1757939530]
-custom_minimum_size = Vector2(896, 400)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/side_margin = 16
@@ -759,21 +757,19 @@ autowrap_mode = 2
 layout_mode = 2
 text = "Refresh"
 
-[node name="BackpackScroll" type="ScrollContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer" unique_id=1652365218]
+[node name="BackpackTabContainer" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer" unique_id=1652365218]
 visible = false
 layout_mode = 2
-vertical_scroll_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
 metadata/_tab_index = 1
 
-[node name="StatsScroll" type="ScrollContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer" unique_id=1906091245]
+[node name="ShopStatsContainer" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer" unique_id=1762087058]
 visible = false
 layout_mode = 2
-vertical_scroll_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
 metadata/_tab_index = 2
-
-[node name="ShopStatsContainer" type="VBoxContainer" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/StatsScroll" unique_id=1762087058]
-layout_mode = 2
-size_flags_horizontal = 3
 
 [node name="ShopNextBtn" type="Button" parent="Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox" unique_id=638338019]
 layout_mode = 2

@@ -94,9 +94,10 @@
 | 触控面板 | 触控虚拟摇杆与暂停按钮容器 | HUD | _touch_panel |
 | 顶部信息行 | 血量/魔力/经验/波次/击杀/时间等横向区域 | HUD | TopRow |
 | 结算面板 | 死亡/通关时的得分与玩家信息区 | game_over_screen / victory_screen | _panel |
-| 背包面板 | 暂停菜单内背包 Tab，左三区网格（武器/魔法/道具）+ 右 DetailPanel 嵌入式详情；点击或悬浮槽位显示详情 | pause_menu | BackpackPanel |
+| 背包面板 | 暂停菜单内背包 Tab，双独立面板：ContentPanel（背包内容：武器/魔法/道具网格）+ DetailPanel（物品详情）；点击或悬浮槽位在右侧显示详情 | pause_menu | BackpackPanel |
+| 背包内容面板 | 背包左侧 ContentPanel，含武器/魔法/道具三区网格 | BackpackPanel | ContentPanel |
+| 背包详情面板 | 背包右侧 DetailPanel，展示选中/悬浮槽位的名称、词条、效果、套装 2/4/6 件、售卖/合成按钮 | BackpackPanel | DetailPanel |
 | 背包槽 | 背包面板内单个槽位（图标 + 名称，名称按品级着色） | BackpackPanel | BackpackSlot |
-| 背包详情面板 | 背包右侧嵌入式 DetailPanel，展示选中/悬浮槽位的名称、词条、效果、套装 2/4/6 件、售卖/合成按钮 | BackpackPanel | DetailPanel |
 
 ---
 

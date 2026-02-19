@@ -43,7 +43,7 @@ signal pause_pressed  # 触控暂停键按下
 @onready var _shop_refresh_btn: Button = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopTab/WeaponCenter/WeaponBox/ShopRefreshBtn
 @onready var _shop_next_btn: Button = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopNextBtn
 @onready var _shop_tab_container: TabContainer = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer
-@onready var _shop_stats_container: Control = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/StatsScroll/ShopStatsContainer
+@onready var _shop_stats_container: Control = $Root/WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/ShopStatsContainer
 @onready var _touch_panel: Control = $Root/TouchPanel
 @onready var _pause_touch_btn: Button = $Root/PauseTouchBtn
 
@@ -52,7 +52,7 @@ var _upgrade_buttons: Array[Button] = []
 var _upgrade_icons: Array[TextureRect] = []
 var _weapon_buttons: Array[Button] = []
 var _weapon_icons: Array[TextureRect] = []
-var _shop_backpack_panel: Control  # 背包 Tab 内嵌的 BackpackPanel 实例，运行时加入 BackpackScroll
+var _shop_backpack_panel: Control  # 背包 Tab 内嵌的 BackpackPanel 实例，运行时加入 BackpackTabContainer
 var _last_shop_stats_hash: String = ""
 var _weapon_mode := ""
 var _move_state := {  # 触控方向键按下状态，用于合成 mobile_move_changed 的 direction
@@ -211,7 +211,7 @@ func _apply_runtime_styles_and_refs() -> void:
 			"affix_label": vbox.get_node("AffixLabel")
 		})
 	# 背包 Tab：运行时加入 BackpackPanel 场景实例
-	var backpack_scroll: ScrollContainer = root.get_node("WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/BackpackScroll")
+	var backpack_container: Control = root.get_node("WeaponPanel/WeaponMargin/ShopCenter/MainVbox/ShopTabContainer/BackpackTabContainer")
 	var packed: PackedScene = load("res://scenes/ui/backpack_panel.tscn") as PackedScene
 	_shop_backpack_panel = packed.instantiate()
 	if _shop_backpack_panel == null:
@@ -220,9 +220,10 @@ func _apply_runtime_styles_and_refs() -> void:
 	_shop_backpack_panel.name = "ShopBackpackPanel"
 	_shop_backpack_panel.add_theme_constant_override("separation", 12)
 	_shop_backpack_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_shop_backpack_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_shop_backpack_panel.sell_requested.connect(_on_shop_backpack_sell_requested)
 	_shop_backpack_panel.merge_completed.connect(_on_shop_backpack_merge_completed)
-	backpack_scroll.add_child(_shop_backpack_panel)
+	backpack_container.add_child(_shop_backpack_panel)
 
 
 ## [自定义] 设置血量显示。脏检查：值未变则跳过；否则更新进度条与分段颜色（绿/橘黄/红）及 "当前/最大" 文本。

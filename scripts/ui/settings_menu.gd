@@ -27,20 +27,20 @@ const ACTION_NAME_KEYS := {
 
 # 设置页：全屏展示，与暂停页类似布局（外层边距 + 内容居中）
 @onready var panel: Panel = $Panel
-@onready var title_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Title
-@onready var tabs: TabContainer = $Panel/OuterMargin/CenterContainer/VBox/Tabs
-@onready var close_button: Button = $Panel/OuterMargin/CenterContainer/VBox/CloseButton
+@onready var title_label: Label = $Panel/OuterMargin/VBox/Title
+@onready var tabs: TabContainer = $Panel/OuterMargin/VBox/Tabs
+@onready var close_button: Button = $Panel/OuterMargin/VBox/CloseButton
 
-@onready var volume_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox/VolumeLabel
-@onready var volume_slider: HSlider = $Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox/VolumeSlider
-@onready var resolution_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox/ResolutionLabel
-@onready var resolution_option: OptionButton = $Panel/OuterMargin/CenterContainer/VBox/Tabs/SystemTab/SystemVBox/ResolutionOption
+@onready var volume_label: Label = $Panel/OuterMargin/VBox/Tabs/SystemTab/SystemVBox/VolumeLabel
+@onready var volume_slider: HSlider = $Panel/OuterMargin/VBox/Tabs/SystemTab/SystemVBox/VolumeSlider
+@onready var resolution_label: Label = $Panel/OuterMargin/VBox/Tabs/SystemTab/SystemVBox/ResolutionLabel
+@onready var resolution_option: OptionButton = $Panel/OuterMargin/VBox/Tabs/SystemTab/SystemVBox/ResolutionOption
 
-@onready var move_inertia_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/MoveInertiaLabel
-@onready var move_inertia_slider: HSlider = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/MoveInertiaSlider
-@onready var toggle_hp_key_label: Label = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/ToggleHpKeyLabel
-@onready var toggle_hp_key_option: OptionButton = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/ToggleHpKeyOption
-@onready var enemy_hp_check: CheckBox = $Panel/OuterMargin/CenterContainer/VBox/Tabs/GameTab/GameVBox/EnemyHpCheck
+@onready var move_inertia_label: Label = $Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox/MoveInertiaLabel
+@onready var move_inertia_slider: HSlider = $Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox/MoveInertiaSlider
+@onready var toggle_hp_key_label: Label = $Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox/ToggleHpKeyLabel
+@onready var toggle_hp_key_option: OptionButton = $Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox/ToggleHpKeyOption
+@onready var enemy_hp_check: CheckBox = $Panel/OuterMargin/VBox/Tabs/GameTab/GameVBox/EnemyHpCheck
 
 var _settings: Dictionary = {}  # 当前设置副本，修改后写回 SaveManager
 var _silent := false  # 防重入：_reload_from_save 时忽略控件回调
@@ -213,7 +213,7 @@ func _apply_localized_texts() -> void:
 
 ## [自定义] 从场景 KeysTab 的 Row0..Row10 填充 _key_binding_rows，设置名称文案并连接重绑信号。
 func _fill_key_binding_refs() -> void:
-	var keys_vbox: VBoxContainer = tabs.get_node("KeysTab/Scroll/KeysVBox")
+	var keys_vbox: VBoxContainer = tabs.get_node("KeysTab/KeysVBox")
 	for i in range(BINDABLE_ACTIONS.size()):
 		var action: String = BINDABLE_ACTIONS[i]
 		var row: HBoxContainer = keys_vbox.get_node("Row%d" % i)
@@ -316,7 +316,7 @@ func _on_language_changed(_language_code: String) -> void:
 		if _key_binding_rows.has(action):
 			_key_binding_rows[action].rebind_btn.text = LocalizationManager.tr_key("settings.key.rebind")
 	# 刷新按键行名称文案（Keys Tab 预置在场景中）
-	var keys_vbox: VBoxContainer = tabs.get_node("KeysTab/Scroll/KeysVBox")
+	var keys_vbox: VBoxContainer = tabs.get_node("KeysTab/KeysVBox")
 	for i in range(BINDABLE_ACTIONS.size()):
 		var act: String = BINDABLE_ACTIONS[i]
 		var row: HBoxContainer = keys_vbox.get_node("Row%d" % i)
