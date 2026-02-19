@@ -524,11 +524,11 @@ func _get_element_icon_texture(element_key: String) -> Texture2D:
 		"ice":
 			path = "res://assets/magic/icon_ice.png"
 		"lightning":
-			return VisualAssetRegistry.make_color_texture(Color(1.0, 0.95, 0.2, 1.0), Vector2i(4, 4))
+			path = "res://assets/magic/icon_lightning.png"
 		"poison":
-			return VisualAssetRegistry.make_color_texture(Color(0.5, 0.2, 0.7, 1.0), Vector2i(4, 4))
+			path = "res://assets/magic/icon_poison.png"
 		"physical":
-			return VisualAssetRegistry.make_color_texture(Color(0.6, 0.6, 0.65, 1.0), Vector2i(4, 4))
+			path = "res://assets/magic/icon_physical.png"
 		_:
 			return VisualAssetRegistry.make_color_texture(Color(0.7, 0.7, 0.7, 1.0), Vector2i(4, 4))
 	if path != "" and ResourceLoader.exists(path):

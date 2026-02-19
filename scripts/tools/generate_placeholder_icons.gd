@@ -19,10 +19,16 @@ func _initialize() -> int:
 		["res://assets/ui/upgrade_icons/icon_mana_regen.png", Color(0.4, 0.6, 1.0)],
 		["res://assets/magic/icon_fire.png", Color(1.0, 0.45, 0.15)],
 		["res://assets/magic/icon_ice.png", Color(0.4, 0.75, 1.0)],
+		["res://assets/magic/icon_poison.png", Color(0.5, 0.2, 0.7)],
+		["res://assets/magic/icon_physical.png", Color(0.6, 0.6, 0.65)],
 	]
+	# 跳过已由 Pixellab 替换的图标（避免覆盖）
+	var skip_paths := ["res://assets/magic/icon_fire.png", "res://assets/magic/icon_lightning.png"]
 	var size := 64
 	for pair in icons:
 		var path: String = pair[0]
+		if path in skip_paths:
+			continue
 		var col: Color = pair[1]
 		var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
 		img.fill(col)

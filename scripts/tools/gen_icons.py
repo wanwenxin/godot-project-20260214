@@ -18,12 +18,19 @@ ICONS = [
     ("ui/upgrade_icons/icon_mana_regen.png", (102, 153, 255)),
     ("magic/icon_fire.png", (255, 115, 38)),
     ("magic/icon_ice.png", (102, 191, 255)),
+    ("magic/icon_poison.png", (128, 51, 179)),
+    ("magic/icon_physical.png", (153, 153, 166)),
 ]
+
+# 已由 Pixellab 替换的图标，跳过生成
+SKIP_PATHS = {"magic/icon_fire.png", "magic/icon_lightning.png"}
 
 def darken(rgb, factor=0.7):
     return tuple(int(c * factor) for c in rgb)
 
 for rel_path, rgb in ICONS:
+    if rel_path in SKIP_PATHS:
+        continue
     path = os.path.join(BASE, rel_path)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     img = Image.new("RGBA", (SIZE, SIZE), (*rgb, 255))

@@ -130,9 +130,17 @@ HUD 小模块（TopRow、金币、倒计时、按键提示、波次横幅）与�
 
 ### 3.1 推荐工具
 
+- **Pixellab MCP**：通过 Cursor MCP 调用 `create_map_object` 生成武器/道具/魔法/元素图标（96×96 像素，透明背景）；已替换资产记录于 [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md)，生成前可查阅避免重复
 - **Stable Diffusion / Midjourney / DALL·E**：生成概念图或高分辨率图
 - **Cursor 内置 GenerateImage**：可生成简单图标或 UI 元素
 - **Piskel / Aseprite**：像素风格编辑（AI 生成后微调）
+
+### 3.1.1 Pixellab 生成图标流程
+
+1. 调用 `create_map_object`：`description`（对象描述）、`width`/`height`（96）、`view`（`high top-down`）、`mode`（basic）
+2. 轮询 `get_map_object(object_id)` 直至完成
+3. 从返回的 URL 下载 PNG 并保存到 `assets/` 对应路径
+4. 在 [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md) 中打标，记录路径、类别、描述词、生成时间
 
 ### 3.2 生成提示词（Prompt）示例
 

@@ -127,7 +127,7 @@
   - `take_damage(amount, _elemental, _element_amount)`：当 `_element_amount > 0` 时对敌人增加对应元素量（`_element_amounts` 字典）。
   - 元素量档位：少量 1、大量 10、巨量 20；武器=1，魔法=10。
   - 每累计 1 秒执行一次衰减：每种元素量减 1，为 0 则移除。若存在至少两种元素且量均 > 0，取两种等量消耗（`consumed = min(量A, 量B)`），两者减去 consumed 后根据元素类型触发**元素反应**（如 fire+ice→融化伤害、fire+lightning→过载伤害+击退、ice+lightning→超导伤害等）；反应仅造成无元素伤害，避免二次附着。
-  - **元素图标 UI**：血条上方横向排布当前附着元素的小图标（4×4，多元素全部显示），fire/ice 用 `assets/magic/icon_*`，其余用纯色占位；某元素量不足 5 点时该图标每约 250ms 半透明/不透明交替闪烁。显隐与血条一致（`set_healthbar_visible`）。
+  - **元素图标 UI**：血条上方横向排布当前附着元素的小图标（4×4，多元素全部显示），fire/ice/lightning/poison/physical 均用 `assets/magic/icon_*.png`（见 `_get_element_icon_texture`）；某元素量不足 5 点时该图标每约 250ms 半透明/不透明交替闪烁。显隐与血条一致（`set_healthbar_visible`）。
   - 寻路时尽量不重叠：`NavigationAgent2D.avoidance_enabled = true`，`radius` 按碰撞圆半径×scale 设置，`max_neighbors`/`neighbor_distance` 用于 RVO 避障。
   - 扩展：新增元素类型或反应组合时，在 `_trigger_element_reaction` 中补充 (elem_a, elem_b) 分支与效果。
 

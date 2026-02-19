@@ -39,7 +39,7 @@ const MAGIC_POOL := [
 		"mana_cost": 15,
 		"power": 40,
 		"cooldown": 3.0,
-		"icon_path": "res://assets/magic/icon_fire.png",
+		"icon_path": "res://assets/magic/icon_lightning.png",
 		"script_path": "res://scripts/magic/area_shockwave.gd",
 		"base_cost": 10,
 		"range_affix_id": "magic_range_mouse_circle",
