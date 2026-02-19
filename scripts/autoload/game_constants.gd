@@ -4,11 +4,11 @@
 extends Node
 
 ## 玩家节点整体缩放倍率（相对原始精灵尺寸）
-const PLAYER_SCALE := 3.0
+const PLAYER_SCALE := 1.5
 ## 普通敌人体积缩放倍率（与玩家一致）
-const ENEMY_SCALE := 3.0
+const ENEMY_SCALE := 1.5
 ## BOSS 体积缩放倍率（至少为玩家的 5 倍视觉，玩家已 3 倍故取 15）
-const BOSS_SCALE := 15.0
+const BOSS_SCALE := 8
 ## 子弹（玩家/敌人通用）体积缩放倍率
 const BULLET_SCALE := 2.0
 ## 敌人血条上方元素附着图标的缩放倍率（小图标避免盖住敌人）
