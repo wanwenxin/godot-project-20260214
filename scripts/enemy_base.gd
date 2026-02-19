@@ -5,7 +5,13 @@ class_name EnemyBase
 # - 生命与死亡事件
 # - 与玩家碰撞接触伤害
 # - 通用追踪移动方法
+# - 元素附着、每秒衰减与双元素反应
 signal died(enemy: Node)
+
+# 元素量档位常量：少量 1、大量 10、巨量 20；武器=1，魔法=10。
+const ELEMENT_AMOUNT_SMALL := 1
+const ELEMENT_AMOUNT_LARGE := 10
+const ELEMENT_AMOUNT_HUGE := 20
 
 @export var max_health := 25
 @export var speed := 90.0
@@ -45,6 +51,9 @@ var _is_dying := false  # 死亡动画播放中，防重入
 # 行为模式：0=CHASE_DIRECT, 1=CHASE_NAV, 2=KEEP_DISTANCE, 3=FLANK, 4=CHARGE, 5=BOSS_CUSTOM；由 EnemyDefs 注入
 var _behavior_mode: int = 0
 var _nav_agent: NavigationAgent2D  # 寻路代理，CHASE_NAV/FLANK 时使用
+# 元素附着量，如 {"fire": 10, "ice": 5}；每秒衰减 1，双元素等量消耗时触发反应
+var _element_amounts: Dictionary = {}
+var _element_decay_accum: float = 0.0  # 累加满 1 秒后执行一次衰减与反应
 
 
 func is_water_only() -> bool:
@@ -86,6 +95,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_direction_sprite()
+	# 元素衰减与双元素反应：每累计 1 秒执行一次。
+	_tick_element_decay(delta)
 	# 水中专属敌人离水时持续扣血。
 	if not is_water_only():
 		return
@@ -148,13 +159,90 @@ func apply_knockback(dir: Vector2, force: float) -> void:
 	_knockback_velocity += dir.normalized() * force
 
 
-## 受到伤害；_elemental 为元素类型（如 "fire"），预留抗性/DOT 扩展，基类暂未使用
-func take_damage(amount: int, _elemental: String = "") -> void:
+## 受到伤害；_elemental 为元素类型（如 "fire"），_element_amount 为本次附着的元素量（0 表示不附着）
+func take_damage(amount: int, _elemental: String = "", _element_amount: int = 0) -> void:
 	current_health -= amount
 	_refresh_health_bar()
+	if _elemental != "" and _element_amount > 0:
+		_element_amounts[_elemental] = _element_amounts.get(_elemental, 0) + _element_amount
 	if current_health <= 0 and not _is_dying:
 		_is_dying = true
 		_begin_death_sequence()
+
+
+## [自定义] 每帧累加 delta，满 1 秒时对每种元素减 1、若存在两种元素则等量消耗并触发反应。
+func _tick_element_decay(delta: float) -> void:
+	if _is_dying:
+		return
+	_element_decay_accum += delta
+	if _element_decay_accum < 1.0:
+		return
+	_element_decay_accum -= 1.0
+	# 单元素衰减：每种元素量减 1，为 0 则移除
+	var to_remove: Array[String] = []
+	for k in _element_amounts.keys():
+		_element_amounts[k] = maxi(0, _element_amounts[k] - 1)
+		if _element_amounts[k] <= 0:
+			to_remove.append(k)
+	for k in to_remove:
+		_element_amounts.erase(k)
+	# 双元素等量消耗与反应：若至少两种元素量 > 0，取前两种等量消耗并触发反应
+	if _element_amounts.size() < 2:
+		return
+	var keys_with_amount: Array[String] = []
+	for k in _element_amounts.keys():
+		if _element_amounts[k] > 0:
+			keys_with_amount.append(k)
+	keys_with_amount.sort()
+	if keys_with_amount.size() < 2:
+		return
+	var elem_a: String = keys_with_amount[0]
+	var elem_b: String = keys_with_amount[1]
+	var consumed: int = mini(_element_amounts[elem_a], _element_amounts[elem_b])
+	_element_amounts[elem_a] -= consumed
+	_element_amounts[elem_b] -= consumed
+	if _element_amounts[elem_a] <= 0:
+		_element_amounts.erase(elem_a)
+	if _element_amounts[elem_b] <= 0:
+		_element_amounts.erase(elem_b)
+	_trigger_element_reaction(elem_a, elem_b, consumed)
+
+
+## [自定义] 双元素等量消耗后根据两种元素类型与消耗量触发反应效果；反应仅造成无元素伤害，避免二次附着。
+func _trigger_element_reaction(elem_a: String, elem_b: String, consumed: int) -> void:
+	if consumed <= 0 or _is_dying:
+		return
+	# 规范化为字典序，便于查表
+	var lo: String = elem_a if elem_a < elem_b else elem_b
+	var hi: String = elem_b if elem_a < elem_b else elem_a
+	var reaction_damage: int = 0
+	var knockback_force: float = 0.0
+	if lo == "fire" and hi == "ice":
+		# 融化：消耗量 * 2 的额外伤害
+		reaction_damage = consumed * 2
+	elif lo == "fire" and hi == "lightning":
+		# 过载：伤害 + 击退
+		reaction_damage = consumed * 2
+		knockback_force = 30.0 + consumed * 2.0
+	elif lo == "ice" and hi == "lightning":
+		# 超导：消耗量 * 1 的伤害
+		reaction_damage = consumed * 1
+	elif (lo == "fire" and hi == "poison") or (lo == "ice" and hi == "poison") or (lo == "lightning" and hi == "poison"):
+		# 毒与其他：少量额外伤害
+		reaction_damage = consumed
+	else:
+		# 未定义组合（如 physical）：按消耗量造成 1:1 伤害
+		reaction_damage = consumed
+	if reaction_damage > 0:
+		current_health -= reaction_damage
+		_refresh_health_bar()
+		GameManager.add_record_damage_dealt(reaction_damage)
+		if current_health <= 0 and not _is_dying:
+			_is_dying = true
+			_begin_death_sequence()
+	if knockback_force > 0.0 and is_instance_valid(player_ref):
+		var away := (global_position - player_ref.global_position).normalized()
+		apply_knockback(away, knockback_force)
 
 
 ## 死亡流程：禁用碰撞与移动，播放差异化死亡动画，结束后发出 died 并销毁。

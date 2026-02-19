@@ -12,6 +12,8 @@ var damage := 8
 var attack_range := 120.0
 var color_hint := Color(0.9, 0.9, 0.9, 1.0)
 var icon_path: String  # 武器图标路径，从 def 注入；空则用色块
+# 武器自身元素（来自 def 的 element_affix_id 或商店随机元素词条）；为空则攻击不附着元素
+var weapon_element: String = ""
 
 var _cooldown_left := 0.0
 var _slot_base_position := Vector2.ZERO
@@ -32,6 +34,13 @@ func configure_from_def(def: Dictionary, weapon_tier: int = 0) -> void:
 	damage = int(float(base_damage) * TierConfig.get_damage_multiplier(tier))
 	cooldown = base_cooldown * TierConfig.get_cooldown_multiplier(tier)
 	attack_range = float(stats.get("range", attack_range))
+	# 固定元素：def 中 element_affix_id 解析为元素字符串
+	weapon_element = ""
+	var elem_affix_id: String = str(def.get("element_affix_id", ""))
+	if elem_affix_id != "":
+		var elem_affix: Dictionary = WeaponAffixDefs.get_affix_def(elem_affix_id)
+		if not elem_affix.is_empty():
+			weapon_element = str(elem_affix.get("element", ""))
 
 
 # 每帧调用：扣减冷却，冷却归零且距离足够时尝试 _start_attack，成功则重置冷却。

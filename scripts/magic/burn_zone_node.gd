@@ -32,7 +32,7 @@ func _process(delta: float) -> void:
 			if not is_instance_valid(node) or not node.has_method("take_damage"):
 				continue
 			if (node.global_position - global_position).length_squared() <= radius * radius:
-				node.take_damage(dmg, elem)
+				node.take_damage(dmg, elem, EnemyBase.ELEMENT_AMOUNT_LARGE)
 				GameManager.add_record_damage_dealt(dmg)
 				if is_instance_valid(caster_ref) and caster_ref.has_method("try_lifesteal"):
 					caster_ref.try_lifesteal()

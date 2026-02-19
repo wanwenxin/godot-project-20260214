@@ -218,6 +218,10 @@
 | 武器词条 | 仅作用于武器的词条 | WeaponAffix |
 | 魔法词条 | 仅作用于魔法的词条 | MagicAffix |
 | 道具词条 | 仅作用于道具的词条 | ItemAffix |
+| 元素词条 | 武器或魔法上携带的元素类型（火/冰/雷/毒/物理），攻击时对敌人进行元素附着 | weapon_element / magic element_affix_id |
+| 元素量 | 附着时增加的数值档位：少量 1、大量 10、巨量 20；武器=1，魔法=10 | EnemyBase.ELEMENT_AMOUNT_* |
+| 元素附着 | 对敌人造成伤害时若带元素且 element_amount>0，则增加该敌人身上的该元素量 | enemy_base._element_amounts |
+| 元素反应 | 敌人身上存在两种元素时每秒等量消耗并触发一次效果（如融化、过载、超导等） | enemy_base._trigger_element_reaction |
 
 ---
 

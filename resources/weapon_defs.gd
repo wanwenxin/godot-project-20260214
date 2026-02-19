@@ -262,6 +262,7 @@ const WEAPON_DEFS := [
 		"type": "ranged",
 		"type_affix_id": "type_staff",
 		"theme_affix_id": "theme_fantasy",
+		"element_affix_id": "weapon_element_fire",
 		"script_path": "res://scripts/weapons/ranged/weapon_elemental_staff.gd",
 		"name_key": "weapon.elemental_staff.name",
 		"desc_key": "weapon.elemental_staff.desc",

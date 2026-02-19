@@ -16,6 +16,8 @@ var bullet_type := ""
 var bullet_color := Color(1.0, 1.0, 0.4, 1.0)
 # 元素附魔类型（如 "fire"），命中时传入 enemy.take_damage
 var elemental_type := ""
+# 本次命中附着的元素量（0=不附着；武器=1，魔法弹道=10）
+var elemental_amount := 0
 # 玩家子弹的持有者，用于吸血等回调
 var owner_ref: Node2D = null
 
@@ -25,10 +27,11 @@ var _hit_targets: Dictionary = {}  # 已命中目标 instance_id，用于同目�
 @onready var sprite: Sprite2D = $Sprite2D
 
 
-## [自定义] 对象池回收时重置状态，避免残留 _hit_targets、life_time 等。
+## [自定义] 对象池回收时重置状态，避免残留 _hit_targets、life_time、elemental_amount 等。
 func reset_for_pool() -> void:
 	_hit_targets.clear()
 	life_time = 2.0  # 复用后需重置，否则首帧即因 life_time<=0 被回收
+	elemental_amount = 0
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 
@@ -110,7 +113,7 @@ func _on_body_entered(body: Node) -> void:
 		_handle_pierce_or_destroy()
 	elif (not hit_player) and body.is_in_group("enemies"):
 		if body.has_method("take_damage"):
-			body.take_damage(damage, elemental_type)
+			body.take_damage(damage, elemental_type, elemental_amount)
 			GameManager.add_record_damage_dealt(damage)
 		if is_instance_valid(owner_ref) and owner_ref.has_method("try_lifesteal"):
 			owner_ref.try_lifesteal()

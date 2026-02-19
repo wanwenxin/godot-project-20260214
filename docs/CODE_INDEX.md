@@ -83,7 +83,7 @@
 
 | 文件 | 职责 | 关键导出/信号 |
 |------|------|---------------|
-| [scripts/enemy_base.gd](scripts/enemy_base.gd) | 通用生命、接触伤害、击退、地形效果 | `apply_knockback`、`set_terrain_effect` |
+| [scripts/enemy_base.gd](scripts/enemy_base.gd) | 通用生命、接触伤害、击退、地形效果、元素附着/衰减/反应 | `apply_knockback`、`set_terrain_effect`、`take_damage(amount, elemental, element_amount)`、`ELEMENT_AMOUNT_*` |
 | [scripts/enemy_melee.gd](scripts/enemy_melee.gd) | 追击型近战敌人 | 继承 enemy_base |
 | [scripts/enemy_ranged.gd](scripts/enemy_ranged.gd) | 保持距离并射击 | 继承 enemy_base |
 | [scripts/enemy_tank.gd](scripts/enemy_tank.gd) | 高血低速坦克 | 继承 enemy_base |
@@ -162,7 +162,7 @@
 | [scripts/affix/magic_affix.gd](scripts/affix/magic_affix.gd) | 魔法词条 | 继承 AffixBase |
 | [scripts/affix/item_affix.gd](scripts/affix/item_affix.gd) | 道具词条 | 继承 AffixBase |
 | [resources/item_affix_defs.gd](resources/item_affix_defs.gd) | 道具词条库 | `ITEM_AFFIX_POOL` |
-| [resources/weapon_affix_defs.gd](resources/weapon_affix_defs.gd) | 武器词条库 | `WEAPON_AFFIX_POOL` |
+| [resources/weapon_affix_defs.gd](resources/weapon_affix_defs.gd) | 武器词条库（含元素词条池） | `WEAPON_AFFIX_POOL`、`WEAPON_ELEMENT_AFFIX_POOL`、`get_affix_def` |
 | [resources/weapon_type_affix_defs.gd](resources/weapon_type_affix_defs.gd) | 武器类型词条库 | `WEAPON_TYPE_AFFIX_POOL` |
 | [resources/weapon_theme_affix_defs.gd](resources/weapon_theme_affix_defs.gd) | 武器主题词条库 | `WEAPON_THEME_AFFIX_POOL` |
 | [resources/magic_affix_defs.gd](resources/magic_affix_defs.gd) | 魔法词条库（范围/效果/元素） | `RANGE_AFFIX_POOL`、`EFFECT_AFFIX_POOL`、`ELEMENT_AFFIX_POOL` |

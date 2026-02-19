@@ -779,11 +779,13 @@ func _roll_weapon_shop_options(count: int) -> Array[Dictionary]:
 	return result
 
 
-## [自定义] 根据武器类型（melee/ranged）随机抽取词条，数量在 count_min~count_max 之间。
+## [自定义] 根据武器类型（melee/ranged）随机抽取词条，数量在 count_min~count_max 之间；仅从非元素词条池抽取（元素词条由商店小概率单独追加）。
 func _roll_random_weapon_affixes(weapon_type: String, count_min: int, count_max: int) -> Array:
 	var pool: Array = WeaponAffixDefs.WEAPON_AFFIX_POOL
 	var filtered: Array[Dictionary] = []
 	for a in pool:
+		if str(a.get("effect_type", "")) == "element":
+			continue
 		var wt: String = str(a.get("weapon_type", "both"))
 		if wt == "both" or wt == weapon_type:
 			filtered.append(a)
@@ -800,6 +802,24 @@ func _roll_random_weapon_affixes(weapon_type: String, count_min: int, count_max:
 	return ids
 
 
+## [自定义] 小概率为无固定元素的武器追加 1 个随机元素词条；仅当 def 无 element_affix_id 时调用。
+func _maybe_roll_weapon_element_affix(weapon_type: String) -> String:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	if rng.randf() > 0.15:
+		return ""
+	var pool: Array = WeaponAffixDefs.WEAPON_ELEMENT_AFFIX_POOL
+	var filtered: Array[Dictionary] = []
+	for a in pool:
+		var wt: String = str(a.get("weapon_type", "both"))
+		if wt == "both" or wt == weapon_type:
+			filtered.append(a)
+	if filtered.is_empty():
+		return ""
+	filtered.shuffle()
+	return str(filtered[0].get("id", ""))
+
+
 ## [自定义] 商店商品：武器 + 道具混合，价格随波次上涨。武器随机附加 0~2 个词条（近战/远程/通用）。
 func _roll_shop_items(count: int) -> Array[Dictionary]:
 	var wave: int = wave_manager.current_wave
@@ -810,7 +830,13 @@ func _roll_shop_items(count: int) -> Array[Dictionary]:
 		var w: Dictionary = item.duplicate(true)
 		w["type"] = "weapon"
 		w["cost"] = ShopItemDefs.get_price_with_tier(int(item.get("base_cost", 5)), 0, wave)
-		w["random_affix_ids"] = _roll_random_weapon_affixes(str(item.get("type", "melee")), 0, 2)
+		var affix_ids: Array = _roll_random_weapon_affixes(str(item.get("type", "melee")), 0, 2)
+		# 无固定元素时，小概率追加 1 个武器元素词条
+		if str(item.get("element_affix_id", "")) == "":
+			var elem_id: String = _maybe_roll_weapon_element_affix(str(item.get("type", "melee")))
+			if elem_id != "":
+				affix_ids.append(elem_id)
+		w["random_affix_ids"] = affix_ids
 		weapon_candidates.append(w)
 	var owned_magics: Array[String] = player.get_equipped_magic_ids()
 	var magic_slots_full: bool = owned_magics.size() >= 3

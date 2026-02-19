@@ -85,11 +85,13 @@ func _apply_touch_hits() -> void:
 	if _hit_area == null:
 		return
 	var final_damage := damage
-	var elemental := ""
+	# 优先武器自身元素词条，否则取角色附魔；有元素时附着量 1（武器元素量）
+	var elemental := weapon_element if weapon_element != "" else ""
+	if elemental == "" and is_instance_valid(_owner_ref) and _owner_ref.has_method("get_elemental_enchantment"):
+		elemental = _owner_ref.get_elemental_enchantment()
+	var element_amount: int = EnemyBase.ELEMENT_AMOUNT_SMALL if elemental != "" else 0
 	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_final_damage"):
 		final_damage = _owner_ref.get_final_damage(damage, weapon_id, {"is_melee": true})
-		if _owner_ref.has_method("get_elemental_enchantment"):
-			elemental = _owner_ref.get_elemental_enchantment()
 	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_melee_damage_bonus"):
 		final_damage += _owner_ref.get_melee_damage_bonus()
 	for body in _hit_area.get_overlapping_bodies():
@@ -101,7 +103,7 @@ func _apply_touch_hits() -> void:
 			continue
 		if not _can_hit_enemy(body):
 			continue
-		body.take_damage(final_damage, elemental)
+		body.take_damage(final_damage, elemental, element_amount)
 		GameManager.add_record_damage_dealt(final_damage)
 		if is_instance_valid(_owner_ref) and _owner_ref.has_method("try_lifesteal"):
 			_owner_ref.try_lifesteal()

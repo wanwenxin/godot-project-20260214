@@ -531,7 +531,9 @@ func sync_weapons_from_run(run_weapons_list: Array) -> void:
 			if affix_def.is_empty():
 				continue
 			var effect_type: String = str(affix_def.get("effect_type", ""))
-			if effect_type != "" and instance.has_method("apply_upgrade"):
+			if effect_type == "element":
+				instance.weapon_element = str(affix_def.get("element", ""))
+			elif effect_type != "" and instance.has_method("apply_upgrade"):
 				instance.apply_upgrade(effect_type)
 		weapon_slots.add_child(instance)
 		_equipped_weapons.append(instance)

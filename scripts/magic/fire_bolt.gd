@@ -32,6 +32,7 @@ func cast(caster: Node2D, target_dir: Vector2) -> bool:
 	bullet.collision_mask = 2  # 玩家魔法子弹碰撞敌人层
 	bullet.set("remaining_pierce", 0)
 	bullet.set("elemental_type", element)
+	bullet.set("elemental_amount", EnemyBase.ELEMENT_AMOUNT_LARGE)
 	bullet.set("bullet_type", "laser")
 	bullet.set("bullet_color", Color(1.0, 0.4, 0.1, 1.0))
 	bullet.set("owner_ref", caster)

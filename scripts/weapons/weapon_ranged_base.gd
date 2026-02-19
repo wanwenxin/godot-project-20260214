@@ -31,13 +31,15 @@ func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 	if bullet_scene == null:
 		return false
 	var final_damage := damage
-	var elemental := ""
+	# 优先武器自身元素词条，否则取角色附魔；有元素时附着量 1（武器元素量）
+	var elemental := weapon_element if weapon_element != "" else ""
+	if elemental == "" and is_instance_valid(_owner_ref) and _owner_ref.has_method("get_elemental_enchantment"):
+		elemental = _owner_ref.get_elemental_enchantment()
+	var element_amount: int = EnemyBase.ELEMENT_AMOUNT_SMALL if elemental != "" else 0
 	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_final_damage"):
 		final_damage = _owner_ref.get_final_damage(damage, weapon_id, {"is_melee": false})
 	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_ranged_damage_bonus"):
 		final_damage += _owner_ref.get_ranged_damage_bonus()
-	if is_instance_valid(_owner_ref) and _owner_ref.has_method("get_elemental_enchantment"):
-		elemental = _owner_ref.get_elemental_enchantment()
 	var base_direction: Vector2 = (target.global_position - global_position).normalized()
 	var bullets := maxi(1, pellet_count)
 	var did_shoot := false
@@ -58,6 +60,7 @@ func _start_attack(_owner_node: Node2D, target: Node2D) -> bool:
 		bullet.collision_mask = 2  # 玩家子弹碰撞敌人层；复用时 _ready 不重跑，需显式设置
 		bullet.set("remaining_pierce", bullet_pierce)
 		bullet.set("elemental_type", elemental)
+		bullet.set("elemental_amount", element_amount)
 		if bullet_type != "":
 			bullet.set("bullet_type", bullet_type)
 			bullet.set("bullet_color", color_hint)

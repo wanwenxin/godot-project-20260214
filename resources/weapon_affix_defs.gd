@@ -13,10 +13,23 @@ const WEAPON_AFFIX_POOL := [
 	{"id": "weapon_pierce", "visible": true, "effect_type": "pierce", "base_value": 1, "weapon_type": "ranged", "name_key": "upgrade.pierce.title", "desc_key": "upgrade.pierce.desc"},
 ]
 
+# 武器元素词条池：effect_type 为 "element"，武器攻击时对敌人附着对应元素（元素量 1）。
+# 与魔法元素命名一致：fire/ice/lightning/poison/physical。
+const WEAPON_ELEMENT_AFFIX_POOL := [
+	{"id": "weapon_element_fire", "visible": true, "effect_type": "element", "element": "fire", "weapon_type": "both", "name_key": "weapon_affix.element_fire.name", "desc_key": "weapon_affix.element_fire.desc"},
+	{"id": "weapon_element_ice", "visible": true, "effect_type": "element", "element": "ice", "weapon_type": "both", "name_key": "weapon_affix.element_ice.name", "desc_key": "weapon_affix.element_ice.desc"},
+	{"id": "weapon_element_lightning", "visible": true, "effect_type": "element", "element": "lightning", "weapon_type": "both", "name_key": "weapon_affix.element_lightning.name", "desc_key": "weapon_affix.element_lightning.desc"},
+	{"id": "weapon_element_poison", "visible": true, "effect_type": "element", "element": "poison", "weapon_type": "both", "name_key": "weapon_affix.element_poison.name", "desc_key": "weapon_affix.element_poison.desc"},
+	{"id": "weapon_element_physical", "visible": true, "effect_type": "element", "element": "physical", "weapon_type": "both", "name_key": "weapon_affix.element_physical.name", "desc_key": "weapon_affix.element_physical.desc"},
+]
 
-## 根据 id 获取词条定义。
+
+## 根据 id 获取词条定义（先查数值词条池，再查元素词条池）。
 static func get_affix_def(affix_id: String) -> Dictionary:
 	for a in WEAPON_AFFIX_POOL:
+		if str(a.get("id", "")) == affix_id:
+			return a.duplicate(true)
+	for a in WEAPON_ELEMENT_AFFIX_POOL:
 		if str(a.get("id", "")) == affix_id:
 			return a.duplicate(true)
 	return {}

@@ -117,6 +117,12 @@
   - 使用 `assets/bullets/enemy_bullet.png` 专用像素图
   - enemy_ranged、enemy_boss 使用此场景
 
+- **元素附着与反应**（`enemy_base.gd`）：
+  - `take_damage(amount, _elemental, _element_amount)`：当 `_element_amount > 0` 时对敌人增加对应元素量（`_element_amounts` 字典）。
+  - 元素量档位：少量 1、大量 10、巨量 20；武器=1，魔法=10。
+  - 每累计 1 秒执行一次衰减：每种元素量减 1，为 0 则移除。若存在至少两种元素且量均 > 0，取两种等量消耗（`consumed = min(量A, 量B)`），两者减去 consumed 后根据元素类型触发**元素反应**（如 fire+ice→融化伤害、fire+lightning→过载伤害+击退、ice+lightning→超导伤害等）；反应仅造成无元素伤害，避免二次附着。
+  - 扩展：新增元素类型或反应组合时，在 `_trigger_element_reaction` 中补充 (elem_a, elem_b) 分支与效果。
+
 - `scripts/pickup.gd`
   - 掉落物（金币/治疗）
   - 金币按价值分级着色（铜/银/金）
@@ -251,6 +257,7 @@
 - 子弹按 `bullet_type` 区分：pistol（手枪 4x4）、shotgun（霰弹 6x6）、rifle（机枪 8x2）、laser（法杖 12x2），颜色取自武器 `color`
 - 分类型射击音效：`AudioManager.play_shoot_by_type(type)` 对应不同音高与时长
   - 命中反馈：击退（`enemy_base.apply_knockback`）、命中闪烁（颜色与子弹一致）
+- **武器元素词条**：`weapon_base.weapon_element` 来自 def 的 `element_affix_id`（固定）或商店随机元素词条；攻击时若有元素则对敌人附着元素量 1（少量）；武器与魔法各自至多一种元素。
 
 ### 2.7 词条系统
 
@@ -261,6 +268,7 @@
 - 词条分可见/不可见，可见词条在暂停菜单、结算面板展示
 - **数值可调节**：词条定义中的 `base_value` 为默认值；绑定时（如 `shop_item_defs` 的 item 中 `base_value`）可指定具体值覆盖，`AffixManager.collect_affixes_from_player` 优先使用绑定值
 - **武器词条分类**：`weapon_affix_defs` 中 `weapon_type` 为 `melee` | `ranged` | `both`，供 UI 筛选与展示
+- **武器元素词条池**：`weapon_affix_defs.gd` 的 `WEAPON_ELEMENT_AFFIX_POOL`（fire/ice/lightning/poison/physical），`effect_type: "element"`；`get_affix_def` 同时查找数值词条池与元素词条池。商店刷新时，仅当武器 def 无 `element_affix_id` 时以约 15% 概率追加 1 个随机武器元素词条。
 - 效果应用流程：`AffixManager.collect_affixes_from_player` → `get_aggregated_effects` → `_apply_affix_aggregated` 写入玩家
 - 组合效果扩展：`resources/affix_combo_defs.gd` 配置，`AffixManager.check_combos` 检测
 - 武器数值集中配置于：`resources/weapon_defs.gd`，远程武器需配置 `bullet_type`
@@ -393,9 +401,9 @@ flowchart TD
 
 伤害计算由武器发起，经 Player 委托给 CharacterTraits 参与修正：
 
-1. **近战**：`weapon_melee_base._apply_touch_hits()` 若 owner 有 `get_final_damage`，则用其替代武器 `damage`，并获取 `get_elemental_enchantment` 传入 `enemy.take_damage(amount, elemental)`
-2. **远程**：`weapon_ranged_base._start_attack()` 若 owner 有 `get_final_damage`，则计算最终伤害并设置到 bullet，同时设置 `elemental_type`
-3. **敌人**：`enemy_base.take_damage(amount, elemental)` 的 `elemental` 参数预留抗性/DOT 扩展
+1. **近战**：`weapon_melee_base._apply_touch_hits()` 若 owner 有 `get_final_damage` 则用其替代武器 `damage`；元素优先取武器 `weapon_element`，否则 `get_elemental_enchantment`；有元素时传入 `enemy.take_damage(amount, elemental, 1)`
+2. **远程**：`weapon_ranged_base._start_attack()` 同上，并将 `elemental_type`、`elemental_amount`（1 或 0）写入 bullet；子弹命中时 `take_damage(damage, elemental_type, elemental_amount)`
+3. **敌人**：`enemy_base.take_damage(amount, elemental, element_amount)` 的 `element_amount > 0` 时增加对应元素附着量；每秒衰减与双元素反应见「2.3 元素附着与反应」
 
 ### 3.6 玩家受击与伤害缓冲
 
@@ -571,6 +579,12 @@ flowchart TD
 2. 道具：在 `shop_item_defs.gd` 的 item 中增加 `affix_ids: ["xxx"]`；item 的 `base_value` 可覆盖词条默认值
 3. 武器/魔法：在 def 中增加 `affix_ids: []`（可选）
 4. 若 effect_type 为新类型，在 `player._apply_affix_aggregated` 或对应效果应用处补充处理
+5. **武器元素词条**：在 `weapon_affix_defs.gd` 的 `WEAPON_ELEMENT_AFFIX_POOL` 中增加条目（`effect_type: "element"`、`element`、`weapon_type`、`name_key`、`desc_key`），并在 i18n 中补充对应 key
+
+### 5.1c 新增元素类型/反应
+
+1. **新元素类型**：在 `weapon_affix_defs.WEAPON_ELEMENT_AFFIX_POOL` 与 `magic_affix_defs.ELEMENT_AFFIX_POOL` 中增加对应元素 id；攻击/魔法传 `take_damage(..., element, amount)` 时使用该元素名
+2. **新元素反应**：在 `enemy_base.gd` 的 `_trigger_element_reaction(elem_a, elem_b, consumed)` 中增加 (elem_a, elem_b) 分支（规范化为字典序 lo/hi），根据 consumed 计算反应伤害或击退等效果；反应仅造成无元素伤害（`current_health -= reaction_damage` 等），避免二次附着
 
 ### 5.2 新增敌人
 

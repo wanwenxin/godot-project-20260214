@@ -286,6 +286,8 @@ func _build_affixes_tab() -> void:
 		var wt: String = str(a.get("weapon_type", ""))
 		var target: VBoxContainer = vbox_weapon_both if wt == "both" else (vbox_weapon_melee if wt == "melee" else vbox_weapon_ranged)
 		_add_affix_entry(target, a)
+	for a in WeaponAffixDefs.WEAPON_ELEMENT_AFFIX_POOL:
+		_add_affix_entry(vbox_weapon_both, a)
 	for a in WeaponTypeAffixDefs.WEAPON_TYPE_AFFIX_POOL:
 		var tid: String = str(a.get("id", ""))
 		var target_melee_ranged: VBoxContainer = vbox_weapon_melee if tid in melee_type_ids else vbox_weapon_ranged
