@@ -185,8 +185,8 @@
 | [scripts/ui/game_over_screen.gd](scripts/ui/game_over_screen.gd) | 死亡结算 | `show_result` |
 | [scripts/ui/victory_screen.gd](scripts/ui/victory_screen.gd) | 通关结算 | `show_result` |
 | [scripts/ui/result_panel_shared.gd](scripts/ui/result_panel_shared.gd) | 结算面板共享 UI | `build_score_block`、`build_player_stats_block`（支持完整 stats 字典） |
-| [scripts/ui/tab_container_selected_scale.gd](scripts/ui/tab_container_selected_scale.gd) | TabContainer 扩展，注入 TabBarSelectedScale 使选中标签放大，并移除内容区 panel 背景 | 挂到所有 TabContainer |
-| [scripts/ui/tab_bar_selected_scale.gd](scripts/ui/tab_bar_selected_scale.gd) | TabBar 扩展，选中标签整体放大（字号+尺寸）为 tab_selected_scale 倍 | 由 TabContainerSelectedScale 注入 |
+| [scripts/ui/tab_container_selected_scale.gd](scripts/ui/tab_container_selected_scale.gd) | TabContainer 扩展，移除内容区 panel 背景，避免与外层 Panel 重复 | 挂到所有 TabContainer |
+| [scripts/ui/tab_bar_selected_scale.gd](scripts/ui/tab_bar_selected_scale.gd) | TabBar 自定义绘制（当前未使用，保留供后续主题定制） | - |
 | [scripts/ui/magic_targeting_overlay.gd](scripts/ui/magic_targeting_overlay.gd) | 魔法施法覆盖层，按 range_type 显示直线/鼠标圆心圆/角色圆心圆 | `start_targeting`、`cast_confirmed`、`cast_cancelled` |
 
 ### 2.8 资源与工具

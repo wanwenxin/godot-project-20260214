@@ -493,7 +493,7 @@ flowchart TD
 - `style_expand_margin_hud`、`style_content_margin_hud`：HUD 小面板边距（默认 6/8）
 
 **Tab 选中放大**
-- `tab_selected_scale`：当前选中 Tab 标签整体放大倍率（字号+标签尺寸，默认 1.3），供 `TabBarSelectedScale` 引用；`TabContainerSelectedScale` 同时移除内容区 panel 背景，避免与外层 Panel 重复
+- `tab_selected_scale`：保留于 UiThemeConfig 供后续复用；当前 `TabContainerSelectedScale` 仅移除内容区 panel 背景，使用引擎默认 TabBar，避免重复层与文字遮盖
 
 **兼容旧引用**
 - `tab_font_size`、`content_font_size`：Tab 与内容区字号（默认 22/20）

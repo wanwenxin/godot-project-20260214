@@ -63,11 +63,12 @@ static func load_theme() -> UiThemeConfig:
 
 
 ## [自定义] 返回模态面板用的 StyleBoxTexture（程序生成纹理），供暂停、设置、结算等界面复用。
+## 边框色与背景色一致，无白边。
 func get_modal_panel_stylebox() -> StyleBox:
 	var tex := VisualAssetRegistry.make_panel_frame_texture(
 		Vector2i(64, 64),
 		modal_panel_bg,
-		modal_panel_border,
+		modal_panel_bg,
 		2,
 		8
 	)
