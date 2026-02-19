@@ -149,9 +149,11 @@ func show_structured_tooltip(data: Dictionary) -> void:
 	visible = true
 
 
-## 轻量哈希：仅拼接 title、weapon_index、affixes id、effects 等关键字段，避免 JSON.stringify 开销。
+## 轻量哈希：仅拼接 title、weapon_index、affixes id、effect_parts 等关键字段，避免 JSON.stringify 开销。
 func _hash_tooltip_data(data: Dictionary) -> String:
-	var parts: Array[String] = [str(data.get("title", "")), str(data.get("weapon_index", -1)), str(data.get("effects", ""))]
+	var eff: Array = data.get("effect_parts", [])
+	var eff_str: String = "|".join(eff) if eff.size() > 0 else str(data.get("effects", ""))
+	var parts: Array[String] = [str(data.get("title", "")), str(data.get("weapon_index", -1)), eff_str]
 	parts.append("%s" % bool(data.get("show_sell", false)))
 	parts.append("%d" % int(data.get("sell_price", 0)))
 	parts.append("%s" % bool(data.get("show_synthesize", false)))
@@ -199,9 +201,24 @@ func _build_structured_content(data: Dictionary) -> void:
 			var chip := _make_affix_chip(affix_data)
 			hbox.add_child(chip)
 		vbox.add_child(hbox)
-	# 效果区
-	var effects: String = str(data.get("effects", ""))
-	if not effects.is_empty():
+	# 效果区：支持 effect_parts 数组（分行 ul/li）或 effects 字符串
+	var effect_parts: Array = data.get("effect_parts", [])
+	var bullet: String = LocalizationManager.tr_key("common.bullet")
+	if effect_parts.size() > 0:
+		var eff_header := Label.new()
+		eff_header.text = LocalizationManager.tr_key("backpack.tooltip_effects") + ":"
+		eff_header.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
+		eff_header.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
+		vbox.add_child(eff_header)
+		for part in effect_parts:
+			var eff_line := Label.new()
+			eff_line.text = "  " + bullet + " " + str(part)
+			eff_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			eff_line.add_theme_font_size_override("font_size", TOOLTIP_FONT_SIZE - 1)
+			eff_line.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+			vbox.add_child(eff_line)
+	elif str(data.get("effects", "")) != "":
+		var effects: String = str(data.get("effects", ""))
 		var eff_lbl := Label.new()
 		eff_lbl.text = LocalizationManager.tr_key("backpack.tooltip_effects") + ": " + effects
 		eff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

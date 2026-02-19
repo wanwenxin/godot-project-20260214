@@ -282,15 +282,16 @@ func _build_weapon_tooltip_data(w: Dictionary, weapon_upgrades: Array, weapon_in
 		var tier_coef: float = TierConfig.get_damage_multiplier(int(w.get("tier", 0)))
 		var wave_coef: float = 1.0 + float(_shop_wave) * 0.15
 		sell_price = maxi(1, int(float(base_cost) * tier_coef * wave_coef * 0.3))
-	# 套装效果完整展示（2/4/6 件，含生效档位）
+	# 套装效果：仅展示该武器所属套装（2/4/6 件，含生效档位）
 	var equipped_weapons: Array = []
 	for ow in weapon_details:
 		equipped_weapons.append({"id": str(ow.get("id", "")), "tier": int(ow.get("tier", 0))})
-	var set_bonus_info: Array = WeaponSetDefs.get_weapon_set_full_display_info(equipped_weapons)
+	var weapon_id: String = str(w.get("id", ""))
+	var set_bonus_info: Array = WeaponSetDefs.get_weapon_set_full_display_info_for_weapon(equipped_weapons, weapon_id)
 	return {
 		"title": LocalizationManager.tr_key(name_key),
 		"affixes": affixes,
-		"effects": ", ".join(effect_parts),
+		"effect_parts": effect_parts,
 		"show_sell": show_sell,
 		"show_synthesize": show_synthesize,
 		"weapon_index": weapon_index,
@@ -348,7 +349,6 @@ func _build_magic_tooltip_data(m: Dictionary, def: Dictionary) -> Dictionary:
 	effect_parts.append(LocalizationManager.tr_key("backpack.tooltip_power") + ": %d" % int(def.get("power", 0)))
 	effect_parts.append(LocalizationManager.tr_key("backpack.tooltip_mana") + ": %d" % int(def.get("mana_cost", 0)))
 	effect_parts.append(LocalizationManager.tr_key("backpack.tooltip_cooldown") + ": %.1fs" % float(def.get("cooldown", 1.0)))
-	var effects_str := ", ".join(effect_parts)
 	var affixes: Array[Dictionary] = []
 	for affix_id_key in ["range_affix_id", "effect_affix_id", "element_affix_id"]:
 		var aid: String = str(def.get(affix_id_key, ""))
@@ -374,7 +374,7 @@ func _build_magic_tooltip_data(m: Dictionary, def: Dictionary) -> Dictionary:
 	return {
 		"title": LocalizationManager.tr_key(title_key),
 		"affixes": affixes,
-		"effects": effects_str
+		"effect_parts": effect_parts
 	}
 
 
@@ -400,15 +400,23 @@ func _get_item_def(item_id: String) -> Dictionary:
 
 
 ## 构建道具 tooltip 结构化数据：仅展示最终效果加成，不展示词条与数值。
+## 魔法类道具无 attr/base_value，仅展示名称；attribute 类展示数值效果。
 func _build_item_tooltip_data(_item_id: String, def: Dictionary) -> Dictionary:
-	var display_key: String = str(def.get("display_name_key", def.get("name_key", "item.unknown.name")))
-	var base_val = def.get("base_value", 0)
-	var attr: String = str(def.get("attr", ""))
+	var display_key: String
+	if def.is_empty():
+		display_key = "item.%s.name" % _item_id
+	else:
+		display_key = str(def.get("display_name_key", def.get("name_key", "item.%s.name" % _item_id)))
+	var base_val: Variant = def.get("base_value", 0) if not def.is_empty() else 0
+	var attr: String = str(def.get("attr", "")) if not def.is_empty() else ""
 	var effect_str := _format_item_effect(attr, base_val)
+	var effect_parts: Array[String] = []
+	if not effect_str.is_empty():
+		effect_parts.append(effect_str)
 	return {
 		"title": LocalizationManager.tr_key(display_key),
 		"affixes": [],
-		"effects": effect_str
+		"effect_parts": effect_parts
 	}
 
 
@@ -420,12 +428,32 @@ func _attr_to_affix_id(attr: String) -> String:
 	return m.get(attr, "item_%s" % attr)
 
 
+## 格式化道具数值效果；attr 为空（魔法类）或无有效数值时返回空串。
 func _format_item_effect(attr: String, val: Variant) -> String:
-	if attr == "lifesteal_chance" and val is float:
-		return "+%.0f%%" % (float(val) * 100.0)
+	if attr.is_empty():
+		return ""
+	# 安全处理 null 或非数值类型
+	if val == null:
+		return ""
 	if val is float:
+		if attr == "lifesteal_chance":
+			return "+%.0f%%" % (float(val) * 100.0)
 		return "+%.1f" % float(val)
-	return "+%d" % int(val)
+	if val is int:
+		return "+%d" % int(val)
+	# String 需先验证再转换，避免 float("invalid") 抛错
+	if val is String:
+		if not str(val).is_valid_float():
+			return ""
+		var as_float := float(val)
+		if is_nan(as_float) or is_inf(as_float):
+			return ""
+		if attr == "lifesteal_chance":
+			return "+%.0f%%" % (as_float * 100.0)
+		if abs(as_float - int(as_float)) > 0.0001:
+			return "+%.1f" % as_float
+		return "+%d" % int(as_float)
+	return ""
 
 
 func _on_synthesize_requested(weapon_index: int) -> void:
@@ -582,7 +610,7 @@ func _show_detail_placeholder() -> void:
 	var lbl := Label.new()
 	lbl.text = LocalizationManager.tr_key("backpack.detail_placeholder")
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.add_theme_font_size_override("font_size", 16)
 	lbl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.7))
 	_detail_content.add_child(lbl)
 
@@ -596,16 +624,17 @@ func _build_detail_content(data: Dictionary) -> void:
 	# 标题
 	var title_lbl := Label.new()
 	title_lbl.text = str(data.get("title", ""))
-	title_lbl.add_theme_font_size_override("font_size", 17)
+	title_lbl.add_theme_font_size_override("font_size", 19)
 	title_lbl.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95))
 	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_content.add_child(title_lbl)
+	var bullet: String = LocalizationManager.tr_key("common.bullet")
 	# 词条区
 	var affixes: Array = data.get("affixes", [])
 	if affixes.size() > 0:
 		var affix_label := Label.new()
 		affix_label.text = LocalizationManager.tr_key("backpack.tooltip_affixes") + ":"
-		affix_label.add_theme_font_size_override("font_size", 15)
+		affix_label.add_theme_font_size_override("font_size", 17)
 		affix_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
 		_detail_content.add_child(affix_label)
 		var affix_vbox := VBoxContainer.new()
@@ -623,35 +652,45 @@ func _build_detail_content(data: Dictionary) -> void:
 				var bonus = affix_data.get("bonus_per_count", 0)
 				if et != "":
 					desc_str = _effect_type_to_desc(et, bonus)
-			line.text = name_str + ": " + (desc_str if desc_str != "" else value_fmt)
+			line.text = "  " + bullet + " " + name_str + ": " + (desc_str if desc_str != "" else value_fmt)
 			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			line.add_theme_font_size_override("font_size", 14)
+			line.add_theme_font_size_override("font_size", 16)
 			line.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 			affix_vbox.add_child(line)
 		_detail_content.add_child(affix_vbox)
-	# 效果区
-	var effects: String = str(data.get("effects", ""))
-	if not effects.is_empty():
-		var eff_lbl := Label.new()
-		eff_lbl.text = LocalizationManager.tr_key("backpack.tooltip_effects") + ": " + effects
-		eff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		eff_lbl.add_theme_font_size_override("font_size", 15)
-		eff_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
-		_detail_content.add_child(eff_lbl)
+	# 效果区：分行 ul/li 风格展示
+	var effect_parts: Array = data.get("effect_parts", [])
+	if effect_parts.size() > 0:
+		var eff_header := Label.new()
+		eff_header.text = LocalizationManager.tr_key("backpack.tooltip_effects") + ":"
+		eff_header.add_theme_font_size_override("font_size", 17)
+		eff_header.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
+		_detail_content.add_child(eff_header)
+		var eff_vbox := VBoxContainer.new()
+		eff_vbox.add_theme_constant_override("separation", 2)
+		for part in effect_parts:
+			var eff_line := Label.new()
+			eff_line.text = "  " + bullet + " " + str(part)
+			eff_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			eff_line.add_theme_font_size_override("font_size", 16)
+			eff_line.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+			eff_vbox.add_child(eff_line)
+		_detail_content.add_child(eff_vbox)
 	# 套装效果区（2/4/6 件完整展示，高亮生效档位）
+	var piece_str: String = LocalizationManager.tr_key("common.piece")
 	var set_bonus_info: Array = data.get("set_bonus_info", [])
 	if set_bonus_info.size() > 0:
 		var set_header := Label.new()
 		set_header.text = LocalizationManager.tr_key("backpack.tooltip_set_bonus")
-		set_header.add_theme_font_size_override("font_size", 15)
+		set_header.add_theme_font_size_override("font_size", 17)
 		set_header.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
 		_detail_content.add_child(set_header)
 		for set_info in set_bonus_info:
 			var name_str := LocalizationManager.tr_key(str(set_info.get("name_key", "")))
 			var count: int = int(set_info.get("count", 0))
 			var set_lbl := Label.new()
-			set_lbl.text = "[%s] (%d件)" % [name_str, count]
-			set_lbl.add_theme_font_size_override("font_size", 14)
+			set_lbl.text = "[%s] (%d%s)" % [name_str, count, piece_str]
+			set_lbl.add_theme_font_size_override("font_size", 16)
 			set_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 			_detail_content.add_child(set_lbl)
 			var thresholds: Array = set_info.get("thresholds", [])
@@ -660,9 +699,9 @@ func _build_detail_content(data: Dictionary) -> void:
 				var desc: String = str(th.get("desc", ""))
 				var active: bool = bool(th.get("active", false))
 				var th_lbl := Label.new()
-				th_lbl.text = "  %d件: %s" % [n, desc]
+				th_lbl.text = "  " + LocalizationManager.tr_key("common.piece_threshold", {"value": n}) + " " + desc
 				th_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				th_lbl.add_theme_font_size_override("font_size", 13)
+				th_lbl.add_theme_font_size_override("font_size", 15)
 				if active:
 					th_lbl.add_theme_color_override("font_color", Color(0.4, 1.0, 0.5))
 				else:
@@ -674,7 +713,7 @@ func _build_detail_content(data: Dictionary) -> void:
 		var sell_price: int = int(data.get("sell_price", 0))
 		var price_lbl := Label.new()
 		price_lbl.text = LocalizationManager.tr_key("backpack.sell_price", {"price": sell_price})
-		price_lbl.add_theme_font_size_override("font_size", 15)
+		price_lbl.add_theme_font_size_override("font_size", 17)
 		price_lbl.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
 		_detail_content.add_child(price_lbl)
 		var sell_btn := Button.new()

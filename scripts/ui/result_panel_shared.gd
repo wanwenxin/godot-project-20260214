@@ -1,7 +1,7 @@
 extends Node
 
 # 结算/死亡/通关界面共享 UI 构建逻辑
-const BASE_FONT_SIZE := 18  # 统一基准字号
+const BASE_FONT_SIZE := 20  # 统一基准字号
 
 
 # 供 pause_menu、game_over_screen、victory_screen 复用得分区与玩家信息区
@@ -312,8 +312,9 @@ static func _make_weapon_set_bonus_block(set_info: Dictionary) -> Control:
 	block.add_theme_constant_override("separation", 2)
 	var name_str := LocalizationManager.tr_key(str(set_info.get("name_key", "")))
 	var count: int = int(set_info.get("count", 0))
+	var piece_str: String = LocalizationManager.tr_key("common.piece")
 	var header := Label.new()
-	header.text = "[%s] (%d件)" % [name_str, count]
+	header.text = "[%s] (%d%s)" % [name_str, count, piece_str]
 	header.add_theme_font_size_override("font_size", BASE_FONT_SIZE)
 	header.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	block.add_child(header)
@@ -323,7 +324,7 @@ static func _make_weapon_set_bonus_block(set_info: Dictionary) -> Control:
 		var desc: String = str(th.get("desc", ""))
 		var active: bool = bool(th.get("active", false))
 		var th_lbl := Label.new()
-		th_lbl.text = "  %d件: %s" % [n, desc]
+		th_lbl.text = "  " + LocalizationManager.tr_key("common.piece_threshold", {"value": n}) + " " + desc
 		th_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		th_lbl.add_theme_font_size_override("font_size", BASE_FONT_SIZE - 2)
 		if active:

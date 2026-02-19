@@ -86,7 +86,7 @@ var _magic_slots: Array = []  # 每项 {panel, icon, cd_overlay, name_label, aff
 var _key_hints_expanded: bool = false  # 是否展开显示全部按键提示
 
 # ---- 样式与布局常量 ----
-const HUD_FONT_SIZE := 18  # 顶部标签统一字号
+const HUD_FONT_SIZE := 20  # 顶部标签统一字号
 const MAGIC_SLOT_SIZE := 92  # 魔法槽图标区域边长（像素）
 const MAGIC_SLOT_EXTRA_HEIGHT := 46  # 魔法槽名称+词条区域高度
 

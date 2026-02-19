@@ -14,8 +14,8 @@ const THEME_PATH := "res://resources/ui_theme.tres"
 @export var margin_tight: int = 16
 
 ## 字体与间距常量，供 Tab、内容区、列表等引用，便于 720p 下统一调参。
-@export var tab_font_size: int = 20
-@export var content_font_size: int = 18
+@export var tab_font_size: int = 22
+@export var content_font_size: int = 20
 @export var separation_default: int = 12
 @export var separation_tight: int = 8
 

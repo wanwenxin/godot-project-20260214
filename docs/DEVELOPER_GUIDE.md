@@ -326,7 +326,7 @@
   - Root 设置为 `MOUSE_FILTER_IGNORE`，避免吞掉 HUD 点击
   - 暂停层新增全屏纯色不透明 backdrop
   - 面板样式强制不透明，保证暂停文本可读
-  - 按键提示：移动、暂停、镜头缩放、魔法、敌人血条（随改键同步）
+  - 按键提示：移动、暂停、镜头缩放、魔法、敌人血条、按键提示切换（随改键同步）
   - 属性 Tab 仅显示角色属性；死亡/通关界面仍显示完整信息（武器、道具、词条、魔法）
 
 - `scripts/ui/backpack_panel.gd`
@@ -335,13 +335,13 @@
   - 槽位 StyleBox 复用：`_get_slot_style()` 缓存单例，减少对象分配
   - 图标加载走 `VisualAssetRegistry.get_texture_cached`，缺失时用 `make_color_texture` 生成占位图
   - 点击或悬浮槽位时在右侧 DetailPanel 显示详情（标题、词条、效果、套装 2/4/6 件、售卖/合成按钮）；无选中且无悬浮时显示占位文案
-  - 武器详情含套装效果完整展示（`WeaponSetDefs.get_weapon_set_full_display_info`），生效档位高亮
+  - 武器详情仅展示该武器所属套装（`WeaponSetDefs.get_weapon_set_full_display_info_for_weapon`），生效档位高亮；词条与效果分行 ul/li 风格
   - 道具 tooltip 仅展示最终效果加成；道具名用 `display_name_key`（如疾风靴、恶魔药剂）
   - 武器 tooltip 含「合成」按钮（非最高品级且存在同名同品级其他武器时）；点击后进入合并模式，选择素材完成手动合成
   - `hide_tooltip()`：暂停菜单关闭时清空选中并显示占位
 
 - `scripts/ui/backpack_tooltip_popup.gd`
-  - 背包悬浮面板：PanelContainer 实现，挂到暂停菜单 CanvasLayer 保证同视口、文字可显示；tooltip 数据轻量哈希（title/weapon_index/affixes/effects）避免 JSON.stringify 开销
+  - 背包悬浮面板：PanelContainer 实现，挂到暂停菜单 CanvasLayer 保证同视口、文字可显示；tooltip 数据轻量哈希（title/weapon_index/affixes/effect_parts）避免 JSON.stringify 开销；支持 effect_parts 数组分行 ul/li 展示
   - 词条二级面板：独立 PanelContainer，与主 tooltip 同级（CanvasLayer），首次显示时加入场景树，屏幕坐标定位；AFFIX_TOOLTIP_WIDTH 200、字体 14；完整描述+数值
   - `show_tooltip(text)`：纯文本模式，用于魔法等无词条项；同一物体悬浮移动时不重生成
   - `show_structured_tooltip(data)`：结构化模式，名称 + 词条 Chip 横向排布（可 hover 显示描述与数值）+ 效果；武器可含合成按钮
@@ -470,7 +470,7 @@ flowchart TD
 
 **边距与间距**
 - `margin_default`、`margin_small`、`margin_tight`：常用边距（默认 32/24/16）
-- `tab_font_size`、`content_font_size`：Tab 与内容区字号（默认 20/18）
+- `tab_font_size`、`content_font_size`：Tab 与内容区字号（默认 22/20）
 - `separation_default`、`separation_tight`：容器间距（默认 12/8）
 
 **可访问性**
@@ -602,6 +602,7 @@ flowchart TD
 - 语言文件：
   - `i18n/zh-CN.json`
   - `i18n/en-US.json`
+- 套装效果 i18n：`weapon_set.blade`、`weapon_set.firearm`、`weapon_set.magic`、`weapon_set.heavy` 及 `*.desc`、`*.bonus_2/4/6`；件数用 `common.piece`、`common.piece_threshold`、`common.set_active`
 - 存档字段：
   - `save.json.language`
 - 入口：
@@ -963,7 +964,7 @@ ObjectPool.recycle_enemy(enemy)
 - `magic_set`：魔法套装（魔力、法强）
 - `heavy_set`：重装套装（护甲、眩晕）
 
-**展示接口**：`WeaponSetDefs.get_weapon_set_full_display_info(equipped_weapons)` 返回 2/4/6 件完整描述及 `active_threshold`，供背包详情与人物属性面板高亮生效档位。
+**展示接口**：`WeaponSetDefs.get_weapon_set_full_display_info(equipped_weapons)` 返回全部套装 2/4/6 件完整描述，供角色信息面板展示；`get_weapon_set_full_display_info_for_weapon(equipped_weapons, weapon_id)` 仅返回该武器所属套装，供背包物品详情使用。
 
 **套装加成**：
 - 2 件：基础加成

@@ -163,6 +163,20 @@ static func calculate_set_bonuses(equipped_weapons: Array) -> Dictionary:
 	return result
 
 
+## [自定义] 获取指定武器所属套装的完整展示信息，供背包物品详情使用。
+## weapon_id 所属套装才会被包含；equipped_weapons 用于计算当前装备数量与生效档位。
+static func get_weapon_set_full_display_info_for_weapon(equipped_weapons: Array, weapon_id: String) -> Array:
+	var all_info: Array = get_weapon_set_full_display_info(equipped_weapons)
+	var weapon_sets: Array[String] = get_weapon_sets(weapon_id)
+	if weapon_sets.is_empty():
+		return []
+	var result: Array = []
+	for info in all_info:
+		if str(info.get("set_id", "")) in weapon_sets:
+			result.append(info)
+	return result
+
+
 ## [自定义] 获取套装完整展示信息，供详情面板与人物属性面板使用。
 ## 返回: [{set_id, name_key, count, thresholds: [{n, desc_key, desc, active}], active_threshold}]
 static func get_weapon_set_full_display_info(equipped_weapons: Array) -> Array:
@@ -202,11 +216,10 @@ static func get_set_bonus_description(set_id: String, equipped_weapons: Array) -
 	var name: String = LocalizationManager.tr_key(str(set_info.get("name_key", "")))
 	var count: int = int(set_info.get("count", 0))
 	var highest: int = int(set_info.get("highest_threshold", 0))
-	
-	var desc := "[%s] (%d件)" % [name, count]
+	var piece: String = LocalizationManager.tr_key("common.piece")
+	var desc := "[%s] (%d%s)" % [name, count, piece]
 	if highest > 0:
-		desc += " - %d件套效果激活" % highest
-	
+		desc += " - " + LocalizationManager.tr_key("common.set_active", {"value": highest})
 	return desc
 
 

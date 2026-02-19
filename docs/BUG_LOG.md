@@ -18,6 +18,13 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-19：商店背包 _build_item_tooltip_data 报错
+
+- **现象**：打开武器商店、选择商品时 backtrace 指向 `_build_item_tooltip_data`；报错 `Trying to assign an array of type "Array" to a variable of type "Array[String]"` 或 `_format_item_effect` 内类型转换异常
+- **原因**：(1) `[effect_str] if ... else []` 产生无类型 Array，不能赋给 `Array[String]`；(2) `run_items` 含魔法类道具，def 无 `attr`/`base_value`，`val` 可能为 null 或非数值
+- **修复**：`effect_parts` 改为先声明 `Array[String]` 空数组，再 `append(effect_str)`；`_format_item_effect` 增加 null/类型/String 校验
+- **预防**：GDScript 中 `[x]`、`[]` 为无类型 Array，赋给 `Array[T]` 时需显式构造（如 `var a: Array[String] = []` 再 `append`）
+
 ### 2026-02-19：武器 7+ 无图修复
 
 - **现象**：背包中第 7 把及以后的武器槽无图标显示
