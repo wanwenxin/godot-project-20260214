@@ -39,7 +39,7 @@ func configure(icon_path: String, color: Color, tip: String, _tooltip_popup = nu
 	_weapon_index = weapon_index
 	_slot_type = slot_type
 	_slot_index = slot_index
-	# 图标：使用纹理缓存避免重复 load
+	# 图标：使用纹理缓存；EXPAND_IGNORE_SIZE 使大图不会按纹理尺寸撑大槽位，与图鉴一致
 	_icon_rect = TextureRect.new()
 	var tex: Texture2D = null
 	if icon_path != "":
@@ -47,6 +47,7 @@ func configure(icon_path: String, color: Color, tip: String, _tooltip_popup = nu
 	if tex == null:
 		tex = VisualAssetRegistry.make_color_texture(color, Vector2i(SLOT_SIZE, SLOT_SIZE))
 	_icon_rect.texture = tex
+	_icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_icon_rect.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	_icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -18,6 +18,13 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-19：图鉴/商店图标大图撑大、无法统一 48×48
+
+- **现象**：图鉴页左侧武器/道具图标（如「虚空短刃」）显示过大，无法与商店页一样统一为 48×48。
+- **原因**：Godot 4 的 TextureRect 默认 `expand_mode = EXPAND_KEEP_SIZE`，会以**纹理尺寸**参与最小尺寸计算；大图（如 256×256）导致布局按纹理给足空间，图标被撑大。商店页使用 HFlowContainer + 背包槽，槽内多为小图或此前未暴露该问题。
+- **修复**：在图鉴 `_add_entry` 与背包槽 `BackpackSlot.configure()` 中为图标 TextureRect 设置 `expand_mode = TextureRect.EXPAND_IGNORE_SIZE`，使最小尺寸仅由 `custom_minimum_size`(48×48) 决定，纹理按 stretch_mode 缩放显示。
+- **预防**：在容器中需要固定尺寸图标时，TextureRect 必须设置 `EXPAND_IGNORE_SIZE`，否则大图会按纹理尺寸撑大布局。
+
 ### 2026-02-20：武器图标重生成计划（WanImage 工具不可用）
 
 - **现象**：计划「武器美术重生成与规则」中需调用 WanImage 的 `modelstudio_image_gen` 生成 11 张武器图，调用报错 Tool not found。

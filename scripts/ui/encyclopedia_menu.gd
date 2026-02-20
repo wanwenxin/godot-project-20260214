@@ -15,8 +15,6 @@ var _weapons_sub: TabContainer = null  # 武器子 Tab（近战/远程），语�
 var _affixes_sub: TabContainer = null  # 词条子 Tab（五类），语言切换时更新标题
 
 const ITEM_SEP := 8
-const ICON_SIZE := 48
-const PLACEHOLDER_COLOR := Color(0.5, 0.55, 0.6, 1.0)
 const TEXT_MIN_WIDTH := 400
 
 
@@ -83,17 +81,20 @@ func _add_entry(vbox: VBoxContainer, title: String, details: String, icon_path: 
 	card.add_theme_stylebox_override("panel", card_style)
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 12)
-	# 左侧图标
+	# 左侧图标：与商店/背包槽一致，且必须忽略纹理尺寸，否则大图会按纹理尺寸撑大（TextureRect 默认 EXPAND_KEEP_SIZE）
 	var icon_rect := TextureRect.new()
 	var tex: Texture2D = null
-	if icon_path != "" and ResourceLoader.exists(icon_path):
-		tex = load(icon_path) as Texture2D
+	if icon_path != "":
+		tex = VisualAssetRegistry.get_texture_cached(icon_path)
 	if tex == null:
-		tex = VisualAssetRegistry.make_color_texture(PLACEHOLDER_COLOR, Vector2i(ICON_SIZE, ICON_SIZE))
+		tex = VisualAssetRegistry.make_color_texture(BackpackSlot.PLACEHOLDER_COLOR, Vector2i(BackpackSlot.SLOT_SIZE, BackpackSlot.SLOT_SIZE))
 	icon_rect.texture = tex
-	icon_rect.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.custom_minimum_size = Vector2(BackpackSlot.SLOT_SIZE, BackpackSlot.SLOT_SIZE)
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	icon_rect.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	hbox.add_child(icon_rect)
 	# 右侧文本区
 	var text_vbox := VBoxContainer.new()
