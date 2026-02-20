@@ -13,5 +13,10 @@ alwaysApply: true
 
 - **唯一工具**：仅使用 **AliyunBailianMCP_WanImage** MCP 的 `modelstudio_image_gen` 工具生成图片
 - **遵循美术文档**：生成的图片必须符合 `docs/ART_STYLE_GUIDE.md` 中对应类型的规格（尺寸、路径、视角、像素风、透明背景等）；提示词须按文档「描述词规范」编写
+- **透明背景**：生成时提示词必须包含「transparent background」；若生成结果带背景，可后处理或仅提示失败
+- **尺寸**：生成图须符合美术文档规定的尺寸（如图标 96×96）。满足方式可选：
+  - **生成时限制**：调用图生工具时若支持目标尺寸（如 96*96），则传入该尺寸
+  - **生成后限制**：生成后对图片做缩放/裁剪至规定尺寸再写入 `assets/`
+  - **游戏中限制**：游戏内已通过 TextureRect 的 `custom_minimum_size` 与 `stretch_mode` 约束显示尺寸；若暂不改资源文件，须注明资源未达规格，建议后续将源资源改为 96×96
 - **失败处理**：若 WanImage 调用失败，**仅提示哪些资产生成失败**，不调用其他图生接口（如 Pixellab、ali-image、GenerateImage、gen_icons.py 等）替代生成
 - **已替换记录**：若项目内存在已生成资产记录文档，生成前须查阅并跳过已打标资产

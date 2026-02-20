@@ -51,4 +51,4 @@
 
 ---
 
-**说明**：以上图标均使用 AliyunBailianMCP_WanImage（`modelstudio_image_gen`）生成，风格统一；提示词遵循 `docs/ART_STYLE_GUIDE.md` 描述词规范。若需 96×96 显示规格，可在使用时由引擎缩放或预先裁剪/缩放资源。
+**说明**：以上图标均使用 AliyunBailianMCP_WanImage（`modelstudio_image_gen`）生成，风格统一；提示词遵循 `docs/ART_STYLE_GUIDE.md` 描述词规范。当前已替换图标均已按 **96×96** 规格处理（含生成后使用 `scripts/resize_icons_to_spec.py` 或 `scripts/tools/resize_icons_to_spec.gd` 缩放）。
