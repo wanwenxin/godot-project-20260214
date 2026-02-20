@@ -16,6 +16,8 @@ var _affixes_sub: TabContainer = null  # 词条子 Tab（五类），语言切�
 
 const ITEM_SEP := 8
 const TEXT_MIN_WIDTH := 400
+## 图鉴项左侧图标边长，略大于商店槽 48 以更醒目；图标在行内垂直居中。
+const ENTRY_ICON_SIZE := 56
 
 
 func _ready() -> void:
@@ -81,21 +83,24 @@ func _add_entry(vbox: VBoxContainer, title: String, details: String, icon_path: 
 	card.add_theme_stylebox_override("panel", card_style)
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 12)
-	# 左侧图标：与商店/背包槽一致，且必须忽略纹理尺寸，否则大图会按纹理尺寸撑大（TextureRect 默认 EXPAND_KEEP_SIZE）
+	# 左侧图标：稍大（ENTRY_ICON_SIZE）且行内垂直居中；忽略纹理尺寸避免大图撑大
+	var icon_center := CenterContainer.new()
+	icon_center.custom_minimum_size = Vector2(ENTRY_ICON_SIZE, ENTRY_ICON_SIZE)
+	icon_center.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	icon_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var icon_rect := TextureRect.new()
 	var tex: Texture2D = null
 	if icon_path != "":
 		tex = VisualAssetRegistry.get_texture_cached(icon_path)
 	if tex == null:
-		tex = VisualAssetRegistry.make_color_texture(BackpackSlot.PLACEHOLDER_COLOR, Vector2i(BackpackSlot.SLOT_SIZE, BackpackSlot.SLOT_SIZE))
+		tex = VisualAssetRegistry.make_color_texture(BackpackSlot.PLACEHOLDER_COLOR, Vector2i(ENTRY_ICON_SIZE, ENTRY_ICON_SIZE))
 	icon_rect.texture = tex
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon_rect.custom_minimum_size = Vector2(BackpackSlot.SLOT_SIZE, BackpackSlot.SLOT_SIZE)
+	icon_rect.custom_minimum_size = Vector2(ENTRY_ICON_SIZE, ENTRY_ICON_SIZE)
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	icon_rect.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	hbox.add_child(icon_rect)
+	icon_center.add_child(icon_rect)
+	hbox.add_child(icon_center)
 	# 右侧文本区
 	var text_vbox := VBoxContainer.new()
 	text_vbox.add_theme_constant_override("separation", 4)
