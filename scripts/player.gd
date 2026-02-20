@@ -784,6 +784,13 @@ func _refresh_weapon_visuals() -> void:
 		if tex == null:
 			tex = VisualAssetRegistry.make_color_texture(color_hint, Vector2i(10, 10))
 		icon.texture = tex
+		# 按纹理实际尺寸缩放到统一显示大小（参考图鉴：不同尺寸图缩放到统一尺寸），不高于角色
+		var tex_size := tex.get_size()
+		var max_side := maxf(tex_size.x, tex_size.y)
+		var scale_factor := GameConstants.WEAPON_ICON_MAX_SIZE / max_side if max_side > 0 else 1.0
+		icon.scale = Vector2(scale_factor, scale_factor)
+		# 把手朝向玩家（约定把手在图片下方，旋转 PI/2 使指向中心）
+		icon.rotation = PI / 2.0
 		# 武器图标绘于角色之后，避免遮盖人物（z_index 低于角色精灵默认 0）
 		icon.z_index = -1
 		# 图标挂在武器节点下，近战挥击时图标随之移动

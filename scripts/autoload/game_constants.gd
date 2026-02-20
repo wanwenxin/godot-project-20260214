@@ -13,6 +13,8 @@ const BOSS_SCALE := 8
 const BULLET_SCALE := 2.0
 ## 敌人血条上方元素附着图标的缩放倍率（小图标避免盖住敌人）
 const ELEMENT_ICONS_SCALE := 0.1
+## 场景内武器环图标最长边的目标显示尺寸（单位与角色一致；角色约 24×PLAYER_SCALE=36，图标不超过此值）。按纹理实际尺寸缩放，使不同尺寸素材统一显示为此大小。
+const WEAPON_ICON_MAX_SIZE := 36.0
 ## 敌人子弹飞行速度（较玩家子弹慢，便于玩家反应；约原 180 的 70%）
 const ENEMY_BULLET_SPEED := 126.0
 
