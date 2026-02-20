@@ -1,5 +1,5 @@
 ---
-description: 生成美术资源时须参考美术风格文档；仅使用 AliyunBailianMCP_WanImage 生成，生成结果须符合美术文档要求
+description: 生成美术资源时须参考美术风格文档；仅使用 AliyunBailianMCP_Wan26Media 生成，生成结果须符合美术文档要求
 alwaysApply: true
 ---
 
@@ -9,14 +9,17 @@ alwaysApply: true
 
 每次生成美术资源文件（武器、道具、魔法、元素状态图标等）时，**必须先阅读** `docs/ART_STYLE_GUIDE.md`，按其中**规格（尺寸、格式、路径）**与**描述词/提示词规范**执行，保证与现有资产风格一致，并满足文档中的视角、风格、透明背景等要求。
 
-## 2. 仅使用 AliyunBailianMCP_WanImage 生成
+## 2. 仅使用 AliyunBailianMCP_Wan26Media 生成
 
-- **唯一工具**：仅使用 **AliyunBailianMCP_WanImage** MCP 的 `modelstudio_image_gen` 工具生成图片
+- **唯一工具**：仅使用 **AliyunBailianMCP_Wan26Media** MCP 的 `modelstudio_wanx26_image_generation` 工具生成图片
 - **遵循美术文档**：生成的图片必须符合 `docs/ART_STYLE_GUIDE.md` 中对应类型的规格（尺寸、路径、视角、像素风、透明背景等）；提示词须按文档「描述词规范」编写
-- **透明背景**：生成时提示词必须包含「transparent background」；若生成结果带背景，可后处理或仅提示失败
+- **无背景、2D 游戏素材**：生成的图片要求**无背景**（透明背景），用于 **2D 游戏素材**；提示词须体现该用途（如 game UI、pixel art icon）。
+- **透明背景**：生成时提示词必须包含「transparent background」；若生成结果带背景，可后处理或仅提示失败。**武器与角色**：生成时必须是**完全透明背景（无背景）、无阴影**；提示词须明确 no background、no shadow（或等价英文）。
+- **重生成时默认不引用原图**：重新生成某素材图时，**除非有明确要求**（如「在原图基础上修改」），否则**默认不使用原素材图**作为输入或参考，而是**直接按描述词生成新图**（纯文生图），再保存、缩放、打标。
+- **游戏中表现**：武器环绕在人物周围时**不得遮盖人物**；通过绘制顺序（如武器图标 `z_index` 低于角色精灵）保证武器绘于角色之后，符合要求。
 - **尺寸**：生成图须符合美术文档规定的尺寸（如图标 96×96）。满足方式可选：
   - **生成时限制**：调用图生工具时若支持目标尺寸（如 96*96），则传入该尺寸
   - **生成后限制**：生成后对图片做缩放/裁剪至规定尺寸再写入 `assets/`
   - **游戏中限制**：游戏内已通过 TextureRect 的 `custom_minimum_size` 与 `stretch_mode` 约束显示尺寸；若暂不改资源文件，须注明资源未达规格，建议后续将源资源改为 96×96
-- **失败处理**：若 WanImage 调用失败，**仅提示哪些资产生成失败**，不调用其他图生接口（如 Pixellab、ali-image、GenerateImage、gen_icons.py 等）替代生成
+- **失败处理**：若 Wan26Media 调用失败，**仅提示哪些资产生成失败**，不调用其他图生接口（如 Pixellab、ali-image、GenerateImage、gen_icons.py 等）替代生成
 - **已替换记录**：若项目内存在已生成资产记录文档，生成前须查阅并跳过已打标资产

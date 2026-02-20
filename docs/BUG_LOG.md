@@ -18,6 +18,13 @@
 
 （按时间倒序，最新在上）
 
+### 2026-02-20：武器图标重生成计划（WanImage 工具不可用）
+
+- **现象**：计划「武器美术重生成与规则」中需调用 WanImage 的 `modelstudio_image_gen` 生成 11 张武器图，调用报错 Tool not found。
+- **原因**：当前工作区 mcps 下 `user-AliyunBailianMCP_WanImage` 仅有 SERVER_METADATA/INSTRUCTIONS，未暴露 tools（无 modelstudio_image_gen 描述符），故无法通过 MCP 自动生成。
+- **修复**：规则与 ART_STYLE_GUIDE、player.gd 的 z_index、PIXELLAB_REPLACED_ASSETS 打标与描述词均已按计划完成。实际 11 张武器图需在具备 WanImage 生成能力的环境下手动按 `docs/PIXELLAB_REPLACED_ASSETS.md` 武器表描述词逐条生成，保存至 `assets/weapons/` 后运行 `python scripts/resize_icons_to_spec.py`。
+- **预防**：若需在本项目内自动调用 WanImage 生成资产，需确保 AliyunBailianMCP_WanImage 服务器在 mcps 中提供对应 tool 描述符（如 modelstudio_image_gen）。
+
 ### 2026-02-19：模态面板白边去除
 
 - **现象**：商店、升级、暂停等模态面板外圈有浅灰/白边

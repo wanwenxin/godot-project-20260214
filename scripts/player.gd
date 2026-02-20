@@ -784,6 +784,8 @@ func _refresh_weapon_visuals() -> void:
 		if tex == null:
 			tex = VisualAssetRegistry.make_color_texture(color_hint, Vector2i(10, 10))
 		icon.texture = tex
+		# 武器图标绘于角色之后，避免遮盖人物（z_index 低于角色精灵默认 0）
+		icon.z_index = -1
 		# 图标挂在武器节点下，近战挥击时图标随之移动
 		weapon_node.add_child(icon)
 		_weapon_visuals.append(icon)

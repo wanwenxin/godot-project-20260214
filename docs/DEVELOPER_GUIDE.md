@@ -590,7 +590,7 @@ flowchart TD
 - **Enemies**：`enemy_base.gd` 的 `@export_file texture_sheet`、`texture_single`、`enemy_type`（0=melee, 1=ranged, 2=tank, 3=boss, 4=aquatic, 5=dasher，用于死亡动画与 PixelGenerator 回退），各敌人场景在 Inspector 配置
 - **Bullet**：`bullet.gd` 的 `@export_file texture_path`、`@export collision_radius`，武器 def 的 `bullet_texture_path`、`bullet_collision_radius`
 - **近战挥击**：`weapon_melee_base.gd` 的 `@export_file swing_texture_path`、`@export swing_frame_size`，weapon_defs 的 `swing_texture_path`
-- **武器图标**：weapon_defs 的 `icon_path`，HUD/player 从 option 或 weapon 节点读取；AI 生成图标须参考 `docs/ART_STYLE_GUIDE.md`，仅使用 AliyunBailianMCP_WanImage，生成须符合美术文档要求（透明背景、96×96 规格；若生成尺寸非 96×96 须运行 `scripts/resize_icons_to_spec.py` 或 `scripts/tools/resize_icons_to_spec.gd`）
+- **武器图标**：weapon_defs 的 `icon_path`，HUD/player 从 option 或 weapon 节点读取；AI 生成图标须参考 `docs/ART_STYLE_GUIDE.md`，仅使用 AliyunBailianMCP_Wan26Media，生成须符合美术文档要求（透明背景、96×96 规格；若生成尺寸非 96×96 须运行 `scripts/resize_icons_to_spec.py` 或 `scripts/tools/resize_icons_to_spec.gd`）
 - **掉落物**：`pickup.gd` 的 `@export_file texture_coin`、`texture_heal`
 - **升级图标**：`_upgrade_pool` 的 `icon_path`，HUD 从 option 读取
 - **VisualAssetRegistry**：`get_texture_cached(path)` 按路径缓存纹理，避免重复 load；`make_color_texture(color, size)` 纯色贴图（同色同尺寸复用缓存）；`make_panel_frame_texture(...)` 生成九宫格面板框纹理
