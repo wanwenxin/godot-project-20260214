@@ -1,20 +1,21 @@
 # 美术风格指南
 
-本文档记录项目自动生成美术资源的风格规范，以 Pixellab 生成的文件为参考，保证新生成资源与现有资产的一致性。
+本文档记录项目自动生成美术资源的风格规范。**图片类美术资源仅使用 AliyunBailianMCP_WanImage（`modelstudio_image_gen`）生成**，生成时必须遵循本文档的规格与描述词要求，保证新生成资源与现有资产的一致性。
 
 ---
 
-## 一、参考资产（Pixellab 已生成）
+## 一、参考资产（WanImage 已生成）
 
 | 路径 | 类别 | 描述词 |
 |------|------|--------|
-| assets/weapons/blade_short.png | 武器 | short sword, top-down view, pixel art icon |
-| assets/weapons/dagger.png | 武器 | dagger knife, top-down view, pixel art icon |
-| assets/weapons/spear.png | 武器 | spear weapon, top-down view, pixel art icon |
+| assets/weapons/blade_short.png | 武器 | short sword, top-down view, pixel art icon, game UI |
+| assets/weapons/dagger.png | 武器 | dagger knife, top-down view, pixel art icon, game UI |
+| assets/weapons/spear.png | 武器 | spear weapon, top-down view, pixel art icon, game UI |
 | assets/magic/icon_fire.png | 魔法 | fire flame icon, pixel art, magic spell |
 | assets/magic/icon_lightning.png | 魔法/元素 | lightning bolt icon, pixel art, magic spell |
+| assets/ui/upgrade_icons/icon_hp.png | 道具 | heart icon for health, pixel art, game UI |
 
-生成新资源前，**务必查看上述文件**以把握视觉风格。
+生成新资源前，**务必查看上述文件**以把握视觉风格；已替换清单见 [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md)。
 
 ---
 
@@ -138,21 +139,19 @@
 
 ---
 
-## 三、Pixellab 生成参数（适用于武器/道具/魔法/元素图标）
+## 三、WanImage 生成参数（武器/道具/魔法/元素图标）
 
-为保证风格一致，所有通过 Pixellab `create_map_object` 生成的图标须使用以下参数：
+当前**仅使用 AliyunBailianMCP_WanImage** 生成图片。调用 `modelstudio_image_gen` 时须遵循本文档：
 
-| 参数 | 值 | 说明 |
-|------|-----|------|
-| width | 96 | 画布宽度（武器/道具/魔法/元素图标） |
-| height | 96 | 画布高度 |
-| view | `high top-down` | 高位俯视视角，适合 UI 图标 |
-| outline | `single color outline` | 单色描边，轮廓清晰 |
-| shading | `medium shading` | 中等阴影，有立体感 |
-| detail | `medium detail` | 中等细节，避免过于复杂 |
-| background_image | 不传 | Basic 模式，透明背景 |
+| 参数 | 建议 | 说明 |
+|------|------|------|
+| prompt | 见「四、描述词规范」 | 正向提示词，描述期望画面；须包含视角（如 top-down）、风格（pixel art icon）等 |
+| size | `1024*1024` 或按需 | 输出分辨率；若最终需 96×96，可先生成后裁剪/缩放 |
+| negative_prompt | 可选 | 不希望在画面中出现的内容 |
+| n | 1 | 生成张数，通常 1 |
+| watermark | false | 建议不加水印 |
 
-**不传 `background_image`** 即使用 Basic 模式，生成独立对象，背景透明。
+生成后须保存到「二」中规定的路径，并满足像素风、透明背景等「二」「五」要求；尺寸若非 96×96 需做缩放或裁剪。
 
 ---
 
@@ -186,30 +185,67 @@
 
 ---
 
-## 五、视觉特征（参考 Pixellab 输出）
+## 五、视觉特征（生成图须满足）
 
 - **像素风格**：边缘清晰，色块分明，非抗锯齿
 - **透明背景**：无背景色，便于叠加到 UI
 - **配色**：主体色明确，阴影与高光过渡自然
 - **轮廓**：单色描边，与主体色区分
-- **尺寸**：96×96 适用于武器/道具/魔法/元素图标；其他类型见上文「二、各类美术资源规格」
+- **尺寸**：96×96 适用于武器/道具/魔法/元素图标；其他类型见「二、各类美术资源规格」
 
 ---
 
-## 六、生成流程
+## 六、生成流程（WanImage）
 
-1. **查阅** [PIXELLAB_REPLACED_ASSETS.md](PIXELLAB_REPLACED_ASSETS.md)，跳过已打标资产
-2. **参考** 本文档的参考资产与参数
-3. **调用** Pixellab MCP `create_map_object`，使用固定参数 + 对应描述词
-4. **轮询** `get_map_object` 直至完成
-5. **下载** PNG 并保存到 `assets/` 对应路径
-6. **打标** 在 PIXELLAB_REPLACED_ASSETS 中新增记录
+1. **查阅** 项目内已生成资产记录（如有），跳过已打标资产
+2. **参考** 本文档「二、各类美术资源规格」与「四、描述词规范」，确定尺寸、路径与提示词
+3. **调用** **AliyunBailianMCP_WanImage** 的 `modelstudio_image_gen` 工具：`prompt` 按描述词规范，`size` 按规格（如 1024*1024；若需 96×96 可在生成后裁剪/缩放），`n` 按需
+4. **下载** 返回的图片 URL，保存为 PNG 到 `assets/` 对应路径（见「二」中各类型路径）
+5. **打标** 在已生成资产记录中新增记录（如有）
 
-**失败处理**：若 Pixellab 调用失败（如限流 429），**仅提示哪些资产生成失败**，不调用其他接口（如 GenerateImage）替代生成。
+生成结果须符合本文档要求：**尺寸、格式、路径、视角、像素风、透明背景**等与「二」「五」一致；必要时对图片做裁剪或缩放以满足 96×96 等规格。
+
+**失败处理**：若 WanImage 调用失败，**仅提示哪些资产生成失败**，不调用其他图生接口（如 Pixellab、ali-image、GenerateImage 等）替代生成。
+
+### 6.1 Pixellab（可选，非当前图生工具）
+
+项目规定图片美术资源**仅使用 AliyunBailianMCP_WanImage** 生成，以下仅供了解。Pixellab 支持账号登录，使用 API Token 可提高配额、减少限流：
+
+1. **注册/登录**：访问 [pixellab.ai/signin](https://www.pixellab.ai/signin)，使用邮箱或 Google 登录
+2. **获取 Token**：登录后进入 [pixellab.ai/account](https://www.pixellab.ai/account)，在账户设置中获取 API Token
+3. **配置 MCP**：在 Cursor 的 MCP 配置（`~/.cursor/mcp.json` 或项目 `.cursor/mcp.json`）中添加：
+
+```json
+{
+  "mcpServers": {
+    "user-pixellab": {
+      "url": "https://api.pixellab.ai/mcp",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN"
+      }
+    }
+  }
+}
+```
+
+将 `YOUR_API_TOKEN` 替换为从账户页面获取的 Token。配置后 MCP 请求将携带认证，通常可获得更高配额、减少 429 限流。
+
+### 6.2 WanImage（当前图生工具）
+
+**图片美术资源仅使用 AliyunBailianMCP_WanImage**，工具名为 `modelstudio_image_gen`。生成前须阅读本文档规格与描述词，生成后保存到规定路径并满足尺寸与风格要求。
+
+### 6.3 ali-image（阿里云 DashScope / FLUX，非默认图生工具）
+
+项目内 **ali-image** MCP 使用 [ali-flux-mcp](https://github.com/echozyr2001/ali-flux-mcp) 本地部署；按规定**不**用于替代 WanImage 做美术资产生成。
+
+- **位置**：`.cursor/tools/ali-flux-mcp`
+- **配置**：`mcp.json` 中 `ali-image` 的 `env` 需提供 `DASHSCOPE_API_KEY`；可选 `SAVE_DIR`
+- **默认保存目录**：`assets/generated_images`
 
 ---
 
 ## 七、维护
 
-- 新增 Pixellab 生成资产后，若风格有显著变化，可更新本文档「参考资产」与「视觉特征」
-- 参数变更时同步更新「Pixellab 生成参数」表
+- 新增 WanImage 生成资产后，若风格有显著变化，可更新本文档「参考资产」与「视觉特征」
+- 参数或工具变更时同步更新「三、WanImage 生成参数」与「六、生成流程」

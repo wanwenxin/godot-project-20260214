@@ -1,5 +1,5 @@
 ---
-description: 生成美术资源时须参考美术风格文档；仅使用 Pixellab 生成，失败时仅提示
+description: 生成美术资源时须参考美术风格文档；仅使用 AliyunBailianMCP_WanImage 生成，生成结果须符合美术文档要求
 alwaysApply: true
 ---
 
@@ -7,10 +7,11 @@ alwaysApply: true
 
 ## 1. 生成前须参考美术风格文档
 
-每次生成美术资源文件（武器、道具、魔法、元素状态图标等）时，**必须先阅读** `docs/ART_STYLE_GUIDE.md`，按其中参数与描述词规范执行，保证与现有 Pixellab 生成资产风格一致。
+每次生成美术资源文件（武器、道具、魔法、元素状态图标等）时，**必须先阅读** `docs/ART_STYLE_GUIDE.md`，按其中**规格（尺寸、格式、路径）**与**描述词/提示词规范**执行，保证与现有资产风格一致，并满足文档中的视角、风格、透明背景等要求。
 
-## 2. 仅使用 Pixellab 生成
+## 2. 仅使用 AliyunBailianMCP_WanImage 生成
 
-- **唯一工具**：仅使用 Pixellab MCP（`create_map_object`、`get_map_object`）生成图标
-- **失败处理**：若 Pixellab 接口调用失败（如限流 429、生成失败等），**仅提示哪些资产生成失败**，不调用其他接口（如 GenerateImage、gen_icons.py 等）替代生成
-- **已替换记录**：生成前查阅 `docs/PIXELLAB_REPLACED_ASSETS.md`，跳过已打标资产
+- **唯一工具**：仅使用 **AliyunBailianMCP_WanImage** MCP 的 `modelstudio_image_gen` 工具生成图片
+- **遵循美术文档**：生成的图片必须符合 `docs/ART_STYLE_GUIDE.md` 中对应类型的规格（尺寸、路径、视角、像素风、透明背景等）；提示词须按文档「描述词规范」编写
+- **失败处理**：若 WanImage 调用失败，**仅提示哪些资产生成失败**，不调用其他图生接口（如 Pixellab、ali-image、GenerateImage、gen_icons.py 等）替代生成
+- **已替换记录**：若项目内存在已生成资产记录文档，生成前须查阅并跳过已打标资产
